@@ -17,7 +17,6 @@ class StorefrontController extends Controller
     {
         $business_id = $this->resolveBusinessId($request);
         $location_id = $this->resolveLocationId($business_id, $request);
-
         $products = Product::where('business_id', $business_id)
             ->active()
             ->productForSales()
@@ -370,11 +369,14 @@ class StorefrontController extends Controller
 
     private function resolveBusinessId(Request $request): int
     {
-        if ($request->filled('business_id')) {
-            return (int) $request->input('business_id');
-        }
 
-        return (int) Business::query()->value('id');
+return 273;
+
+//         if ($request->filled('business_id')) {
+//             return (int) $request->input('business_id');
+//         }
+
+//         return (int) Business::query()->value('id');
     }
 
     private function resolveLocationId(int $business_id, Request $request): int
