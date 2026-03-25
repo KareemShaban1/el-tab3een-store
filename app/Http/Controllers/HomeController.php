@@ -631,4 +631,28 @@ class HomeController extends Controller
 
         return ['address' => $response];
     }
+
+    public function changeLanguage($lang)
+    {
+        $langs = config('constants.langs', []);
+        if (! array_key_exists($lang, $langs)) {
+            return redirect()->back();
+        }
+
+        $user = auth()->user();
+        if ($user) {
+            $user->language = $lang;
+            $user->save();
+        }
+
+        if (request()->session()->has('user')) {
+            $session_user = request()->session()->get('user');
+            $session_user['language'] = $lang;
+            request()->session()->put('user', $session_user);
+        }
+
+        app()->setLocale($lang);
+
+        return redirect()->back();
+    }
 }

@@ -1,11 +1,16 @@
 @extends('layouts.app')
-@section('title', __('lang_v1.all_sales'))
+@php
+    $is_ecommerce_orders = request()->input('source') === 'ecommerce' || (request()->segment(1) === 'sells' && request()->segment(2) === 'ecommerce' && request()->segment(3) === 'orders');
+    $page_title = $is_ecommerce_orders ? 'E-commerce Orders' : __('lang_v1.all_sales');
+@endphp
+
+@section('title', $page_title)
 
 @section('content')
 
     <!-- Content Header (Page header) -->
     <section class="content-header no-print">
-        <h1  class="tw-text-xl md:tw-text-3xl tw-font-bold tw-text-black">@lang('sale.sells') <span id="sell_list_selected_range" class="tw-text-gray-600 tw-font-normal tw-text-base">{{ @format_date(\Carbon\Carbon::now()->subDays(29)) }} ~ {{ @format_date(\Carbon\Carbon::now()) }}</span>
+        <h1  class="tw-text-xl md:tw-text-3xl tw-font-bold tw-text-black">{{ $page_title }} <span id="sell_list_selected_range" class="tw-text-gray-600 tw-font-normal tw-text-base">{{ @format_date(\Carbon\Carbon::now()->subDays(29)) }} ~ {{ @format_date(\Carbon\Carbon::now()) }}</span>
         </h1>
     </section>
 
@@ -31,7 +36,19 @@
                     <div class="form-group">
                         {!! Form::label('sell_list_filter_source', __('lang_v1.sources') . ':') !!}
 
-                        {!! Form::select('sell_list_filter_source', $sources, null, [
+                        {!! Form::select('sell_list_filter_source', $sources, request()->input('source'), [
+                            'class' => 'form-control select2',
+                            'style' => 'width:100%',
+                            'placeholder' => __('lang_v1.all'),
+                        ]) !!}
+                    </div>
+                </div>
+            @endif
+            @if ($is_ecommerce_orders ?? false)
+                <div class="col-md-3">
+                    <div class="form-group">
+                        {!! Form::label('ecommerce_order_status', 'E-commerce Order Status:') !!}
+                        {!! Form::select('ecommerce_order_status', $ecommerce_order_statuses ?? [], null, [
                             'class' => 'form-control select2',
                             'style' => 'width:100%',
                             'placeholder' => __('lang_v1.all'),
@@ -40,7 +57,7 @@
                 </div>
             @endif
         @endcomponent
-        @component('components.widget', ['class' => 'box-primary', 'title' => __('lang_v1.all_sales')])
+        @component('components.widget', ['class' => 'box-primary', 'title' => $page_title])
             @can('direct_sell.access')
                 @slot('tool')
                     <div class="box-tools">
@@ -79,6 +96,9 @@
                             <th>@lang('lang_v1.sell_due')</th>
                             <th>@lang('lang_v1.sell_return_due')</th>
                             <th>@lang('lang_v1.shipping_status')</th>
+                            @if ($is_ecommerce_orders ?? false)
+                                <th>E-commerce Order Status</th>
+                            @endif
                             <th>@lang('lang_v1.total_items')</th>
                             <th>@lang('lang_v1.types_of_service')</th>
                             <th>{{ $custom_labels['types_of_service']['custom_field_1'] ?? __('lang_v1.service_custom_field_1') }}
@@ -169,7 +189,7 @@
                     [1, 'desc']
                 ],
                 "ajax": {
-                    "url": "/sells",
+                    "url": "{{ url()->current() }}",
                     "data": function(d) {
                         if ($('#sell_list_filter_date_range').val()) {
                             var start = $('#sell_list_filter_date_range').data('daterangepicker')
@@ -202,6 +222,9 @@
 
                         if ($('#payment_method').length) {
                             d.payment_method = $('#payment_method').val();
+                        }
+                        if ($('#ecommerce_order_status').length) {
+                            d.ecommerce_order_status = $('#ecommerce_order_status').val();
                         }
 
                         d = __datatable_ajax_callback(d);
@@ -267,6 +290,14 @@
                         data: 'shipping_status',
                         name: 'shipping_status'
                     },
+                    @if ($is_ecommerce_orders ?? false)
+                    {
+                        data: 'ecommerce_order_status_label',
+                        name: 'transactions.ecommerce_order_status',
+                        orderable: false,
+                        searchable: false
+                    },
+                    @endif
                     {
                         data: 'total_items',
                         name: 'total_items',
@@ -381,7 +412,7 @@
             });
 
             $(document).on('change',
-                '#sell_list_filter_location_id, #sell_list_filter_customer_id, #sell_list_filter_payment_status, #created_by, #sales_cmsn_agnt, #service_staffs, #shipping_status, #sell_list_filter_source, #payment_method',
+                '#sell_list_filter_location_id, #sell_list_filter_customer_id, #sell_list_filter_payment_status, #created_by, #sales_cmsn_agnt, #service_staffs, #shipping_status, #sell_list_filter_source, #payment_method, #ecommerce_order_status',
                 function() {
                     sell_table.ajax.reload();
                 });

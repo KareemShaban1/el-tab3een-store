@@ -93,6 +93,7 @@ class SellController extends Controller
             $payment_types = $this->transactionUtil->payment_types(null, true, $business_id);
             $with = [];
             $shipping_statuses = $this->transactionUtil->shipping_statuses();
+            $is_ecommerce_context = request()->input('source') === 'ecommerce' || request()->routeIs('sells.ecommerce.orders.data') || request()->routeIs('sells.ecommerce.orders');
 
             $sale_type = ! empty(request()->input('sale_type')) ? request()->input('sale_type') : 'sell';
 
@@ -221,7 +222,7 @@ class SellController extends Controller
             $datatable = Datatables::of($sells)
                 ->addColumn(
                     'action',
-                    function ($row) use ($only_shipments, $is_admin, $sale_type, $is_zatca) {
+                    function ($row) use ($only_shipments, $is_admin, $sale_type, $is_zatca, $is_ecommerce_context) {
 
                         // this action button for zatca module
                         if ($is_zatca) {
@@ -262,15 +263,16 @@ class SellController extends Controller
                             $html .= '<li><a href="#" data-href="'.action([\App\Http\Controllers\SellController::class, 'show'], [$row->id]).'" class="btn-modal" data-container=".view_modal"><i class="fas fa-eye" aria-hidden="true"></i> '.__('messages.view').'</a></li>';
                         }
                         if (! $only_shipments) {
-                            if ($row->is_direct_sale == 0) {
+                            $is_ecommerce_order = $is_ecommerce_context || (! empty($row->source) && $row->source === 'ecommerce');
+                            if (! $is_ecommerce_order && $row->is_direct_sale == 0) {
                                 if (auth()->user()->can('sell.update')) {
                                     $html .= '<li><a target="_blank" href="'.action([\App\Http\Controllers\SellPosController::class, 'edit'], [$row->id]).'"><i class="fas fa-edit"></i> '.__('messages.edit').'</a></li>';
                                 }
-                            } elseif ($row->type == 'sales_order') {
+                            } elseif (! $is_ecommerce_order && $row->type == 'sales_order') {
                                 if (auth()->user()->can('so.update')) {
                                     $html .= '<li><a target="_blank" href="'.action([\App\Http\Controllers\SellController::class, 'edit'], [$row->id]).'"><i class="fas fa-edit"></i> '.__('messages.edit').'</a></li>';
                                 }
-                            } else {
+                            } elseif (! $is_ecommerce_order) {
                                 if (auth()->user()->can('direct_sell.update')) {
                                     $html .= '<li><a target="_blank" href="'.action([\App\Http\Controllers\SellController::class, 'edit'], [$row->id]).'"><i class="fas fa-edit"></i> '.__('messages.edit').'</a></li>';
                                 }
@@ -312,6 +314,9 @@ class SellController extends Controller
 
                         if ($is_admin || auth()->user()->hasAnyPermission(['access_shipping', 'access_own_shipping', 'access_commission_agent_shipping'])) {
                             $html .= '<li><a href="#" data-href="'.action([\App\Http\Controllers\SellController::class, 'editShipping'], [$row->id]).'" class="btn-modal" data-container=".view_modal"><i class="fas fa-truck" aria-hidden="true"></i>'.__('lang_v1.edit_shipping').'</a></li>';
+                        }
+                        if (!empty($row->source) && $row->source === 'ecommerce' && auth()->user()->can('sell.update')) {
+                            $html .= '<li><a href="#" data-href="'.action([\App\Http\Controllers\SellController::class, 'editEcommerceStatus'], [$row->id]).'" class="btn-modal" data-container=".view_modal"><i class="fas fa-store" aria-hidden="true"></i> '.__('lang_v1.edit').' E-commerce Status</a></li>';
                         }
 
                         if ($row->type == 'sell') {
@@ -359,6 +364,17 @@ class SellController extends Controller
                         return $html;
                     }
                 )
+                ->addColumn('view_order', function ($row) use ($is_ecommerce_context) {
+                    if (! ($is_ecommerce_context || (! empty($row->source) && $row->source === 'ecommerce'))) {
+                        return '';
+                    }
+
+                    if (! (auth()->user()->can('sell.view') || auth()->user()->can('direct_sell.view') || auth()->user()->can('view_own_sell_only'))) {
+                        return '';
+                    }
+
+                    return '<a href="#" class="btn-modal btn btn-xs btn-primary" data-href="'.action([\App\Http\Controllers\SellController::class, 'show'], [$row->id]).'" data-container=".view_modal"><i class="fas fa-eye"></i> '.__('messages.view').'</a>';
+                })
                 ->removeColumn('id')
                 ->editColumn(
                     'final_total',
@@ -391,10 +407,14 @@ class SellController extends Controller
                 ->editColumn('transaction_date', '{{@format_datetime($transaction_date)}}')
                 ->editColumn(
                     'payment_status',
-                    function ($row) {
+                    function ($row) use ($is_ecommerce_context) {
                         $payment_status = Transaction::getPaymentStatus($row);
+                        $payment_status_html = (string) view('sell.partials.payment_status', ['payment_status' => $payment_status, 'id' => $row->id]);
+                        if (($is_ecommerce_context || (! empty($row->source) && $row->source === 'ecommerce')) && auth()->user()->can('sell.update')) {
+                            return '<a href="#" class="btn-modal" data-href="'.action([\App\Http\Controllers\SellController::class, 'editEcommerceStatus'], [$row->id]).'" data-container=".view_modal">'.$payment_status_html.'</a>';
+                        }
 
-                        return (string) view('sell.partials.payment_status', ['payment_status' => $payment_status, 'id' => $row->id]);
+                        return $payment_status_html;
                     }
                 )
                 ->editColumn(
@@ -416,7 +436,7 @@ class SellController extends Controller
 
                     return $return_due_html;
                 })
-                ->editColumn('invoice_no', function ($row) use ($is_crm) {
+                ->editColumn('invoice_no', function ($row) use ($is_crm, $is_ecommerce_context) {
                     $invoice_no = $row->invoice_no;
                     if (! empty($row->woocommerce_order_id)) {
                         $invoice_no .= ' <i class="fab fa-wordpress text-primary no-print" title="'.__('lang_v1.synced_from_woocommerce').'"></i>';
@@ -439,14 +459,47 @@ class SellController extends Controller
                     if ($is_crm && ! empty($row->crm_is_order_request)) {
                         $invoice_no .= ' &nbsp;<small class="label bg-yellow label-round no-print" title="'.__('crm::lang.order_request').'"><i class="fas fa-tasks"></i></small>';
                     }
+                    if ($is_ecommerce_context || (! empty($row->source) && $row->source === 'ecommerce')) {
+                        $ecommerce_status = ! empty($row->ecommerce_order_status) ? $row->ecommerce_order_status : $row->sub_status;
+                        if (! empty($ecommerce_status) && strpos($ecommerce_status, 'ecommerce_') === 0) {
+                            $ecommerce_status = substr($ecommerce_status, 10);
+                        }
+                        $ecommerce_status_label = ! empty($ecommerce_status) ? ucwords(str_replace('_', ' ', $ecommerce_status)) : 'E-commerce';
+                        $invoice_no .= ' &nbsp;<small class="label bg-blue label-round no-print">'.$ecommerce_status_label.'</small>';
+                    }
 
                     return $invoice_no;
                 })
-                ->editColumn('shipping_status', function ($row) use ($shipping_statuses) {
+                ->editColumn('shipping_status', function ($row) use ($shipping_statuses, $is_ecommerce_context) {
                     $status_color = ! empty($this->shipping_status_colors[$row->shipping_status]) ? $this->shipping_status_colors[$row->shipping_status] : 'bg-gray';
-                    $status = ! empty($row->shipping_status) ? '<a href="#" class="btn-modal" data-href="'.action([\App\Http\Controllers\SellController::class, 'editShipping'], [$row->id]).'" data-container=".view_modal"><span class="label '.$status_color.'">'.$shipping_statuses[$row->shipping_status].'</span></a>' : '';
+                    if (empty($row->shipping_status)) {
+                        return '';
+                    }
+                    $edit_url = action([\App\Http\Controllers\SellController::class, 'editShipping'], [$row->id]);
+                    if (($is_ecommerce_context || (! empty($row->source) && $row->source === 'ecommerce')) && auth()->user()->can('sell.update')) {
+                        $edit_url = action([\App\Http\Controllers\SellController::class, 'editEcommerceStatus'], [$row->id]);
+                    }
+                    $status = '<a href="#" class="btn-modal" data-href="'.$edit_url.'" data-container=".view_modal"><span class="label '.$status_color.'">'.$shipping_statuses[$row->shipping_status].'</span></a>';
 
                     return $status;
+                })
+                ->addColumn('ecommerce_order_status_label', function ($row) use ($is_ecommerce_context) {
+                    if (! ($is_ecommerce_context || (! empty($row->source) && $row->source === 'ecommerce'))) {
+                        return '';
+                    }
+
+                    $status = ! empty($row->ecommerce_order_status) ? $row->ecommerce_order_status : $row->sub_status;
+                    if (! empty($status) && strpos($status, 'ecommerce_') === 0) {
+                        $status = substr($status, 10);
+                    }
+                    $label = ! empty($status) ? ucwords(str_replace('_', ' ', $status)) : 'New';
+                    $html = '<span class="label bg-blue">'.$label.'</span>';
+
+                    if (auth()->user()->can('sell.update')) {
+                        $html = '<a href="#" class="btn-modal" data-href="'.action([\App\Http\Controllers\SellController::class, 'editEcommerceStatus'], [$row->id]).'" data-container=".view_modal">'.$html.'</a>';
+                    }
+
+                    return $html;
                 })
                 ->addColumn('conatct_name', '@if(!empty($supplier_business_name)) {{$supplier_business_name}}, <br> @endif {{$name}}')
                 ->editColumn('total_items', '{{@format_quantity($total_items)}}')
@@ -519,7 +572,7 @@ class SellController extends Controller
                         }
                     }, ]);
 
-            $rawColumns = ['final_total', 'action', 'total_paid', 'total_remaining', 'payment_status', 'invoice_no', 'discount_amount', 'tax_amount', 'total_before_tax', 'shipping_status', 'types_of_service_name', 'payment_methods', 'return_due', 'conatct_name', 'status', 'zatca_status'];
+            $rawColumns = ['final_total', 'action', 'view_order', 'total_paid', 'total_remaining', 'payment_status', 'invoice_no', 'discount_amount', 'tax_amount', 'total_before_tax', 'shipping_status', 'ecommerce_order_status_label', 'types_of_service_name', 'payment_methods', 'return_due', 'conatct_name', 'status', 'zatca_status'];
 
             return $datatable->rawColumns($rawColumns)
                       ->skipTotalRecords()
@@ -550,12 +603,85 @@ class SellController extends Controller
         if ($is_woocommerce) {
             $sources['woocommerce'] = 'Woocommerce';
         }
+        $sources['ecommerce'] = 'E-commerce';
 
         $payment_types = $this->transactionUtil->payment_types(null, true, $business_id);
+        $ecommerce_order_statuses = [
+            'new' => 'New',
+            'confirmed' => 'Confirmed',
+            'packed' => 'Packed',
+            'shipped' => 'Shipped',
+            'delivered' => 'Delivered',
+            'cancelled' => 'Cancelled',
+            'refunded' => 'Refunded',
+        ];
 
 
         return view('sell.index')
-        ->with(compact('business_locations', 'customers', 'is_woocommerce', 'sales_representative', 'is_cmsn_agent_enabled', 'commission_agents', 'service_staffs', 'is_tables_enabled', 'is_service_staff_enabled', 'is_types_service_enabled', 'shipping_statuses', 'sources', 'payment_types'));
+        ->with(compact('business_locations', 'customers', 'is_woocommerce', 'sales_representative', 'is_cmsn_agent_enabled', 'commission_agents', 'service_staffs', 'is_tables_enabled', 'is_service_staff_enabled', 'is_types_service_enabled', 'shipping_statuses', 'sources', 'payment_types', 'ecommerce_order_statuses'));
+    }
+
+    /**
+     * Shortcut for ecommerce filtered order list.
+     */
+    public function ecommerceOrders()
+    {
+        if (request()->ajax()) {
+            return $this->ecommerceOrdersData();
+        }
+
+        $business_id = request()->session()->get('user.business_id');
+        $is_woocommerce = $this->moduleUtil->isModuleInstalled('Woocommerce');
+        $is_tables_enabled = $this->transactionUtil->isModuleEnabled('tables');
+        $is_service_staff_enabled = $this->transactionUtil->isModuleEnabled('service_staff');
+        $is_types_service_enabled = $this->moduleUtil->isModuleEnabled('types_of_service');
+
+        $business_locations = BusinessLocation::forDropdown($business_id, false);
+        $customers = Contact::customersDropdown($business_id, false);
+        $sales_representative = User::forDropdown($business_id, false, false, true);
+
+        $is_cmsn_agent_enabled = request()->session()->get('business.sales_cmsn_agnt');
+        $commission_agents = [];
+        if (! empty($is_cmsn_agent_enabled)) {
+            $commission_agents = User::forDropdown($business_id, false, true, true);
+        }
+
+        $service_staffs = null;
+        if ($this->productUtil->isModuleEnabled('service_staff')) {
+            $service_staffs = $this->productUtil->serviceStaffDropdown($business_id);
+        }
+
+        $shipping_statuses = $this->transactionUtil->shipping_statuses();
+        $sources = $this->transactionUtil->getSources($business_id);
+        if ($is_woocommerce) {
+            $sources['woocommerce'] = 'Woocommerce';
+        }
+        $sources['ecommerce'] = 'E-commerce';
+        $payment_types = $this->transactionUtil->payment_types(null, true, $business_id);
+        $ecommerce_order_statuses = [
+            'new' => 'New',
+            'confirmed' => 'Confirmed',
+            'packed' => 'Packed',
+            'shipped' => 'Shipped',
+            'delivered' => 'Delivered',
+            'cancelled' => 'Cancelled',
+            'refunded' => 'Refunded',
+        ];
+
+        request()->merge(['source' => 'ecommerce', 'sale_type' => 'sell']);
+
+        return view('sell.ecommerce_orders')
+            ->with(compact('business_locations', 'customers', 'is_woocommerce', 'sales_representative', 'is_cmsn_agent_enabled', 'commission_agents', 'service_staffs', 'is_tables_enabled', 'is_service_staff_enabled', 'is_types_service_enabled', 'shipping_statuses', 'sources', 'payment_types', 'ecommerce_order_statuses'));
+    }
+
+    public function ecommerceOrdersData()
+    {
+        request()->merge([
+            'source' => 'ecommerce',
+            'sale_type' => 'sell',
+        ]);
+
+        return $this->index();
     }
 
     /**
@@ -579,12 +705,13 @@ class SellController extends Controller
 
         $business_id = request()->session()->get('user.business_id');
 
+
         //Check if subscribed or not, then check for users quota
-        if (! $this->moduleUtil->isSubscribed($business_id)) {
-            return $this->moduleUtil->expiredResponse();
-        } elseif (! $this->moduleUtil->isQuotaAvailable('invoices', $business_id)) {
-            return $this->moduleUtil->quotaExpiredResponse('invoices', $business_id, action([\App\Http\Controllers\SellController::class, 'index']));
-        }
+//         if (! $this->moduleUtil->isSubscribed($business_id)) {
+//             return $this->moduleUtil->expiredResponse();
+//         } elseif (! $this->moduleUtil->isQuotaAvailable('invoices', $business_id)) {
+//             return $this->moduleUtil->quotaExpiredResponse('invoices', $business_id, action([\App\Http\Controllers\SellController::class, 'index']));
+//         }
 
         $walk_in_customer = $this->contactUtil->getWalkInCustomer($business_id);
 
@@ -677,6 +804,7 @@ class SellController extends Controller
         $users = config('constants.enable_contact_assign') ? User::forDropdown($business_id, false, false, false, true) : [];
 
         $change_return = $this->dummyPaymentLine;
+
 
         return view('sell.create')
             ->with(compact(
@@ -1512,6 +1640,67 @@ class SellController extends Controller
     }
 
     /**
+     * Shows modal to edit ecommerce order statuses.
+     *
+     * @param  int  $id
+     * @return \Illuminate\Http\Response
+     */
+    public function editEcommerceStatus($id)
+    {
+        if (! auth()->user()->can('sell.update')) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        $business_id = request()->session()->get('user.business_id');
+        $transaction = Transaction::where('business_id', $business_id)
+            ->where('type', 'sell')
+            ->where('source', 'ecommerce')
+            ->findOrFail($id);
+
+        $shipping_details_prefill = $transaction->shipping_details;
+        if (! empty($transaction->order_addresses)) {
+            $decoded_addresses = json_decode($transaction->order_addresses, true);
+            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded_addresses)) {
+                $shipping_address = $decoded_addresses['shipping_address'] ?? [];
+                $parts = [
+                    $shipping_address['shipping_name'] ?? null,
+                    $shipping_address['shipping_mobile'] ?? null,
+                    $shipping_address['shipping_address_line_1'] ?? null,
+                    $shipping_address['shipping_city'] ?? null,
+                    $shipping_address['shipping_state'] ?? null,
+                    $shipping_address['shipping_country'] ?? null,
+                    $shipping_address['shipping_zip_code'] ?? null,
+                ];
+                $parts = array_values(array_filter(array_map(function ($value) {
+                    return is_string($value) ? trim($value) : null;
+                }, $parts)));
+                if (! empty($parts)) {
+                    $shipping_details_prefill = implode(' - ', $parts);
+                }
+            }
+        }
+
+        $shipping_statuses = $this->transactionUtil->shipping_statuses();
+        $payment_statuses = [
+            'paid' => __('lang_v1.paid'),
+            'due' => __('lang_v1.due'),
+            'partial' => __('lang_v1.partial'),
+        ];
+        $ecommerce_order_statuses = [
+            'new' => 'New',
+            'confirmed' => 'Confirmed',
+            'packed' => 'Packed',
+            'shipped' => 'Shipped',
+            'delivered' => 'Delivered',
+            'cancelled' => 'Cancelled',
+            'refunded' => 'Refunded',
+        ];
+
+        return view('sell.partials.edit_ecommerce_status')
+            ->with(compact('transaction', 'shipping_statuses', 'payment_statuses', 'ecommerce_order_statuses', 'shipping_details_prefill'));
+    }
+
+    /**
      * Update shipping.
      *
      * @param  Request  $request, int  $id
@@ -1775,6 +1964,12 @@ class SellController extends Controller
             } else {
                 $query->where('transactions.source', request()->input('source'));
             }
+        } else {
+            // Keep ERP sell list separate from e-commerce orders by default.
+            $query->where(function ($q) {
+                $q->whereNull('transactions.source')
+                    ->orWhere('transactions.source', '!=', 'ecommerce');
+            });
         }
 
         // CRM order request
@@ -1828,6 +2023,9 @@ class SellController extends Controller
         if (! empty(request()->input('shipping_status'))) {
             $query->where('transactions.shipping_status', request()->input('shipping_status'));
         }
+        if (! empty(request()->input('ecommerce_order_status'))) {
+            $query->where('transactions.ecommerce_order_status', request()->input('ecommerce_order_status'));
+        }
 
         // Dashboard sales order
         if (! empty(request()->input('for_dashboard_sales_order'))) {
@@ -1874,6 +2072,60 @@ class SellController extends Controller
         }
 
         return $query;
+    }
+
+    /**
+     * Update ecommerce order status from backoffice.
+     */
+    public function updateEcommerceStatus(Request $request, $id)
+    {
+        if (! auth()->user()->can('sell.update')) {
+            return $this->respondUnauthorized();
+        }
+
+        $business_id = request()->session()->get('user.business_id');
+        $transaction = Transaction::where('business_id', $business_id)
+            ->where('type', 'sell')
+            ->where('source', 'ecommerce')
+            ->findOrFail($id);
+
+        $validated = $request->validate([
+            'ecommerce_order_status' => 'nullable|string|max:60',
+            'shipping_status' => 'nullable|string|max:60',
+            'payment_status' => 'nullable|string|max:60',
+            'delivered_to' => 'nullable|string|max:255',
+            'delivery_person' => 'nullable|integer',
+            'shipping_details' => 'nullable|string',
+        ]);
+
+        if ($request->filled('ecommerce_order_status')) {
+            $transaction->ecommerce_order_status = $validated['ecommerce_order_status'];
+            // Backward compatibility for existing flows still using sub_status.
+            $transaction->sub_status = 'ecommerce_' . $validated['ecommerce_order_status'];
+        }
+        if ($request->filled('shipping_status')) {
+            $transaction->shipping_status = $validated['shipping_status'];
+        }
+        if ($request->filled('payment_status')) {
+            $transaction->payment_status = $validated['payment_status'];
+        }
+        if ($request->filled('delivered_to')) {
+            $transaction->delivered_to = $validated['delivered_to'];
+        }
+        if ($request->filled('delivery_person')) {
+            $transaction->delivery_person = $validated['delivery_person'];
+        }
+        if ($request->filled('shipping_details')) {
+            $transaction->shipping_details = $validated['shipping_details'];
+        }
+        $transaction->save();
+
+        $this->transactionUtil->activityLog($transaction, 'edited');
+
+        return $this->respond([
+            'success' => true,
+            'msg' => 'E-commerce order status updated successfully.',
+        ]);
     }
 
     /**

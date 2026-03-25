@@ -67,6 +67,7 @@ class Kernel extends HttpKernel
         'setData' => \App\Http\Middleware\IsInstalled::class,
         'authh' => \App\Http\Middleware\IsInstalled::class,
         'EcomApi' => \App\Http\Middleware\EcomApi::class,
+        'store.customer.auth' => \App\Http\Middleware\EnsureStoreCustomerAuthenticated::class,
         'AdminSidebarMenu' => \App\Http\Middleware\AdminSidebarMenu::class,
         'superadmin' => \App\Http\Middleware\Superadmin::class,
         'CheckUserLogin' => \App\Http\Middleware\CheckUserLogin::class,

@@ -189,6 +189,8 @@
                     {{ @format_date('now') }}
                 </button>
 
+                @include('layouts.partials.language_btn')
+
                 @include('layouts.partials.header-notifications')
 
 

@@ -2595,6 +2595,32 @@ $(document).on('submit', 'form#edit_shipping_form', function(e){
     });
 });
 
+$(document).on('submit', 'form#edit_ecommerce_status_form', function(e){
+    e.preventDefault();
+    var form = $(this);
+    var data = form.serialize();
+    $.ajax({
+        method: $(this).attr('method'),
+        url: $(this).attr('action'),
+        dataType: 'json',
+        data: data,
+        beforeSend: function() {
+            __disable_submit_button(form.find('button[type="submit"]'));
+        },
+        success: function(result) {
+            if (result.success == true) {
+                if (typeof(sell_table) != 'undefined') {
+                    sell_table.ajax.reload();
+                }
+                toastr.success(result.msg || LANG.updated_success);
+                $('.view_modal').modal('hide');
+            } else {
+                toastr.error(result.msg || LANG.something_went_wrong);
+            }
+        },
+    });
+});
+
 $(document).on('show.bs.modal', '.register_details_modal, .close_register_modal', function () {
     __currency_convert_recursively($(this));
 });
