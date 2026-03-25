@@ -287,7 +287,7 @@ class StorefrontController extends Controller
         $business_id = $this->resolveBusinessId($request);
 
         $categories = Category::where('business_id', $business_id)
-            ->whereNull('parent_id')
+          //   ->whereNull('parent_id')
             ->select('id', 'name')
             ->orderBy('name')
             ->limit(12)
@@ -295,7 +295,7 @@ class StorefrontController extends Controller
             ->map(function ($category) use ($business_id) {
                 $count = Product::where('business_id', $business_id)
                     ->active()
-                    // ->productForSales()
+                    ->productForSales()
                     ->where('category_id', $category->id)
                     ->count();
 
