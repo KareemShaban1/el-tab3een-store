@@ -51,6 +51,10 @@ use App\Http\Controllers\SellPosController;
 use App\Http\Controllers\SellReturnController;
 use App\Http\Controllers\StockAdjustmentController;
 use App\Http\Controllers\StockTransferController;
+use App\Http\Controllers\Frontend\StoreAccountController;
+use App\Http\Controllers\Frontend\StoreCheckoutController;
+use App\Http\Controllers\Frontend\StoreCustomerAuthController;
+use App\Http\Controllers\Frontend\StorefrontController;
 use App\Http\Controllers\TaxonomyController;
 use App\Http\Controllers\TaxRateController;
 use App\Http\Controllers\TransactionPaymentController;
@@ -60,6 +64,7 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\VariationTemplateController;
 use App\Http\Controllers\WarrantyController;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Auth;
 
 /*
 |--------------------------------------------------------------------------
@@ -76,8 +81,8 @@ include_once 'install_r.php';
 
 Route::middleware(['setData'])->group(function () {
     Route::get('/', function () {
-        return view('welcome');
-    });
+        return view('frontend.welcome');
+    })->name('welcome');
 
     Auth::routes();
 
@@ -95,6 +100,40 @@ Route::middleware(['setData'])->group(function () {
         ->name('invoice_payment');
     Route::post('/confirm-payment/{id}', [SellPosController::class, 'confirmPayment'])
         ->name('confirm_payment');
+
+    /*
+    |--------------------------------------------------------------------------
+    | Storefront routes (E-commerce)
+    |--------------------------------------------------------------------------
+    */
+    Route::prefix('store')->name('store.')->group(function () {
+        Route::get('/', [StorefrontController::class, 'home'])->name('home');
+        Route::get('/products', [StorefrontController::class, 'products'])->name('products.index');
+        Route::get('/products/{id}', [StorefrontController::class, 'product'])->name('products.show');
+        Route::get('/categories', [StorefrontController::class, 'categories'])->name('categories.index');
+        Route::get('/flash-deals', [StorefrontController::class, 'flashDeals'])->name('flash_deals.index');
+
+        Route::get('/register', [StoreCustomerAuthController::class, 'showRegister'])->name('auth.register.form');
+        Route::get('/login', [StoreCustomerAuthController::class, 'showLogin'])->name('auth.login.form');
+        Route::get('/password/forgot', [StoreCustomerAuthController::class, 'showForgotPassword'])->name('auth.password.request');
+        Route::post('/password/email', [StoreCustomerAuthController::class, 'sendResetLinkEmail'])->name('auth.password.email');
+        Route::get('/password/reset/{token}', [StoreCustomerAuthController::class, 'showResetPassword'])->name('auth.password.reset.form');
+        Route::post('/password/reset', [StoreCustomerAuthController::class, 'resetPassword'])->name('auth.password.update');
+        Route::post('/register', [StoreCustomerAuthController::class, 'register'])->name('auth.register');
+        Route::post('/login', [StoreCustomerAuthController::class, 'login'])->name('auth.login');
+
+        Route::middleware('store.customer.auth')->group(function () {
+            Route::post('/logout', [StoreCustomerAuthController::class, 'logout'])->name('auth.logout');
+
+            Route::get('/account/profile', [StoreAccountController::class, 'profile'])->name('account.profile');
+            Route::put('/account/profile', [StoreAccountController::class, 'updateProfile'])->name('account.profile.update');
+            Route::get('/account/orders', [StoreAccountController::class, 'orders'])->name('account.orders');
+            Route::get('/account/orders/{id}', [StoreAccountController::class, 'orderDetails'])->name('account.orders.show');
+
+            Route::get('/checkout', [StoreCheckoutController::class, 'show'])->name('checkout.form');
+            Route::post('/checkout', [StoreCheckoutController::class, 'checkout'])->name('checkout');
+        });
+    });
 });
 
 //Routes for authenticated users only
@@ -118,6 +157,7 @@ Route::middleware(['setData', 'auth', 'SetSessionData', 'language', 'timezone', 
     Route::get('/home/sales-payment-dues', [HomeController::class, 'getSalesPaymentDues']);
     Route::post('/attach-medias-to-model', [HomeController::class, 'attachMediasToGivenModel'])->name('attach.medias.to.model');
     Route::get('/calendar', [HomeController::class, 'getCalendar'])->name('calendar');
+    Route::get('/change-language/{lang}', [HomeController::class, 'changeLanguage'])->name('change-language');
 
     Route::post('/test-email', [BusinessController::class, 'testEmailConfiguration']);
     Route::post('/test-sms', [BusinessController::class, 'testSmsConfiguration']);
@@ -222,6 +262,10 @@ Route::middleware(['setData', 'auth', 'SetSessionData', 'language', 'timezone', 
     Route::get('/sells/quotations', [SellController::class, 'getQuotations']);
     Route::get('/sells/draft-dt', [SellController::class, 'getDraftDatables']);
     Route::resource('sells', SellController::class)->except(['show']);
+    Route::get('/sells/ecommerce/orders', [SellController::class, 'ecommerceOrders'])->name('sells.ecommerce.orders');
+    Route::get('/sells/ecommerce/orders/data', [SellController::class, 'ecommerceOrdersData'])->name('sells.ecommerce.orders.data');
+    Route::get('/sells/{id}/ecommerce-status/edit', [SellController::class, 'editEcommerceStatus'])->name('sells.ecommerce.status.edit');
+    Route::post('/sells/{id}/ecommerce-status', [SellController::class, 'updateEcommerceStatus'])->name('sells.ecommerce.status');
 
     Route::get('/import-sales', [ImportSalesController::class, 'index']);
     Route::post('/import-sales/preview', [ImportSalesController::class, 'preview']);

@@ -13,6 +13,16 @@ class Contact extends Authenticatable
     use SoftDeletes;
 
     /**
+     * The attributes that should be hidden for arrays.
+     *
+     * @var array
+     */
+    protected $hidden = [
+        'password',
+        'remember_token',
+    ];
+
+    /**
      * The attributes that aren't mass assignable.
      *
      * @var array

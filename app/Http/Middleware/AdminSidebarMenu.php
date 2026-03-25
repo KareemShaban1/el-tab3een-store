@@ -313,6 +313,11 @@ $is_superadmin = auth()->user()->can('superadmin');
                                 __('lang_v1.all_sales'),
                                 ['icon' => '', 'active' => request()->segment(1) == 'sells' && request()->segment(2) == null]
                             );
+                            $sub->url(
+                                action([\App\Http\Controllers\SellController::class, 'ecommerceOrders']),
+                                'E-commerce Orders',
+                                ['icon' => '', 'active' => request()->segment(1) == 'sells' && request()->segment(2) == 'ecommerce' && request()->segment(3) == 'orders']
+                            );
                         }
                         if (in_array('add_sale', $enabled_modules) && auth()->user()->can('direct_sell.access')) {
                             $sub->url(
@@ -415,6 +420,27 @@ $is_superadmin = auth()->user()->can('superadmin');
                     <path d="M3 12a9 9 0 0 0 18 0"></path>
                   </svg>', 'id' => 'tour_step7']
                 )->order(30);
+            }
+
+            if ($is_admin || auth()->user()->hasAnyPermission(['sell.view', 'direct_sell.view', 'view_own_sell_only', 'view_commission_agent_sell'])) {
+                $menu->dropdown(
+                    'Orders',
+                    function ($sub) {
+                        $sub->url(
+                            action([\App\Http\Controllers\SellController::class, 'ecommerceOrders']),
+                            'E-commerce Orders',
+                            ['icon' => '', 'active' => request()->segment(1) == 'sells' && request()->segment(2) == 'ecommerce' && request()->segment(3) == 'orders']
+                        );
+                    },
+                    ['icon' => '<svg aria-hidden="true" class="tw-size-5 tw-shrink-0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                    <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+                    <path d="M6 6h15l-1.5 9h-12z"></path>
+                    <path d="M6 6l-2 -3"></path>
+                    <path d="M6 15h13"></path>
+                    <path d="M9 20a1 1 0 1 0 0 .01"></path>
+                    <path d="M18 20a1 1 0 1 0 0 .01"></path>
+                  </svg>']
+                )->order(31);
             }
 
             //Stock transfer dropdown
