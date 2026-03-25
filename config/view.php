@@ -31,7 +31,9 @@ return [
 
     'compiled' => env(
         'VIEW_COMPILED_PATH',
-        realpath(storage_path('framework/views'))
+        // `realpath()` returns `false` when the directory doesn't exist yet (common on fresh deploys),
+        // which then breaks Blade bootstrapping with "Please provide a valid cache path".
+        realpath(storage_path('framework/views')) ?: storage_path('framework/views')
     ),
 
 ];

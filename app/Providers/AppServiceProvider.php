@@ -32,6 +32,13 @@ class AppServiceProvider extends ServiceProvider
         ini_set('memory_limit', '-1');
         set_time_limit(0);
 
+        // During `composer install` / `package:discover`, storage directories may not exist yet.
+        // Ensure Blade's compiled view directory is present so bootstrapping doesn't fail.
+        $compiledViewPath = config('view.compiled');
+        if (is_string($compiledViewPath) && $compiledViewPath !== '' && ! is_dir($compiledViewPath)) {
+            @mkdir($compiledViewPath, 0775, true);
+        }
+
         if (config('app.debug')) {
             error_reporting(E_ALL & ~E_USER_DEPRECATED);
         } else {
