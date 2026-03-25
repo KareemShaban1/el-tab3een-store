@@ -289,6 +289,8 @@ class StorefrontController extends Controller
         $categories = Category::where('business_id', $business_id)
           //   ->whereNull('parent_id')
 ->where('category_type', 'product')
+->where('deleted_at', null)
+->where('parent_id', 0)
             ->select('id', 'name')
             ->orderBy('name')
             ->limit(12)
