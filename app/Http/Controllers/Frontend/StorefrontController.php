@@ -295,7 +295,7 @@ class StorefrontController extends Controller
             ->map(function ($category) use ($business_id) {
                 $count = Product::where('business_id', $business_id)
                     ->active()
-                    ->productForSales()
+                    // ->productForSales()
                     ->where('category_id', $category->id)
                     ->count();
 
@@ -305,6 +305,7 @@ class StorefrontController extends Controller
                     'count' => $count,
                 ];
             });
+
 
         return response()->json([
             'success' => true,
