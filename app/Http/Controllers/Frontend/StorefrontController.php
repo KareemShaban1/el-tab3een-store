@@ -71,13 +71,15 @@ class StorefrontController extends Controller
     {
         $business_id = $this->resolveBusinessId($request);
         $location_id = $this->resolveLocationId($business_id, $request);
-
+        $business_location_ids = BusinessLocation::where('business_id', $business_id)->pluck('id');
         $query = Product::where('products.business_id', $business_id)
             ->active()
             ->productForSales()
-            ->whereHas('variations.variation_location_details', function ($q) use ($location_id) {
-                $q->where('location_id', $location_id)->where('qty_available', '>', 0);
-            })
+            // Only show products that have available stock in ANY location of this business.
+            ->inStockByBusiness($business_id)
+          //   ->whereHas('variations.variation_location_details', function ($q) use ($location_id) {
+          //       $q->where('location_id', $location_id)->where('qty_available', '>', 0);
+          //   })
             ->with([
                 'brand:id,name',
                 'category:id,name',
@@ -95,19 +97,20 @@ class StorefrontController extends Controller
 
         $products = $query->paginate(20);
 
-        $items = $products->getCollection()->map(function ($product) use ($location_id) {
+
+        $items = $products->getCollection()->map(function ($product) use ($business_location_ids) {
             $variations = Variation::where('product_id', $product->id)
-                ->with(['variation_location_details' => function ($q) use ($location_id) {
-                    $q->where('location_id', $location_id);
+                ->with(['variation_location_details' => function ($q) use ($business_location_ids) {
+                    $q->whereIn('location_id', $business_location_ids)->where('qty_available', '>', 0);
                 }])
                 ->get();
             $in_stock_variations = $variations->filter(function ($v) {
-                return (float) optional($v->variation_location_details->first())->qty_available > 0;
+                return (float) $v->variation_location_details->sum('qty_available') > 0;
             })->values();
             $primary_variation = $in_stock_variations->first();
 
             $in_stock = $in_stock_variations->sum(function ($v) {
-                return (float) optional($v->variation_location_details->first())->qty_available;
+                return (float) $v->variation_location_details->sum('qty_available');
             });
 
             return [
@@ -126,13 +129,20 @@ class StorefrontController extends Controller
                         'name' => $v->name,
                         'sku' => $v->sub_sku,
                         'price_inc_tax' => (float) $v->sell_price_inc_tax,
-                        'qty_available' => (float) optional($v->variation_location_details->first())->qty_available,
+                        'qty_available' => (float) $v->variation_location_details->sum('qty_available'),
                     ];
                 })->values(),
             ];
-        })->filter(function ($item) {
-            return ! empty($item['variation_id']) && (float) $item['in_stock_qty'] > 0;
-        })->values();
+        })
+//       ->filter(function ($item) {
+//             return ! empty($item['variation_id']) && (float) $item['in_stock_qty'] > 0;
+//         })
+->values();
+
+        // Keep pagination metadata (current/last page, URLs, etc) but swap the collection
+        // from Eloquent models to the lightweight arrays needed by the storefront view.
+        $products->setCollection($items);
+        $products->appends($request->query());
 
         $payload = [
             'success' => true,
@@ -152,9 +162,11 @@ class StorefrontController extends Controller
             $brands = Brands::where('business_id', $business_id)->select('id', 'name')->orderBy('name')->get();
 
             return view('frontend.store.products')->with([
-                'payload' => $payload,
+                'products' => $products,
                 'categories' => $categories,
                 'brands' => $brands,
+                // Backwards compatibility for any other markup that might still read from `payload`.
+                'payload' => $payload,
             ]);
         }
 
@@ -288,9 +300,9 @@ class StorefrontController extends Controller
 
         $categories = Category::where('business_id', $business_id)
           //   ->whereNull('parent_id')
-->where('category_type', 'product')
-->where('deleted_at', null)
-->where('parent_id', 0)
+	->where('category_type', 'product')
+	->where('deleted_at', null)
+	->where('parent_id', 0)
             ->select('id', 'name')
             ->orderBy('name')
             ->limit(12)

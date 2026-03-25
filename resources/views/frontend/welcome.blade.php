@@ -86,7 +86,7 @@
 					<h2 class="sec-title">منتجات <span>مميزة</span></h2>
 					<p class="sec-sub">اختيارنا من أفضل المنتجات لهذا الأسبوع</p>
 				</div>
-				<a href="#" class="view-all">عرض الكل ←</a>
+				<a href="{{route('store.products.index')}}" class="view-all">عرض الكل ←</a>
 			</div>
 			<div class="products-grid" id="dynamic-products-grid"></div>
 		</div>

@@ -1,8 +1,18 @@
 @extends('frontend.store.theme_layout')
 
 @php
-    $data = $payload['data'] ?? collect();
-    $meta = $payload['meta'] ?? [];
+    // Controller passes `products` as a paginator whose collection was transformed to storefront-friendly arrays.
+    $data = (isset($products) && $products) ? ($products->getCollection() ?? collect()) : collect();
+
+    $activeQ = trim((string) request('q', ''));
+    $activeCategoryId = request('category_id');
+    $activeBrandId = request('brand_id');
+
+    // Links should keep pagination off (remove `page`) while keeping any other filter params.
+    $queryWithoutPage = request()->except(['page']);
+    $queryWithoutQ = request()->except(['page', 'q']);
+    $queryWithoutCategory = request()->except(['page', 'category_id']);
+    $queryWithoutBrand = request()->except(['page', 'brand_id']);
 @endphp
 
 @section('content')
@@ -14,6 +24,99 @@
     .filter-group { margin-bottom: 12px; }
     .filter-group label { display: block; margin-bottom: 6px; font-weight: 700; font-size: 13px; color: #374151; }
     .filter-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+    /* Filter inputs (desktop + mobile sheet) */
+    .filters-card input[type="text"],
+    .filters-card select,
+    #filter-sheet input[type="text"],
+    #filter-sheet select {
+        width: 100%;
+        padding: 10px 12px;
+        border-radius: 10px;
+        border: 1px solid #e5e7eb;
+        background: #fff;
+        color: #111827;
+        font-weight: 700;
+        outline: none;
+    }
+    .filters-card input[type="text"]::placeholder,
+    #filter-sheet input[type="text"]::placeholder {
+        color: #9ca3af;
+        font-weight: 700;
+    }
+    .filters-card input[type="text"]:focus,
+    .filters-card select:focus,
+    #filter-sheet input[type="text"]:focus,
+    #filter-sheet select:focus {
+        border-color: rgba(234,84,26,.65);
+        box-shadow: 0 0 0 3px rgba(234,84,26,.12);
+    }
+
+    /* Search clear button */
+    .search-wrap { position: relative; }
+    .search-wrap input[type="text"] { padding-inline-end: 38px; }
+    .clear-q-btn{
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%);
+        inset-inline-end: 10px;
+        width: 26px;
+        height: 26px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 8px;
+        border: 1px solid #e5e7eb;
+        background: #fff;
+        color: #6b7280;
+        text-decoration: none;
+        font-weight: 900;
+        line-height: 1;
+    }
+    .clear-q-btn:hover{
+        border-color: rgba(234,84,26,.55);
+        background: #fff7f2;
+        color: var(--accent, #ea541a);
+    }
+
+    /* Active filters pills */
+    .active-filters{
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin: 0 0 14px;
+    }
+    .filter-pill{
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 7px 10px;
+        border-radius: 999px;
+        background: #fff;
+        border: 1px solid #e5e7eb;
+        text-decoration: none;
+        color: #111827;
+        font-size: 12px;
+        font-weight: 900;
+        line-height: 1;
+    }
+    .filter-pill:hover{
+        border-color: rgba(234,84,26,.55);
+        background: #fff7f2;
+        color: var(--accent, #ea541a);
+    }
+    .filter-pill .pill-label{ color:#374151; }
+    .filter-pill .pill-x{
+        width: 18px;
+        height: 18px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 6px;
+        background: rgba(234,84,26,.10);
+        color: var(--accent, #ea541a);
+        font-size: 12px;
+    }
     .btn-soft { border: 1px solid #e5e7eb; border-radius: 10px; padding: 8px 10px; color: #111827; text-decoration: none; font-weight: 700; background: #fff; text-align: center; }
     .btn-soft:hover { background: #f8fafc; }
     .products-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
@@ -44,16 +147,170 @@
     @media (max-width: 520px) {
         .products-grid { grid-template-columns: 1fr; }
     }
+
+    /* Pagination UX (Laravel default "bootstrap-4" markup: nav > ul.pagination > li.page-item > a.page-link) */
+    .products-wrap nav .pagination{
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        justify-content: center;
+        align-items: center;
+        padding: 0;
+        margin: 0;
+        direction: rtl;
+    }
+    .products-wrap nav .pagination .page-item{
+        list-style: none;
+        margin: 0;
+    }
+    .products-wrap nav .pagination .page-link{
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 38px;
+        height: 36px;
+        padding: 0 12px;
+        border-radius: 999px;
+        border: 1px solid #e5e7eb;
+        background: #fff;
+        color: #111827;
+        font-weight: 800;
+        font-size: 14px;
+        line-height: 1;
+        transition: background .15s ease, border-color .15s ease, transform .05s ease;
+    }
+    .products-wrap nav .pagination .page-item a.page-link:hover{
+        border-color: rgba(234,84,26,.55);
+        background: #fff7f2;
+        transform: translateY(-1px);
+        text-decoration: none;
+    }
+    .products-wrap nav .pagination .page-item.active .page-link{
+        border-color: rgba(234,84,26,.65);
+        background: rgba(234,84,26,.10);
+        color: var(--accent, #ea541a);
+    }
+    .products-wrap nav .pagination .page-item.disabled .page-link{
+        opacity: .55;
+        background: #f9fafb;
+        cursor: not-allowed;
+        transform: none;
+    }
+    .products-wrap nav .pagination .page-item:focus-within .page-link{
+        outline: 3px solid rgba(234,84,26,.25);
+        outline-offset: 2px;
+    }
+.pagination {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+    align-items: center;
+    padding: 0;
+    margin: 0;
+    direction: rtl;
+}
+.pagination .page-item{
+    list-style: none;
+    margin: 0;
+}
+.pagination .page-link{
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 38px;
+    height: 36px;
+    padding: 0 12px;
+    border-radius: 999px;
+    border: 1px solid #e5e7eb;
+    background: #fff;
+    color: #111827;
+    font-weight: 800;
+    font-size: 14px;
+    line-height: 1;
+    transition: background .15s ease, border-color .15s ease, transform .05s ease;
+}
+.pagination .page-item a.page-link:hover{
+    border-color: rgba(234,84,26,.55);
+    background: #fff7f2;
+    transform: translateY(-1px);
+    text-decoration: none;
+}
+.pagination .page-item.active .page-link{
+    border-color: rgba(234,84,26,.65);
+    background: rgba(234,84,26,.10);
+    color: var(--accent, #ea541a);
+}
+.pagination .page-item.disabled .page-link{
+    opacity: .55;
+    background: #f9fafb;
+    cursor: not-allowed;
+    transform: none;
+}
+.pagination .page-item:focus-within .page-link{
+    outline: 3px solid rgba(234,84,26,.25);
+    outline-offset: 2px;
+}
 </style>
 
 <div class="container products-wrap">
     <aside class="card filters-card">
         <h3 class="filters-title">Filters</h3>
         <p class="filters-sub">Find products faster by search, category, and brand.</p>
+
+        <div class="active-filters">
+            @if($activeQ !== '')
+                <a class="filter-pill" href="{{ route('store.products.index', $queryWithoutQ) }}" title="Remove search filter">
+                    <span class="pill-label">Search</span>
+                    <span>“{{ $activeQ }}”</span>
+                    <span class="pill-x">✕</span>
+                </a>
+            @endif
+
+            @if(! empty($activeCategoryId))
+                @php
+                    $activeCategoryName = '';
+                    if (isset($categories)) {
+                        $activeCategory = $categories->firstWhere('id', (int) $activeCategoryId);
+                        $activeCategoryName = $activeCategory ? (string) $activeCategory->name : '';
+                    }
+                @endphp
+                @if($activeCategoryName !== '')
+                    <a class="filter-pill" href="{{ route('store.products.index', $queryWithoutCategory) }}" title="Remove category filter">
+                        <span class="pill-label">Category</span>
+                        <span>{{ $activeCategoryName }}</span>
+                        <span class="pill-x">✕</span>
+                    </a>
+                @endif
+            @endif
+
+            @if(! empty($activeBrandId))
+                @php
+                    $activeBrandName = '';
+                    if (isset($brands)) {
+                        $activeBrand = $brands->firstWhere('id', (int) $activeBrandId);
+                        $activeBrandName = $activeBrand ? (string) $activeBrand->name : '';
+                    }
+                @endphp
+                @if($activeBrandName !== '')
+                    <a class="filter-pill" href="{{ route('store.products.index', $queryWithoutBrand) }}" title="Remove brand filter">
+                        <span class="pill-label">Brand</span>
+                        <span>{{ $activeBrandName }}</span>
+                        <span class="pill-x">✕</span>
+                    </a>
+                @endif
+            @endif
+        </div>
+
         <form method="GET" action="{{ route('store.products.index') }}">
             <div class="filter-group">
                 <label for="filter-q-desktop">Search</label>
-                <input id="filter-q-desktop" type="text" name="q" value="{{ request('q') }}" placeholder="Product name">
+                <div class="search-wrap">
+                    <input id="filter-q-desktop" type="text" name="q" value="{{ request('q') }}" placeholder="Product name">
+                    @if($activeQ !== '')
+                        <a class="clear-q-btn" href="{{ route('store.products.index', $queryWithoutQ) }}" aria-label="Clear search">✕</a>
+                    @endif
+                </div>
             </div>
             <div class="filter-group">
                 <label for="filter-category-desktop">Category</label>
@@ -85,7 +342,7 @@
             <div class="products-head">
                 <div>
                     <h2 class="products-title">Products</h2>
-                    <div class="products-meta">Total: {{ $meta['total'] ?? 0 }}</div>
+                    <div class="products-meta">Total: {{ $products->total() }}</div>
                 </div>
                 <button type="button" class="btn mobile-filter-toggle" id="open-filter-sheet">Filter</button>
             </div>
@@ -106,6 +363,12 @@
                     <div class="card">No products match your filters.</div>
                 @endforelse
             </div>
+
+            @if(!empty($products) && method_exists($products, 'hasPages') && $products->hasPages())
+                <div style="margin-top:16px;">
+                    {!! $products->links() !!}
+                </div>
+            @endif
         </div>
     </main>
 </div>
@@ -116,10 +379,60 @@
         <h3 style="margin:0;">Filters</h3>
         <button type="button" class="sheet-close" id="close-filter-sheet">✕</button>
     </div>
+
+    <div class="active-filters" style="margin-top:2px;margin-bottom:14px;">
+        @if($activeQ !== '')
+            <a class="filter-pill" href="{{ route('store.products.index', $queryWithoutQ) }}" title="Remove search filter">
+                <span class="pill-label">Search</span>
+                <span>“{{ $activeQ }}”</span>
+                <span class="pill-x">✕</span>
+            </a>
+        @endif
+
+        @if(! empty($activeCategoryId))
+            @php
+                $activeCategoryName = '';
+                if (isset($categories)) {
+                    $activeCategory = $categories->firstWhere('id', (int) $activeCategoryId);
+                    $activeCategoryName = $activeCategory ? (string) $activeCategory->name : '';
+                }
+            @endphp
+            @if($activeCategoryName !== '')
+                <a class="filter-pill" href="{{ route('store.products.index', $queryWithoutCategory) }}" title="Remove category filter">
+                    <span class="pill-label">Category</span>
+                    <span>{{ $activeCategoryName }}</span>
+                    <span class="pill-x">✕</span>
+                </a>
+            @endif
+        @endif
+
+        @if(! empty($activeBrandId))
+            @php
+                $activeBrandName = '';
+                if (isset($brands)) {
+                    $activeBrand = $brands->firstWhere('id', (int) $activeBrandId);
+                    $activeBrandName = $activeBrand ? (string) $activeBrand->name : '';
+                }
+            @endphp
+            @if($activeBrandName !== '')
+                <a class="filter-pill" href="{{ route('store.products.index', $queryWithoutBrand) }}" title="Remove brand filter">
+                    <span class="pill-label">Brand</span>
+                    <span>{{ $activeBrandName }}</span>
+                    <span class="pill-x">✕</span>
+                </a>
+            @endif
+        @endif
+    </div>
+
     <form method="GET" action="{{ route('store.products.index') }}">
         <div class="filter-group">
             <label for="filter-q-mobile">Search</label>
-            <input id="filter-q-mobile" type="text" name="q" value="{{ request('q') }}" placeholder="Product name">
+            <div class="search-wrap">
+                <input id="filter-q-mobile" type="text" name="q" value="{{ request('q') }}" placeholder="Product name">
+                @if($activeQ !== '')
+                    <a class="clear-q-btn" href="{{ route('store.products.index', $queryWithoutQ) }}" aria-label="Clear search">✕</a>
+                @endif
+            </div>
         </div>
         <div class="filter-group">
             <label for="filter-category-mobile">Category</label>

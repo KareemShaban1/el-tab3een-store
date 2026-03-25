@@ -222,4 +222,123 @@ class Product extends Model
     {
         return $this->hasMany(\App\ProductRack::class);
     }
+
+    /**
+     * Check whether this product is in stock.
+     *
+     * Stock comes from either:
+     * - the product itself when `enable_stock != 1` (stock checking disabled), OR
+     * - any of its variations having `qty_available > 0` (optionally for a given location).
+     *
+     * Note: this is intended for direct checks; for query-level filtering prefer `scopeInStock()`.
+     */
+    public function hasStock(?int $location_id = null): bool
+    {
+        $enableStock = (int) ($this->enable_stock ?? 0);
+        if ($enableStock !== 1) {
+            return true; // stock control disabled => treat as available
+        }
+
+        $variationsQuery = $this->variations()
+            ->whereHas('variation_location_details', function ($q) use ($location_id) {
+                $q->where('qty_available', '>', 0);
+
+                if ($location_id !== null) {
+                    $q->where('location_id', $location_id);
+                }
+            });
+
+        return $variationsQuery->exists();
+    }
+
+    /**
+     * Check if this product has stock in ANY location that belongs to the given business.
+     */
+    public function hasStockInBusiness(int $business_id): bool
+    {
+        $enableStock = (int) ($this->enable_stock ?? 0);
+        if ($enableStock !== 1) {
+            return true;
+        }
+
+        $location_ids = \App\BusinessLocation::where('business_id', $business_id)->pluck('id');
+
+        // If business has no locations, then there is no stock.
+        if ($location_ids->isEmpty()) {
+            return false;
+        }
+
+        return $this->variations()
+            ->whereHas('variation_location_details', function ($q) use ($location_ids) {
+                $q->whereIn('location_id', $location_ids)->where('qty_available', '>', 0);
+            })
+            ->exists();
+    }
+
+    /**
+     * Get total available qty across ALL business locations (sum of variation_location_details.qty_available).
+     */
+    public function businessStockQty(int $business_id): float
+    {
+        $location_ids = \App\BusinessLocation::where('business_id', $business_id)->pluck('id');
+        if ($location_ids->isEmpty()) {
+            return 0.0;
+        }
+
+        return (float) $this->variations()
+            ->whereHas('variation_location_details', function ($q) use ($location_ids) {
+                $q->whereIn('location_id', $location_ids);
+            })
+            ->with(['variation_location_details' => function ($q) use ($location_ids) {
+                $q->whereIn('location_id', $location_ids);
+            }])
+            ->get()
+            ->sum(function ($variation) use ($location_ids) {
+                return (float) $variation->variation_location_details->sum('qty_available');
+            });
+    }
+
+    /**
+     * Query scope: only include products that are sellable and have available stock.
+     *
+     * Usage:
+     *   Product::query()->inStock($location_id)->paginate(...)
+     */
+    public function scopeInStock($query, ?int $location_id = null)
+    {
+        return $query->where(function ($q) use ($location_id) {
+            // If stock checking is disabled, consider the product available.
+            $q->where('enable_stock', '!=', 1);
+
+            // Otherwise, require at least one variation with available qty.
+            $q->orWhereHas('variations.variation_location_details', function ($vdq) use ($location_id) {
+                $vdq->where('qty_available', '>', 0);
+
+                if ($location_id !== null) {
+                    $vdq->where('location_id', $location_id);
+                }
+            });
+        });
+    }
+
+    /**
+     * Query scope: only include products that have available stock in ANY location of the business.
+     */
+    public function scopeInStockByBusiness($query, int $business_id)
+    {
+        return $query->where(function ($q) use ($business_id) {
+            $q->where('enable_stock', '!=', 1);
+
+            $location_ids = \App\BusinessLocation::where('business_id', $business_id)->pluck('id');
+
+            if ($location_ids->isEmpty()) {
+                // No locations => only products with enable_stock != 1 should match (already handled above).
+                return;
+            }
+
+            $q->orWhereHas('variations.variation_location_details', function ($vdq) use ($location_ids) {
+                $vdq->whereIn('location_id', $location_ids)->where('qty_available', '>', 0);
+            });
+        });
+    }
 }
