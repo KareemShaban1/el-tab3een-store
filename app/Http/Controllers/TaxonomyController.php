@@ -160,6 +160,9 @@ class TaxonomyController extends Controller
             }
             $input['business_id'] = $request->session()->get('user.business_id');
             $input['created_by'] = $request->session()->get('user.id');
+            $input['active_in_app'] = (! empty($request->input('active_in_app')) && $request->input('active_in_app') == 1) ? 1 : 0;
+            $input['featured'] = (! empty($request->input('featured')) && $request->input('featured') == 1) ? 1 : 0;
+            $input['order'] = $request->input('order') !== null && $request->input('order') !== '' ? (int) $request->input('order') : 0;
 
             $category = Category::create($input);
             $output = ['success' => true,
@@ -255,6 +258,9 @@ class TaxonomyController extends Controller
                 } else {
                     $category->parent_id = 0;
                 }
+                $category->active_in_app = (! empty($request->input('active_in_app')) && $request->input('active_in_app') == 1) ? 1 : 0;
+                $category->featured = (! empty($request->input('featured')) && $request->input('featured') == 1) ? 1 : 0;
+                $category->order = $request->input('order') !== null && $request->input('order') !== '' ? (int) $request->input('order') : 0;
                 $category->save();
 
                 $output = ['success' => true,

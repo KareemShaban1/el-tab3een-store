@@ -34,6 +34,20 @@
         {!! Form::label('description', __( 'lang_v1.description' ) . ':') !!}
         {!! Form::textarea('description', $category->description, ['class' => 'form-control', 'placeholder' => __( 'lang_v1.description'), 'rows' => 3]); !!}
       </div>
+      <div class="form-group">
+        <label>
+          {!! Form::checkbox('active_in_app', 1, (bool) ($category->active_in_app ?? true), ['class' => 'input-icheck']); !!} <strong>@lang('lang_v1.active_in_app')</strong>
+        </label>
+      </div>
+      <div class="form-group">
+        <label>
+          {!! Form::checkbox('featured', 1, (bool) $category->featured, ['class' => 'input-icheck']); !!} <strong>@lang('lang_v1.featured')</strong>
+        </label>
+      </div>
+      <div class="form-group">
+        {!! Form::label('order', __( 'lang_v1.sort_order' ) . ':') !!}
+        {!! Form::number('order', (int) ($category->order ?? 0), ['class' => 'form-control', 'min' => 0, 'step' => 1]); !!}
+      </div>
       @if(!empty($parent_categories) && $enable_sub_category)
           <div class="form-group">
             <div class="checkbox">

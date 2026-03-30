@@ -653,6 +653,41 @@
 		gap: 10px
 	}
 
+	.mega-content-title {
+		font-size: .75rem;
+		font-weight: 700;
+		color: var(--muted);
+		text-transform: uppercase;
+		letter-spacing: .5px;
+		margin: 0 0 14px;
+		line-height: 1.35
+	}
+
+	.mega-view-all {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		margin-top: 14px;
+		padding: 10px 14px;
+		font-size: .82rem;
+		font-weight: 800;
+		color: var(--accent);
+		text-decoration: none;
+		border-radius: var(--r-sm);
+		border: 1px solid rgba(234, 84, 26, .35);
+		transition: var(--t)
+	}
+
+	.mega-view-all:hover {
+		background: rgba(234, 84, 26, .08)
+	}
+
+	.mega-sitem-ico {
+		font-size: 1.05rem;
+		flex-shrink: 0;
+		line-height: 1
+	}
+
 	.mega-item {
 		display: flex;
 		align-items: center;
@@ -678,6 +713,63 @@
 		justify-content: center;
 		font-size: 1.15rem;
 		flex-shrink: 0
+	}
+
+	.mega-item.mega-item--product {
+		flex-direction: column;
+		align-items: stretch;
+		text-align: center;
+		gap: 8px;
+		padding: 10px 8px;
+		text-decoration: none;
+		border: 1px solid transparent
+	}
+
+	.mega-item.mega-item--product:hover {
+		border-color: var(--border);
+		background: #fff
+	}
+
+	.mega-pthumb {
+		width: 100%;
+		aspect-ratio: 1;
+		background: var(--bg-soft);
+		border-radius: 8px;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		overflow: hidden
+	}
+
+	.mega-pthumb img {
+		width: 78%;
+		height: 78%;
+		object-fit: contain
+	}
+
+	.mega-pmeta {
+		display: flex;
+		flex-direction: column;
+		gap: 4px;
+		min-width: 0;
+		text-align: center
+	}
+
+	.mega-pname {
+		font-size: .78rem;
+		font-weight: 700;
+		line-height: 1.3;
+		color: var(--text);
+		display: -webkit-box;
+		-webkit-line-clamp: 2;
+		-webkit-box-orient: vertical;
+		overflow: hidden
+	}
+
+	.mega-pprice {
+		font-size: .8rem;
+		font-weight: 800;
+		color: var(--accent)
 	}
 
 	/* ============================================================
@@ -1143,6 +1235,15 @@
 		overflow: hidden
 	}
 
+	.prod-name a {
+		color: inherit;
+		text-decoration: none
+	}
+
+	.prod-name a:hover {
+		color: var(--accent)
+	}
+
 	.stars-row {
 		display: flex;
 		align-items: center;
@@ -1177,6 +1278,18 @@
 		font-size: .82rem;
 		color: var(--light);
 		text-decoration: line-through
+	}
+
+	select.prod-variant {
+		width: 100%;
+		padding: 7px 9px;
+		border: 1px solid var(--border);
+		border-radius: 8px;
+		font-size: .78rem;
+		font-family: var(--font);
+		background: #fff;
+		color: var(--text);
+		font-weight: 600
 	}
 
 	/* ============================================================
@@ -2112,6 +2225,12 @@
 		gap: 24px
 	}
 
+	@media (max-width: 640px) {
+		.modal-body {
+			grid-template-columns: 1fr;
+		}
+	}
+
 	/* ============================================================
    MOBILE BOTTOM NAV
    ============================================================ */
@@ -2408,8 +2527,91 @@
 			grid-template-columns: repeat(3, 1fr)
 		}
 
+		/* Two products per row on small phones; scale down card copy so it fits */
 		.products-grid {
-			grid-template-columns: 1fr
+			grid-template-columns: repeat(2, minmax(0, 1fr));
+			gap: 10px 8px
+		}
+
+		.prod-info {
+			padding: 8px 10px
+		}
+
+		.prod-brand {
+			font-size: .62rem;
+			margin-bottom: 3px;
+			letter-spacing: .2px
+		}
+
+		.prod-name {
+			font-size: .78rem;
+			margin-bottom: 6px;
+			line-height: 1.35
+		}
+
+		.stars-row {
+			font-size: .65rem;
+			margin-bottom: 6px;
+			gap: 3px
+		}
+
+		.rev-count {
+			font-size: .62rem
+		}
+
+		.price-now {
+			font-size: .92rem
+		}
+
+		.price-row {
+			gap: 4px
+		}
+
+		.prod-actions {
+			padding: 6px 8px;
+			gap: 4px
+		}
+
+		.pa-cart {
+			font-size: clamp(.58rem, 2.6vw, .68rem);
+			padding: 6px 4px;
+			gap: 3px;
+			min-width: 0
+		}
+
+		.pa-cart svg {
+			width: 12px;
+			height: 12px;
+			flex-shrink: 0
+		}
+
+		.pa-icon {
+			width: 28px;
+			height: 28px;
+			font-size: .8rem
+		}
+
+		.prod-badges {
+			top: 6px;
+			right: 6px;
+			gap: 4px
+		}
+
+		.badge-new,
+		.badge-disc,
+		.badge-hot {
+			font-size: .58rem;
+			padding: 2px 6px
+		}
+
+		.prod-variant-wrap {
+			margin-bottom: 6px
+		}
+
+		select.prod-variant {
+			font-size: .64rem;
+			padding: 5px 6px;
+			border-radius: 6px
 		}
 
 		.cart-drawer {

@@ -20,9 +20,12 @@ class StorefrontController extends Controller
         $products = Product::where('business_id', $business_id)
             ->active()
             ->productForSales()
+            ->activeInApp()
+	  ->featured()
             ->whereHas('variations.variation_location_details', function ($q) use ($location_id) {
                 $q->where('location_id', $location_id)->where('qty_available', '>', 0);
             })
+            ->storefrontSortOrder()
             ->select('id', 'name', 'image', 'brand_id', 'category_id')
             ->with([
                 'brand:id,name',
@@ -75,11 +78,10 @@ class StorefrontController extends Controller
         $query = Product::where('products.business_id', $business_id)
             ->active()
             ->productForSales()
+            ->activeInApp()
             // Only show products that have available stock in ANY location of this business.
             ->inStockByBusiness($business_id)
-          //   ->whereHas('variations.variation_location_details', function ($q) use ($location_id) {
-          //       $q->where('location_id', $location_id)->where('qty_available', '>', 0);
-          //   })
+            ->storefrontSortOrder()
             ->with([
                 'brand:id,name',
                 'category:id,name',
@@ -94,6 +96,13 @@ class StorefrontController extends Controller
         if ($request->filled('q')) {
             $query->where('name', 'like', '%'.$request->input('q').'%');
         }
+
+        $priceMin = $request->filled('price_min') ? (float) $request->input('price_min') : null;
+        $priceMax = $request->filled('price_max') ? (float) $request->input('price_max') : null;
+        if ($priceMin !== null && $priceMax !== null && $priceMin > $priceMax) {
+            [$priceMin, $priceMax] = [$priceMax, $priceMin];
+        }
+        $this->restrictStorefrontProductsBySellPrice($query, $business_location_ids, $priceMin, $priceMax);
 
         $products = $query->paginate(20);
 
@@ -144,6 +153,17 @@ class StorefrontController extends Controller
         $products->setCollection($items);
         $products->appends($request->query());
 
+        $filterQuery = array_filter([
+            'q' => $request->filled('q') ? (string) $request->input('q') : null,
+            'category_id' => $request->filled('category_id') ? (string) $request->input('category_id') : null,
+            'brand_id' => $request->filled('brand_id') ? (string) $request->input('brand_id') : null,
+            'price_min' => $request->filled('price_min') ? (string) $request->input('price_min') : null,
+            'price_max' => $request->filled('price_max') ? (string) $request->input('price_max') : null,
+        ], function ($v) {
+            return $v !== null && $v !== '';
+        });
+        $filterQueryForJson = empty($filterQuery) ? new \stdClass : $filterQuery;
+
         $payload = [
             'success' => true,
             'business_id' => $business_id,
@@ -154,21 +174,37 @@ class StorefrontController extends Controller
                 'last_page' => $products->lastPage(),
                 'per_page' => $products->perPage(),
                 'total' => $products->total(),
+                'filters' => $filterQueryForJson,
+                'prev_page_url' => $products->previousPageUrl(),
+                'next_page_url' => $products->nextPageUrl(),
             ],
         ];
 
         if (! $request->expectsJson()) {
-            $categories = Category::where('business_id', $business_id)->select('id', 'name')->orderBy('name')->get();
+            $categories = Category::where('business_id', $business_id)
+                ->where('category_type', 'product')
+                ->where('parent_id', 0)
+                ->activeInApp()
+                ->storefrontSortOrder()
+                ->select('id', 'name')
+                ->get();
             $brands = Brands::where('business_id', $business_id)->select('id', 'name')->orderBy('name')->get();
+
+            $priceSlider = $this->getStorefrontCatalogPriceSliderSpec($business_id, $business_location_ids);
 
             return view('frontend.store.products')->with([
                 'products' => $products,
                 'categories' => $categories,
                 'brands' => $brands,
+                'store_price_slider_min' => $priceSlider['min'],
+                'store_price_slider_max' => $priceSlider['max'],
+                'store_price_slider_step' => $priceSlider['step'],
                 // Backwards compatibility for any other markup that might still read from `payload`.
                 'payload' => $payload,
             ]);
         }
+
+        $payload['pagination_html'] = (string) $products->links();
 
         return response()->json($payload);
     }
@@ -178,12 +214,13 @@ class StorefrontController extends Controller
         $business_id = $this->resolveBusinessId($request);
         $location_id = $this->resolveLocationId($business_id, $request);
 
+        // Match catalog visibility: stock in any business location (see `products()` + `inStockByBusiness`).
+        // Requiring stock only at `resolveLocationId()` caused 404 when default location differed from stocked locations.
         $product = Product::where('business_id', $business_id)
             ->active()
             ->productForSales()
-            ->whereHas('variations.variation_location_details', function ($q) use ($location_id) {
-                $q->where('location_id', $location_id)->where('qty_available', '>', 0);
-            })
+            ->activeInApp()
+            ->inStockByBusiness($business_id)
             ->with(['brand:id,name', 'category:id,name', 'unit:id,actual_name,short_name'])
             ->findOrFail($id);
 
@@ -202,10 +239,8 @@ class StorefrontController extends Controller
                 },
             ])
             ->get()
-            ->filter(function ($variation) use ($location_id) {
-                return $variation->variation_location_details->contains(function ($row) use ($location_id) {
-                    return (int) $row->location_id === (int) $location_id && (float) $row->qty_available > 0;
-                });
+            ->filter(function ($variation) {
+                return (float) $variation->variation_location_details->sum('qty_available') > 0;
             })
             ->map(function ($variation) use ($location_id, $location_records) {
                 $sku = $variation->sub_sku;
@@ -215,7 +250,7 @@ class StorefrontController extends Controller
 
                 $preferred_row = $variation->variation_location_details->first(function ($row) use ($location_id) {
                     return (int) $row->location_id === (int) $location_id;
-                });
+                }) ?? $variation->variation_location_details->first();
 
                 $locations = $variation->variation_location_details
                     ->map(function ($row) use ($location_id, $location_records) {
@@ -299,18 +334,18 @@ class StorefrontController extends Controller
         $business_id = $this->resolveBusinessId($request);
 
         $categories = Category::where('business_id', $business_id)
-          //   ->whereNull('parent_id')
-	->where('category_type', 'product')
-	->where('deleted_at', null)
-	->where('parent_id', 0)
+            ->where('category_type', 'product')
+            ->where('parent_id', 0)
+            ->activeInApp()
+            ->storefrontSortOrder()
             ->select('id', 'name')
-            ->orderBy('name')
-            ->limit(12)
+            ->limit(30)
             ->get()
             ->map(function ($category) use ($business_id) {
                 $count = Product::where('business_id', $business_id)
                     ->active()
                     ->productForSales()
+                    ->activeInApp()
                     ->where('category_id', $category->id)
                     ->count();
 
@@ -337,9 +372,11 @@ class StorefrontController extends Controller
         $products = Product::where('business_id', $business_id)
             ->active()
             ->productForSales()
+            ->activeInApp()
             ->whereHas('variations.variation_location_details', function ($q) use ($location_id) {
                 $q->where('location_id', $location_id)->where('qty_available', '>', 0);
             })
+            ->storefrontSortOrder()
             ->select('id', 'name', 'image', 'brand_id')
             ->with(['brand:id,name'])
             ->limit(8)
@@ -383,6 +420,74 @@ class StorefrontController extends Controller
         ]);
     }
 
+    /**
+     * Min / max sell price (inc tax) among in-stock variations for active-in-app products — used for the storefront price slider.
+     *
+     * @return array{min: float, max: float, step: float}
+     */
+    private function getStorefrontCatalogPriceSliderSpec(int $business_id, $business_location_ids): array
+    {
+        if ($business_location_ids->isEmpty()) {
+            return ['min' => 0.0, 'max' => 100000.0, 'step' => 1.0];
+        }
+
+        $row = Variation::query()
+            ->whereHas('product', function ($q) use ($business_id) {
+                $q->where('business_id', $business_id)
+                    ->where('is_inactive', 0)
+                    ->where('not_for_selling', 0)
+                    ->where('active_in_app', 1);
+            })
+            ->whereHas('variation_location_details', function ($vd) use ($business_location_ids) {
+                $vd->whereIn('location_id', $business_location_ids)
+                    ->where('qty_available', '>', 0);
+            })
+            ->selectRaw('MIN(sell_price_inc_tax) as mn, MAX(sell_price_inc_tax) as mx')
+            ->first();
+
+        $min = $row && $row->mn !== null ? (float) $row->mn : 0.0;
+        $max = $row && $row->mx !== null ? (float) $row->mx : 0.0;
+        if ($max < $min) {
+            $max = $min;
+        }
+        if ($max <= $min) {
+            $max = $min + 1;
+        }
+        $span = $max - $min;
+        $step = $span >= 1000 ? max(1.0, round($span / 500)) : ($span >= 100 ? 0.5 : 0.01);
+
+        return ['min' => $min, 'max' => $max, 'step' => (float) $step];
+    }
+
+    /**
+     * Keep products that have at least one in-stock variation whose sell price is inside the range.
+     */
+    private function restrictStorefrontProductsBySellPrice($query, $business_location_ids, ?float $minPrice, ?float $maxPrice): void
+    {
+        if ($minPrice === null && $maxPrice === null) {
+            return;
+        }
+
+        if ($business_location_ids->isEmpty()) {
+            $query->whereRaw('1 = 0');
+
+            return;
+        }
+
+        $query->whereHas('variations', function ($vq) use ($business_location_ids, $minPrice, $maxPrice) {
+            if ($minPrice !== null) {
+                $vq->where('sell_price_inc_tax', '>=', $minPrice);
+            }
+            if ($maxPrice !== null) {
+                $vq->where('sell_price_inc_tax', '<=', $maxPrice);
+            }
+            $vq->whereHas('variation_location_details', function ($vd) use ($business_location_ids) {
+                $vd->whereIn('location_id', $business_location_ids)
+                    ->where('qty_available', '>', 0);
+            });
+        });
+    }
+
     private function resolveBusinessId(Request $request): int
     {
 
@@ -404,4 +509,3 @@ return 273;
         return (int) \App\BusinessLocation::where('business_id', $business_id)->value('id');
     }
 }
-

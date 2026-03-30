@@ -22,7 +22,36 @@ class Product extends Model
      */
     protected $casts = [
         'sub_unit_ids' => 'array',
+        'active_in_app' => 'boolean',
+        'featured' => 'boolean',
+        'order' => 'integer',
     ];
+
+    /**
+     * Scope: visible on storefront / consumer app catalog.
+     */
+    public function scopeActiveInApp($query)
+    {
+        return $query->where('products.active_in_app', 1);
+    }
+
+    /**
+     * Featured first, then manual order, then newest (for storefront / home lists).
+     */
+    public function scopeStorefrontSortOrder($query)
+    {
+        $t = $query->getModel()->getTable();
+
+        return $query->orderByDesc("{$t}.featured")
+            ->orderBy("{$t}.order")
+            ->orderByDesc("{$t}.created_at")
+            ->orderByDesc("{$t}.id");
+    }
+
+	public function scopeFeatured($query)
+	{
+		return $query->where('featured', 1);
+	}
 
     /**
      * Get the products image.

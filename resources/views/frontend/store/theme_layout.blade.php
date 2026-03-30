@@ -90,7 +90,7 @@
 							<span>تسجيل دخول</span>
 						</a>
 					@endauth
-					<button class="h-action" style="position:relative;">
+					<!-- <button class="h-action" style="position:relative;">
 						<svg fill="none" stroke="currentColor" stroke-width="1.9"
 							viewBox="0 0 24 24">
 							<path
@@ -98,7 +98,7 @@
 						</svg>
 						<span>المفضلة</span>
 						<span class="h-badge wishlist-badge">3</span>
-					</button>
+					</button> -->
 					<button class="h-action" id="cart-open-btn"
 						style="position:relative;">
 						<svg fill="none" stroke="currentColor" stroke-width="1.9"
@@ -133,86 +133,15 @@
 							كل الأقسام
 						</button>
 						<div class="mega-menu" id="mega-menu">
-							<div class="mega-sidebar">
-								<div class="mega-sitem active">📱
-									الهواتف والتابلت</div>
-								<div class="mega-sitem">💻 لابتوب
-									وكمبيوتر</div>
-								<div class="mega-sitem">🎮 الجيمنج</div>
-								<div class="mega-sitem">📺 تليفزيون
-									وصوتيات</div>
-								<div class="mega-sitem">🏠 المنزل الذكي
-								</div>
-								<div class="mega-sitem">📷 كاميرا وتصوير
-								</div>
-								<div class="mega-sitem">⌚ ساعات ذكية
-								</div>
-								<div class="mega-sitem">🔌 إكسسوارات
+							<div class="mega-sidebar" id="mega-sidebar">
+								<div class="mega-sitem mega-sitem--loading" style="cursor:default;pointer-events:none;color:var(--muted);">
+									جاري تحميل الأقسام…
 								</div>
 							</div>
 							<div class="mega-content">
-								<p
-									style="font-size:.75rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:14px;">
-									الهواتف الذكية — الأكثر طلباً
-								</p>
-								<div class="mega-grid">
-									<a href="#" class="mega-item">
-										<div class="mega-icon"
-											style="background:#f0f4ff;">
-											🍎</div>
-										<span>آيفون</span>
-									</a>
-									<a href="#" class="mega-item">
-										<div class="mega-icon"
-											style="background:#fff4f0;">
-											📱</div>
-										<span>سامسونج</span>
-									</a>
-									<a href="#" class="mega-item">
-										<div class="mega-icon"
-											style="background:#f0fff4;">
-											🔴</div>
-										<span>هواوي</span>
-									</a>
-									<a href="#" class="mega-item">
-										<div class="mega-icon"
-											style="background:#fffbf0;">
-											🟠</div>
-										<span>شاومي</span>
-									</a>
-									<a href="#" class="mega-item">
-										<div class="mega-icon"
-											style="background:#f5f0ff;">
-											🟢</div>
-										<span>أوبو</span>
-									</a>
-									<a href="#" class="mega-item">
-										<div class="mega-icon"
-											style="background:#fff0fb;">
-											🔵</div>
-										<span>فيفو</span>
-									</a>
-									<a href="#" class="mega-item">
-										<div class="mega-icon"
-											style="background:#f0faff;">
-											🟡</div>
-										<span>ريلمي</span>
-									</a>
-									<a href="#" class="mega-item">
-										<div class="mega-icon"
-											style="background:#f8f0ff;">
-											⚫</div>
-										<span>وان بلس</span>
-									</a>
-									<a href="#" class="mega-item"
-										style="background:var(--bg-soft);border-radius:8px;">
-										<div
-											class="mega-icon">
-											📦</div>
-										<span>كل
-											الماركات</span>
-									</a>
-								</div>
+								<p class="mega-content-title" id="mega-content-title">المنتجات</p>
+								<div class="mega-grid" id="mega-products-grid"></div>
+								<a href="{{ route('store.products.index') }}" class="mega-view-all" id="mega-view-all" style="display:none;">عرض الكل في القسم ←</a>
 							</div>
 						</div>
 					</div>
@@ -439,12 +368,22 @@
 	let cart = [];
 	let wishlist = new Set([3, 5]);
 	const PRODUCTS = {};
+	if (typeof window.__SSR_STORE_PRODUCTS__ === 'object' && window.__SSR_STORE_PRODUCTS__) {
+		Object.assign(PRODUCTS, window.__SSR_STORE_PRODUCTS__);
+	}
 	const IS_CUSTOMER_AUTHED = "{{ auth('customer')->check() ? '1' : '0' }}" === "1";
 	const STORE_LOGIN_URL = "{{ route('store.auth.login.form') }}";
 	const STORE_CHECKOUT_URL = "{{ route('store.checkout') }}";
 	const STORE_CHECKOUT_FORM_URL = "{{ route('store.checkout.form') }}";
 	const STORE_CATEGORIES_URL = "{{ route('store.categories.index') }}";
+	const STORE_PRODUCTS_URL = "{{ route('store.products.index') }}";
 	const STORE_FLASH_DEALS_URL = "{{ route('store.flash_deals.index') }}";
+	const STORE_PRODUCTS_INDEX_BASE = @json(rtrim(route('store.products.index'), '/'));
+	let megaMenuCategories = [];
+
+	function storeProductShowUrl(id) {
+		return STORE_PRODUCTS_INDEX_BASE + '/' + encodeURIComponent(String(id));
+	}
 
 	function saveCartToStorage() {
 		try {
@@ -555,6 +494,8 @@
 			PRODUCTS[p.id] = {
 				name: p.name,
 				brand: p.brand || '',
+				category: p.category || '',
+				unit: '',
 				price: defaultPrice,
 				old: null,
 				img: p.image_url,
@@ -583,9 +524,9 @@
 				</div>
 				<div class="prod-info">
 					<div class="prod-brand">${p.brand || 'Brand'}</div>
-					<div class="prod-name">${p.name}</div>
+					<div class="prod-name"><a href="${storeProductShowUrl(p.id)}" title="عرض تفاصيل المنتج">${p.name}</a></div>
 					<div class="stars-row"><span class="stars">⭐⭐⭐⭐⭐</span><span class="rev-count">(متوفر)</span></div>
-					${variations.length ? `<div style="margin-bottom:8px;"><select class="prod-variant" data-id="${p.id}" style="width:100%;padding:7px 9px;border:1px solid var(--border);border-radius:8px;font-size:.78rem;">${variantsOptions}</select></div>` : ''}
+					${variations.length ? `<div class="prod-variant-wrap"><select class="prod-variant" data-id="${p.id}">${variantsOptions}</select></div>` : ''}
 					<div class="price-row"><span class="price-now" id="prod-price-${p.id}">${fmt(defaultPrice)}</span></div>
 				</div>
 			</div>`;
@@ -596,10 +537,11 @@
 
 	async function loadDynamicProducts() {
 		try {
-			const res = await fetch('/store/products', {
+			const res = await fetch(STORE_PRODUCTS_URL, {
 				headers: {
-					'Accept': 'application/json'
-				}
+					Accept: 'application/json',
+				},
+				credentials: 'same-origin',
 			});
 			const data = await res.json();
 			if (data.success) {
@@ -652,9 +594,30 @@
 		});
 	}
 
+	function megaEsc(s) {
+		return String(s)
+			.replace(/&/g, '&amp;')
+			.replace(/</g, '&lt;')
+			.replace(/>/g, '&gt;')
+			.replace(/"/g, '&quot;');
+	}
+
 	function categoryIconByIndex(idx) {
 		const icons = ['📱', '💻', '🎧', '🎮', '🏠', '📺', '⌚', '📷', '🔌', '🖨'];
 		return icons[idx % icons.length];
+	}
+
+	async function fetchStoreCategoriesList() {
+		try {
+			const res = await fetch(STORE_CATEGORIES_URL, {
+				headers: { Accept: 'application/json' },
+				credentials: 'same-origin',
+			});
+			const data = await res.json();
+			return data.success ? (data.data || []) : [];
+		} catch (e) {
+			return [];
+		}
 	}
 
 	function renderDynamicCategories(categories) {
@@ -665,29 +628,129 @@
 			return;
 		}
 
-		grid.innerHTML = categories.map((c, idx) => `
-			<a href="/store/products?category_id=${c.id}" class="cat-card">
+		const base = new URL(STORE_PRODUCTS_URL, window.location.origin);
+		grid.innerHTML = categories.map((c, idx) => {
+			const u = new URL(base.href);
+			u.searchParams.set('category_id', String(c.id));
+			return `
+			<a href="${u.pathname + '?' + u.searchParams.toString()}" class="cat-card">
 				<div class="cat-icon" style="background:#f8f9fc;">${categoryIconByIndex(idx)}</div>
-				<div class="cat-name">${c.name}</div>
+				<div class="cat-name">${megaEsc(c.name || '')}</div>
 				<div class="cat-count">+${Number(c.count || 0).toLocaleString('ar-EG')} منتج</div>
-			</a>
-		`).join('');
+			</a>`;
+		}).join('');
+	}
+
+	function renderMegaMenuCategories(categories) {
+		const side = $('mega-sidebar');
+		if (!side) return;
+		megaMenuCategories = categories;
+
+		const allRow = `<div class="mega-sitem mega-sitem--all active" data-category-id="" role="button" tabindex="0"><span class="mega-sitem-ico" aria-hidden="true">📦</span><span>كل المنتجات</span></div>`;
+		if (!categories.length) {
+			side.innerHTML = allRow;
+			loadMegaCategoryProducts('', 'كل المنتجات');
+			return;
+		}
+
+		const rows = [allRow].concat(
+			categories.map(
+				(c, idx) =>
+					`<div class="mega-sitem" data-category-id="${Number(c.id)}" role="button" tabindex="0"><span class="mega-sitem-ico" aria-hidden="true">${categoryIconByIndex(idx)}</span><span>${megaEsc(c.name || '')}</span></div>`
+			)
+		);
+		side.innerHTML = rows.join('');
+		$$('#mega-sidebar .mega-sitem').forEach((el) => el.classList.remove('active'));
+		const allEl = side.querySelector('.mega-sitem--all');
+		if (allEl) allEl.classList.add('active');
+		loadMegaCategoryProducts('', 'كل المنتجات');
+	}
+
+	function syncMegaProductsIntoCatalog(items) {
+		(items || []).forEach((p) => {
+			const variations = Array.isArray(p.variations) ? p.variations : [];
+			const def = variations[0];
+			const price = def ? Number(def.price_inc_tax) : Number(p.min_price || 0);
+			const vid = def ? Number(def.variation_id) : Number(p.variation_id || p.id);
+			PRODUCTS[p.id] = {
+				name: p.name,
+				brand: p.brand || '',
+				category: p.category || '',
+				unit: '',
+				price,
+				old: null,
+				img: p.image_url,
+				stars: '⭐⭐⭐⭐⭐',
+				reviews: 'متوفر',
+				variation_id: vid,
+				variations,
+			};
+		});
+	}
+
+	async function loadMegaCategoryProducts(categoryId, titleText) {
+		const grid = $('mega-products-grid');
+		const title = $('mega-content-title');
+		const viewAll = $('mega-view-all');
+		if (!grid || !title) return;
+		title.textContent = titleText || 'المنتجات';
+		grid.innerHTML =
+			'<div class="mega-loading" style="grid-column:1/-1;text-align:center;padding:24px;color:var(--muted);font-weight:700;">جاري التحميل…</div>';
+		if (viewAll) viewAll.style.display = 'none';
+
+		const url = new URL(STORE_PRODUCTS_URL, window.location.origin);
+		if (categoryId !== '' && categoryId !== null && !Number.isNaN(Number(categoryId))) {
+			url.searchParams.set('category_id', String(categoryId));
+		}
+		const fetchUrl = url.pathname + (url.search ? '?' + url.searchParams.toString() : '');
+		try {
+			const res = await fetch(fetchUrl, {
+				headers: {
+					Accept: 'application/json',
+					'X-Requested-With': 'XMLHttpRequest',
+				},
+				credentials: 'same-origin',
+			});
+			const json = await res.json();
+			const items = json.success ? json.data || [] : [];
+			syncMegaProductsIntoCatalog(items);
+			if (!items.length) {
+				grid.innerHTML =
+					'<div class="mega-empty" style="grid-column:1/-1;text-align:center;padding:20px;color:var(--muted);">لا توجد منتجات في هذا القسم</div>';
+			} else {
+				grid.innerHTML = items
+					.slice(0, 12)
+					.map((p) => {
+						const variations = Array.isArray(p.variations) ? p.variations : [];
+						const def = variations[0];
+						const price = Number(def ? def.price_inc_tax : p.min_price || 0);
+						const img = String(p.image_url || '').replace(/"/g, '');
+						const name = megaEsc(p.name || '');
+						const pid = Number(p.id);
+						return `<a href="${storeProductShowUrl(pid)}" class="mega-item mega-item--product">
+						<div class="mega-pthumb"><img src="${img}" alt=""></div>
+						<div class="mega-pmeta">
+							<span class="mega-pname">${name}</span>
+							<span class="mega-pprice">${fmt(price)}</span>
+						</div>
+					</a>`;
+					})
+					.join('');
+			}
+			if (viewAll) {
+				viewAll.setAttribute('href', fetchUrl);
+				viewAll.style.display = items.length ? 'inline-flex' : 'none';
+			}
+		} catch (e) {
+			grid.innerHTML =
+				'<div class="mega-empty" style="grid-column:1/-1;text-align:center;padding:20px;color:var(--muted);">تعذر تحميل المنتجات</div>';
+		}
 	}
 
 	async function loadDynamicCategories() {
-		try {
-			const res = await fetch(STORE_CATEGORIES_URL, {
-				headers: {
-					'Accept': 'application/json'
-				}
-			});
-			const data = await res.json();
-			if (data.success) {
-				renderDynamicCategories(data.data || []);
-			}
-		} catch (e) {
-			// no-op
-		}
+		const categories = await fetchStoreCategoriesList();
+		renderDynamicCategories(categories);
+		renderMegaMenuCategories(categories);
 	}
 
 	function renderDynamicFlashDeals(deals) {
@@ -833,46 +896,162 @@
 	}
 
 	/* ── Quick View Modal ── */
-	function openModal(id) {
+	function modalEsc(s) {
+		return String(s)
+			.replace(/&/g, '&amp;')
+			.replace(/</g, '&lt;')
+			.replace(/>/g, '&gt;')
+			.replace(/"/g, '&quot;');
+	}
+
+	let quickViewReq = 0;
+
+	async function openModal(id) {
+		const modalBody = $('modal-body');
+		const overlay = $('modal-overlay');
+		if (!modalBody || !overlay) return;
+		const seq = ++quickViewReq;
+		const detailUrl = storeProductShowUrl(id);
+
+		modalBody.innerHTML =
+			'<div style="grid-column:1/-1;text-align:center;padding:32px 16px;color:var(--muted);font-weight:700;">جاري التحميل…</div>';
+		overlay.classList.add('open');
+		document.body.style.overflow = 'hidden';
+
+		try {
+			const res = await fetch(detailUrl, {
+				headers: {
+					Accept: 'application/json',
+					'X-Requested-With': 'XMLHttpRequest',
+				},
+				credentials: 'same-origin',
+			});
+			if (res.ok) {
+				const json = await res.json();
+				if (json.success && json.data && seq === quickViewReq) {
+					const d = json.data;
+					const vars = Array.isArray(d.variations) ? d.variations : [];
+					const def = vars[0];
+					const prev = PRODUCTS[id] || {};
+					const defPrice = def ? Number(def.price_inc_tax) : Number(prev.price || 0);
+					PRODUCTS[id] = {
+						name: d.name,
+						brand: d.brand || prev.brand || '',
+						category: d.category || prev.category || '',
+						unit: d.unit || prev.unit || '',
+						price: defPrice,
+						old: prev.old != null ? prev.old : null,
+						img: d.image_url || prev.img || '',
+						stars: prev.stars || '⭐⭐⭐⭐⭐',
+						reviews: prev.reviews || 'متوفر',
+						variation_id: def ? Number(def.variation_id) : Number(prev.variation_id || id),
+						variations: vars.map((v) => ({
+							variation_id: v.variation_id,
+							name: v.name,
+							price_inc_tax: Number(v.price_inc_tax),
+							sku: v.sku != null ? String(v.sku) : '',
+							qty_available: Number(v.qty_available || 0),
+						})),
+					};
+				}
+			}
+		} catch (e) {
+			/* keep cached PRODUCTS[id] if any */
+		}
+
+		if (seq !== quickViewReq) return;
+
 		const p = PRODUCTS[id];
-		if (!p) return;
+		if (!p) {
+			modalBody.innerHTML =
+				'<div style="grid-column:1/-1;text-align:center;padding:28px 16px;color:var(--muted);">تعذر تحميل المنتج.</div>';
+			return;
+		}
+
 		const variants = Array.isArray(p.variations) ? p.variations : [];
 		const defaultVariant = variants[0] || {
 			variation_id: p.variation_id || id,
-			price_inc_tax: p.price
+			price_inc_tax: p.price,
+			sku: '',
+			qty_available: 0,
 		};
-		const variantOptions = variants.map(v => `<option value="${Number(v.variation_id)}" data-price="${Number(v.price_inc_tax)}">${(v.name || 'Default')} - ${fmt(Number(v.price_inc_tax))}</option>`).join('');
-		$('modal-body').innerHTML = `
-    <img src="${p.img}" style="border-radius:12px;width:100%;aspect-ratio:1;object-fit:contain;background:var(--bg-soft);padding:16px;" alt="${p.name}">
-    <div style="display:flex;flex-direction:column;justify-content:center;gap:12px;">
-      <div style="font-size:.78rem;font-weight:700;color:var(--accent);text-transform:uppercase;">${p.brand}</div>
-      <h3 style="font-size:1.2rem;font-weight:800;color:var(--primary);line-height:1.3;">${p.name}</h3>
-      <div style="font-size:.875rem;">${p.stars} <span style="color:var(--muted);">(${p.reviews} تقييم)</span></div>
-      ${variants.length ? `<select id="quick-variant" style="width:100%;padding:9px 10px;border:1px solid var(--border);border-radius:8px;font-size:.85rem;">${variantOptions}</select>` : ''}
+		const variantOptions = variants
+			.map((v) => {
+				const vid = Number(v.variation_id);
+				const pr = Number(v.price_inc_tax);
+				const skuAttr = modalEsc(v.sku || '');
+				const nm = modalEsc(v.name || 'Default');
+				const q = Number(v.qty_available || 0);
+				return `<option value="${vid}" data-price="${pr}" data-sku="${skuAttr}" data-qty="${q}">${nm} — ${fmt(pr)}</option>`;
+			})
+			.join('');
+
+		const crumb = [p.brand, p.category].filter((x) => String(x).trim()).join(' · ');
+		const imgSrc = String(p.img || '').replace(/"/g, '');
+		const unitLine = p.unit
+			? `<div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;">الوحدة: ${modalEsc(p.unit)}</div>`
+			: '';
+
+		modalBody.innerHTML = `
+    <img src="${imgSrc}" style="border-radius:12px;width:100%;aspect-ratio:1;object-fit:contain;background:var(--bg-soft);padding:16px;" alt="${modalEsc(p.name)}">
+    <div style="display:flex;flex-direction:column;justify-content:flex-start;gap:12px;">
+      <div style="font-size:.78rem;font-weight:700;color:var(--accent);line-height:1.4;">${crumb ? modalEsc(crumb) : modalEsc('—')}</div>
+      ${unitLine}
+      <h3 style="font-size:1.2rem;font-weight:800;color:var(--primary);line-height:1.3;margin:0;">${modalEsc(p.name)}</h3>
+      <div style="font-size:.875rem;">${p.stars} <span style="color:var(--muted);">(${modalEsc(p.reviews)} تقييم)</span></div>
+      ${variants.length ? `<select id="quick-variant" style="width:100%;padding:9px 10px;border:1px solid var(--border);border-radius:8px;font-size:.85rem;">${variantOptions}</select>` : '<p style="margin:0;font-size:.85rem;color:var(--muted);">لا توجد خيارات متوفرة حالياً.</p>'}
+      <div id="quick-meta-row" style="font-size:.8rem;color:var(--muted);display:flex;flex-wrap:wrap;gap:10px;"></div>
       <div style="display:flex;align-items:baseline;gap:10px;">
         <span id="quick-price" style="font-size:1.7rem;font-weight:900;color:var(--accent);">${fmt(Number(defaultVariant.price_inc_tax || p.price))}</span>
-        ${p.old?`<span style="color:var(--light);text-decoration:line-through;font-size:.9rem;">${fmt(p.old)}</span>`:''}
+        ${p.old ? `<span style="color:var(--light);text-decoration:line-through;font-size:.9rem;">${fmt(p.old)}</span>` : ''}
       </div>
-      <button id="quick-add-btn" style="width:100%;padding:13px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-weight:700;font-size:.95rem;cursor:pointer;font-family:var(--font);margin-top:4px;transition:var(--t);" onmouseover="this.style.background='var(--accent-dark)'" onmouseout="this.style.background='var(--accent)'">
+      <button type="button" id="quick-add-btn" style="width:100%;padding:13px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-weight:700;font-size:.95rem;cursor:pointer;font-family:var(--font);margin-top:4px;transition:var(--t);">
         🛒 أضف للسلة
       </button>
+      <a href="${detailUrl}" style="display:block;text-align:center;padding:11px 12px;border-radius:8px;font-weight:700;font-size:.9rem;text-decoration:none;background:var(--bg-soft);color:var(--primary);border:1px solid var(--border);">
+        صفحة المنتج الكاملة ←
+      </a>
     </div>`;
+
 		const quickVariant = $('quick-variant');
 		const quickPrice = $('quick-price');
+		const metaRow = $('quick-meta-row');
+
+		function syncQuickMeta() {
+			if (!metaRow) return;
+			if (!quickVariant) {
+				metaRow.innerHTML = '';
+				return;
+			}
+			const option = quickVariant.options[quickVariant.selectedIndex];
+			const sku = option?.dataset?.sku || '—';
+			const qty = option?.dataset?.qty ?? '0';
+			metaRow.innerHTML = `<span>SKU: <strong style="color:var(--primary)">${sku}</strong></span><span>المخزون: <strong style="color:var(--primary)">${qty}</strong></span>`;
+		}
+
 		quickVariant?.addEventListener('change', () => {
 			const option = quickVariant.options[quickVariant.selectedIndex];
 			const price = +(option?.dataset.price || 0);
 			if (quickPrice) quickPrice.textContent = fmt(price);
+			syncQuickMeta();
 		});
+		syncQuickMeta();
+
 		$('quick-add-btn')?.addEventListener('click', () => {
-			const selectedVariationId = +(quickVariant ? quickVariant.value : (defaultVariant.variation_id || p.variation_id || id));
-			const selectedPrice = +(quickVariant ? (quickVariant.options[quickVariant.selectedIndex]?.dataset.price || defaultVariant.price_inc_tax || p.price) : (defaultVariant.price_inc_tax || p.price));
+			const selectedVariationId = +(quickVariant
+				? quickVariant.value
+				: defaultVariant.variation_id || p.variation_id || id);
+			const selectedPrice = +(
+				quickVariant
+					? quickVariant.options[quickVariant.selectedIndex]?.dataset.price ||
+						defaultVariant.price_inc_tax ||
+						p.price
+					: defaultVariant.price_inc_tax || p.price
+			);
 			addToCart(id, p.name, selectedPrice, p.img, selectedVariationId);
 			toast('تم الإضافة للسلة! 🛒');
 			closeModal();
 		});
-		$('modal-overlay').classList.add('open');
-		document.body.style.overflow = 'hidden';
 	}
 
 	function closeModal() {
@@ -904,20 +1083,38 @@
 	/* ── Mega Menu ── */
 	function initMegaMenu() {
 		const btn = $('mega-toggle'),
-			menu = $('mega-menu');
+			menu = $('mega-menu'),
+			sidebar = $('mega-sidebar');
 		if (!btn || !menu) return;
 		btn.addEventListener('click', e => {
 			e.stopPropagation();
 			menu.classList.toggle('open');
 		});
 		document.addEventListener('click', e => {
-			if (!menu.contains(e.target) && e.target !== btn) menu.classList.remove(
-				'open');
+			if (!menu.contains(e.target) && e.target !== btn) menu.classList.remove('open');
 		});
-		$$('.mega-sitem').forEach(it => it.addEventListener('click', () => {
-			$$('.mega-sitem').forEach(x => x.classList.remove('active'));
-			it.classList.add('active');
-		}));
+		sidebar?.addEventListener('click', (e) => {
+			const item = e.target.closest('.mega-sitem');
+			if (!item || item.classList.contains('mega-sitem--loading')) return;
+			e.preventDefault();
+			$$('#mega-sidebar .mega-sitem').forEach((x) => x.classList.remove('active'));
+			item.classList.add('active');
+			const raw = item.dataset.categoryId;
+			const id = raw === undefined || raw === '' ? '' : Number(raw);
+			let label = 'كل المنتجات';
+			if (id !== '' && !Number.isNaN(id)) {
+				const cat = megaMenuCategories.find((c) => Number(c.id) === id);
+				label = cat ? String(cat.name || '') : 'المنتجات';
+			}
+			loadMegaCategoryProducts(id === '' || Number.isNaN(id) ? '' : id, label);
+		});
+		sidebar?.addEventListener('keydown', (e) => {
+			if (e.key !== 'Enter' && e.key !== ' ') return;
+			const item = e.target.closest('.mega-sitem');
+			if (!item || item.classList.contains('mega-sitem--loading')) return;
+			e.preventDefault();
+			item.click();
+		});
 	}
 
 	/* ── Hero Slider Dots ── */
@@ -1041,6 +1238,7 @@
 	window.removeFromCart = removeFromCart;
 	window.addToCart = addToCart;
 	window.closeModal = closeModal;
+	window.openModal = openModal;
 	window.toast = toast;
 	</script>
 </body>

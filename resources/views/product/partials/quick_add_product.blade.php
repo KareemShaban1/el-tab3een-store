@@ -179,6 +179,28 @@
             </label> @show_tooltip(__('lang_v1.tooltip_not_for_selling'))
           </div>
         </div>
+        <div class="col-sm-4">
+          <div class="form-group">
+            <br>
+            <label>
+              {!! Form::checkbox('active_in_app', 1, true, ['class' => 'input-icheck']); !!} <strong>@lang('lang_v1.active_in_app')</strong>
+            </label> @show_tooltip(__('lang_v1.tooltip_active_in_app'))
+          </div>
+        </div>
+        <div class="col-sm-4">
+          <div class="form-group">
+            <br>
+            <label>
+              {!! Form::checkbox('featured', 1, false, ['class' => 'input-icheck']); !!} <strong>@lang('lang_v1.featured')</strong>
+            </label> @show_tooltip(__('lang_v1.tooltip_featured'))
+          </div>
+        </div>
+        <div class="col-sm-3">
+          <div class="form-group">
+            {!! Form::label('order', __('lang_v1.sort_order') . ':') !!}
+            {!! Form::number('order', 0, ['class' => 'form-control', 'min' => 0, 'step' => 1]); !!}
+          </div>
+        </div>
         <div class="clearfix"></div>
         <div class="col-sm-3">
           <div class="form-group">

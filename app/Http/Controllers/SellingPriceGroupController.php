@@ -298,6 +298,13 @@ class SellingPriceGroupController extends Controller
             ini_set('max_execution_time', 0);
             ini_set('memory_limit', -1);
 
+            $import_summary = [
+                'total_rows' => 0,
+                'updated_base_prices' => 0,
+                'updated_group_prices' => 0,
+                'updated_product_names' => 0,
+            ];
+
             if ($request->hasFile('product_group_prices')) {
                 $file = $request->file('product_group_prices');
 
@@ -323,6 +330,7 @@ class SellingPriceGroupController extends Controller
                 DB::beginTransaction();
 
                 foreach ($imported_data as $key => $value) {
+                    $import_summary['total_rows']++;
                     $variation = Variation::where('sub_sku', $value[1])
                                         ->join('products', 'products.id', '=', 'variations.product_id')
                                         ->where('products.business_id', $business_id)
@@ -335,6 +343,30 @@ class SellingPriceGroupController extends Controller
                         throw new \Exception($error_msg);
                     }
 
+                    //Update product name from imported file based on matched SKU
+                    if (isset($value[0]) && ! is_null($value[0])) {
+                        $imported_product_name = trim((string) $value[0]);
+                        if ($imported_product_name !== '') {
+                            $product = $variation->product;
+                            $product_name_to_save = $imported_product_name;
+
+                            //For variable products exported with variation suffix,
+                            //strip trailing " - {product_variation} - {variation}" when present.
+                            if ($product->type == 'variable') {
+                                $suffix = ' - '.$variation->product_variation->name.' - '.$variation->name;
+                                if (substr($imported_product_name, -strlen($suffix)) === $suffix) {
+                                    $product_name_to_save = trim(substr($imported_product_name, 0, -strlen($suffix)));
+                                }
+                            }
+
+                            if ($product_name_to_save !== '' && $product->name !== $product_name_to_save) {
+                                $product->name = $product_name_to_save;
+                                $product->save();
+                                $import_summary['updated_product_names']++;
+                            }
+                        }
+                    }
+
                     //Check if product base price is changed
                     if($variation->sell_price_inc_tax != $value[2]){
                         //update price for base selling price, adjust default_sell_price, profit %
@@ -345,6 +377,7 @@ class SellingPriceGroupController extends Controller
                         $variation->profit_percent = $this->commonUtil
                                         ->get_percent($variation->default_purchase_price, $variation->default_sell_price);
                         $variation->update();
+                        $import_summary['updated_base_prices']++;
                     }
 
                     //update selling price
@@ -370,6 +403,7 @@ class SellingPriceGroupController extends Controller
                                     ['price_inc_tax' => $value[$k],
                                     ]
                                 );
+                                $import_summary['updated_group_prices']++;
                             }
                         } else {
                             $row = $key + 1;
@@ -383,6 +417,7 @@ class SellingPriceGroupController extends Controller
             }
             $output = ['success' => 1,
                 'msg' => __('lang_v1.product_prices_imported_successfully'),
+                'details' => $import_summary,
             ];
         } catch (\Exception $e) {
             DB::rollBack();
@@ -392,7 +427,15 @@ class SellingPriceGroupController extends Controller
                 'msg' => $e->getMessage(),
             ];
 
+            if ($request->ajax()) {
+                return response()->json($output, 422);
+            }
+
             return redirect('update-product-price')->with('notification', $output);
+        }
+
+        if ($request->ajax()) {
+            return response()->json($output);
         }
 
         return redirect('update-product-price')->with('status', $output);

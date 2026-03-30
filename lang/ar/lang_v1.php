@@ -1437,4 +1437,5 @@ return [
     'show_previous_balance_due' => 'إظهار الرصيد المستحق السابق',
     'view_own_purchase' => 'عرض المشتريات الخاصة',
     'view_all_purchase' => 'عرض جميع المشتريات',
+'processing'=>'جاري المعالجة...',
 ];

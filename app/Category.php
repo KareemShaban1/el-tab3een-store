@@ -22,6 +22,37 @@ class Category extends Model
      */
     protected $guarded = ['id'];
 
+    protected $casts = [
+        'active_in_app' => 'boolean',
+        'featured' => 'boolean',
+        'order' => 'integer',
+    ];
+
+    public function scopeActiveInApp($query)
+    {
+        $t = $query->getModel()->getTable();
+
+        return $query->where("{$t}.active_in_app", 1);
+    }
+
+    /**
+     * Featured first, then manual order, then newest (storefront category lists / home).
+     */
+    public function scopeStorefrontSortOrder($query)
+    {
+        $t = $query->getModel()->getTable();
+
+        return $query->orderByDesc("{$t}.featured")
+            ->orderBy("{$t}.order")
+            ->orderByDesc("{$t}.created_at")
+            ->orderByDesc("{$t}.id");
+    }
+
+	public function scopeFeatured($query)
+	{
+		return $query->where('featured', 1);
+	}
+
     /**
      * Combines Category and sub-category
      *
@@ -83,6 +114,7 @@ class Category extends Model
                             ->where('parent_id', 0)
                             ->where('category_type', $type)
                             ->select(DB::raw('IF(short_code IS NOT NULL, CONCAT(name, "-", short_code), name) as name'), 'id')
+                            ->orderBy('order', 'asc')
                             ->orderBy('name', 'asc')
                             ->get();
 
