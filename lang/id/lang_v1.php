@@ -391,6 +391,7 @@ return [
     'import_contacts' => 'Impor Kontak',
     'contact_type_ins' => '<strong>Opsi yang Tersedia: pelanggan, pemasok & keduanya</strong>',
     'contact_id_ins' => 'Biarkan kosong untuk menghasilkan ID Kontak secara otomatis',
+    'import_contact_id_upsert_hint' => 'Jika ID ini sudah ada di bisnis Anda, kontak diperbarui dari baris tersebut; jika baru, kontak dibuat.',
     'required_if_supplier' => 'Diperlukan jika jenis kontak adalah pemasok atau keduanya',
     'pay_term_period_ins' => 'Opsi yang Tersedia: hari dan bulan',
     'your_username_will_be' => 'Nama pengguna Anda akan',

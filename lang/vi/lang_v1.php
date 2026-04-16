@@ -391,6 +391,7 @@ return [
     'import_contacts' => 'Tải lên liên hệ',
     'contact_type_ins' => '<strong> Tùy chọn khả dụng: khách hàng, nhà cung cấp & cả </strong>',
     'contact_id_ins' => 'Để trống để tự động tạo ID liên hệ',
+    'import_contact_id_upsert_hint' => 'Nếu ID này đã tồn tại trong doanh nghiệp, liên hệ được cập nhật từ dòng; nếu mới, hệ thống tạo liên hệ.',
     'required_if_supplier' => 'Bắt buộc nếu loại liên hệ là nhà cung cấp hoặc cả hai',
     'pay_term_period_ins' => 'Tùy chọn khả dụng: ngày và tháng',
     'your_username_will_be' => 'Tên người dùng của bạn sẽ là',

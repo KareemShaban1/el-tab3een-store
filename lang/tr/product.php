@@ -61,5 +61,9 @@ return [
     'variation_sku_format' => 'Varyasyon SKU Formatı',
     'variation_sku_format_help_text' => 'Varyasyon SKU Formatı - Varyasyon SKU boş olduğunda, varyasyonlar için SKU oluşturmak için bu format kullanılacaktır.',
     'sku_number' => 'SKU Numarası (Örnek -> ABC-1, ABC-2)',
-    'sku_variation_number' => 'SKU Varyasyon (Örnek -> ABCS, ABCM)'
+    'sku_variation_number' => 'SKU Varyasyon (Örnek -> ABCS, ABCM)',
+    'is_inactive_column' => 'POS / ERP’de pasif',
+    'active_in_app_column' => 'Uygulama / vitrinde aktif',
+    'export_column_pos_erp_active' => 'POS / ERP’de aktif',
+    'export_column_active_in_app' => 'Uygulama / vitrinde aktif',
 ];

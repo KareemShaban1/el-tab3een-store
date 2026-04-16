@@ -7,6 +7,16 @@
 <section class="content-header">
     <h1 class="tw-text-xl md:tw-text-3xl tw-font-bold tw-text-black">@lang('lang_v1.import_contacts')
     </h1>
+    @if (!empty($return_type) && in_array($return_type, ['customer', 'supplier'], true))
+        <ol class="breadcrumb tw-mt-2">
+            <li>
+                <a href="{{ action([\App\Http\Controllers\ContactController::class, 'index'], ['type' => $return_type]) }}">
+                    @lang('lang_v1.' . $return_type . 's')
+                </a>
+            </li>
+            <li class="active">@lang('lang_v1.import_contacts')</li>
+        </ol>
+    @endif
 </section>
 
 <!-- Main content -->
@@ -31,6 +41,9 @@
         <div class="col-sm-12">
             @component('components.widget', ['class' => 'box-primary'])
                 {!! Form::open(['url' => action([\App\Http\Controllers\ContactController::class, 'postImportContacts']), 'method' => 'post', 'enctype' => 'multipart/form-data' ]) !!}
+                    @if (!empty($return_type) && in_array($return_type, ['customer', 'supplier'], true))
+                        <input type="hidden" name="return_type" value="{{ $return_type }}">
+                    @endif
                     <div class="row">
                         <div class="col-sm-6">
                         <div class="col-sm-8">
@@ -101,7 +114,7 @@
                     <tr>
                         <td>7</td>
                         <td>@lang('lang_v1.contact_id') <small class="text-muted">(@lang('lang_v1.optional'))</small></td>
-                        <td>@lang('lang_v1.contact_id_ins')</td>
+                        <td>@lang('lang_v1.contact_id_ins') @lang('lang_v1.import_contact_id_upsert_hint')</td>
                     </tr>
                     <tr>
                         <td>8</td>

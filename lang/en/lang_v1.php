@@ -393,6 +393,7 @@ return [
     'import_contacts' => 'Import Contacts',
     'contact_type_ins' => '<strong>Available Options: customer, supplier & both</strong>',
     'contact_id_ins' => 'Leave blank to auto generate Contact ID',
+    'import_contact_id_upsert_hint' => 'If this ID already exists for your business, that contact is updated from the row; if it is new, a contact is created.',
     'required_if_supplier' => 'Required if contact type is supplier or both',
     'pay_term_period_ins' => 'Available Options: days and months',
     'your_username_will_be' => 'Your username will be',

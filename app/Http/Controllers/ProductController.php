@@ -122,6 +122,7 @@ class ProductController extends Controller
                 'products.image',
                 'products.enable_stock',
                 'products.is_inactive',
+                'products.active_in_app',
                 'products.not_for_selling',
                 'products.product_custom_field1', 'products.product_custom_field2', 'products.product_custom_field3', 'products.product_custom_field4', 'products.product_custom_field5', 'products.product_custom_field6',
                 'products.product_custom_field7', 'products.product_custom_field8', 'products.product_custom_field9',
@@ -257,7 +258,7 @@ class ProductController extends Controller
                     }
                 )
                 ->editColumn('product', function ($row) use ($is_woocommerce) {
-                    $product = $row->is_inactive == 1 ? e($row->product).' <span class="label bg-gray">'.__('lang_v1.inactive').'</span>' : e($row->product);
+                    $product = e($row->product);
 
                     $product = $row->not_for_selling == 1 ? $product.' <span class="label bg-gray">'.__('lang_v1.not_for_selling').
                         '</span>' : $product;
@@ -272,6 +273,18 @@ class ProductController extends Controller
                     return '<div style="display: flex;"><img src="'.$row->image_url.'" alt="Product image" class="product-thumbnail-small"></div>';
                 })
                 ->editColumn('type', '@lang("lang_v1." . $type)')
+                ->editColumn('is_inactive', function ($row) {
+                    return $row->is_inactive == 1
+                        ? '<span class="label bg-gray">'.__('lang_v1.inactive').'</span>'
+                        : '<span class="label label-success">'.__('lang_v1.active').'</span>';
+                })
+                ->editColumn('active_in_app', function ($row) {
+                    $on = (bool) ($row->active_in_app ?? false);
+
+                    return $on
+                        ? '<span class="label label-success">'.__('messages.yes').'</span>'
+                        : '<span class="label bg-gray">'.__('messages.no').'</span>';
+                })
                 ->addColumn('mass_delete', function ($row) {
                     return  '<input type="checkbox" class="row-select" value="'.$row->id.'">';
                 })
@@ -306,7 +319,7 @@ class ProductController extends Controller
                             return '';
                         }
                     }, ])
-                ->rawColumns(['action', 'image', 'mass_delete', 'product', 'selling_price', 'purchase_price', 'category', 'current_stock'])
+                ->rawColumns(['action', 'image', 'mass_delete', 'product', 'selling_price', 'purchase_price', 'category', 'current_stock', 'is_inactive', 'active_in_app'])
                 ->make(true);
         }
 

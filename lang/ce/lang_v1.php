@@ -387,6 +387,7 @@ return [
     'import_contacts' => '导入联系人',
     'contact_type_ins' => '<strong>可用选项：客户、供应商和两者</strong>',
     'contact_id_ins' => '留空以自动生成联系人ID',
+    'import_contact_id_upsert_hint' => '若此编号在您的商户中已存在，则按该行更新联系人；若为新的，则创建联系人。',
     'required_if_supplier' => '如果联系人类型是供应商或两者，则为必填项',
     'pay_term_period_ins' => '可用选项：天和月',
     'your_username_will_be' => '您的用户名将是',

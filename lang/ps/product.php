@@ -61,5 +61,9 @@ return [
     'variation_sku_format' => 'د تغیر SKU قالب',
     'variation_sku_format_help_text' => 'د تغیر SKU قالب - کله تغیر SKU خالی دی، دا قالب به کارولای شي کولای شي تر SKU د بدلونو لپاره.',
     'sku_number' => 'SKU-شمیره (مثال -> ABC-1، ABC-2)',
-    'sku_variation_number' => 'SKUشمیره (مثال -> ABCS، ABCM)'
+    'sku_variation_number' => 'SKUشمیره (مثال -> ABCS، ABCM)',
+    'is_inactive_column' => 'په POS / ERP کې غیرفعال',
+    'active_in_app_column' => 'په اپ / آنلاین پلورنځي کې فعال',
+    'export_column_pos_erp_active' => 'په POS / ERP کې فعال',
+    'export_column_active_in_app' => 'په اپ / آنلاین پلورنځي کې فعال',
 ];

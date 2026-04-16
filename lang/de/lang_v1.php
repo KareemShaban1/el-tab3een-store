@@ -387,6 +387,7 @@ return [
     'import_contacts' => 'Kontakte importieren',
     'contact_type_ins' => '<strong> Verfügbare Optionen: Kunde, Lieferant & beide </strong>',
     'contact_id_ins' => 'Leer lassen, um die Kontakt-ID automatisch zu generieren',
+    'import_contact_id_upsert_hint' => 'Wenn diese ID in Ihrem Unternehmen bereits existiert, wird der Kontakt aus der Zeile aktualisiert; ist sie neu, wird ein Kontakt angelegt.',
     'required_if_supplier' => 'Erforderlich, wenn der Kontakttyp Lieferant oder beides ist',
     'pay_term_period_ins' => 'Verfügbare Optionen: Tage und Monate',
     'your_username_will_be' => 'Ihr Benutzername wird sein',

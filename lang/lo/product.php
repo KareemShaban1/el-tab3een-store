@@ -61,5 +61,9 @@ return [
     'variation_sku_format' => 'ຮູບແບບ SKU ການປັບປ່ຽນ',
     'variation_sku_format_help_text' => 'ຮູບແບບ SKU ການປັບປ່ຽນ - ຖ້າ SKU ຂອງການປັບປ່ຽນໝົດເປັນວ່າເບຣກນີ້ຈະຖືກນໍາໃຊ້ເພື່ອສ້າງ SKU ສໍາລັບການປັບປ່ຽນ.',
     'sku_number' => 'ໝາຍເລກ SKU (ຕົວຢ່າງ -> ABC-1, ABC-2)',
-    'sku_variation_number' => 'ປະເພດ SKU (ຕົວຢ່າງ -> ABCS, ABCM)'
+    'sku_variation_number' => 'ປະເພດ SKU (ຕົວຢ່າງ -> ABCS, ABCM)',
+    'is_inactive_column' => 'ບໍ່ໃຊ້ງານໃນ POS / ERP',
+    'active_in_app_column' => 'ໃຊ້ງານໃນແອັບ / ຮ້ານອອນລາຍ',
+    'export_column_pos_erp_active' => 'ໃຊ້ງານໃນ POS / ERP',
+    'export_column_active_in_app' => 'ໃຊ້ງານໃນແອັບ / ຮ້ານອອນລາຍ',
 ];

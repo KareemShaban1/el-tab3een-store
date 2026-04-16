@@ -50,5 +50,9 @@
      'variation_sku_format' => 'वेरिएशन एसकेयू स्वरूप',
      'variation_sku_format_help_text' => 'वेरिएशन एसकेयू स्वरूप - जब वेरिएशन एसकेयू खाली होता है तो यह स्वरूप वेरिएशन के लिए एसकेयू उत्पन्न करने के लिए प्रयोग किया जाएगा।',
      'sku_number' => 'एसकेयू-संख्या (उदाहरण -> ABC-1, ABC-2)',
-     'sku_variation_number' => 'एसकेयूवेरिएशन (उदाहरण -> ABCS, ABCM)'
+     'sku_variation_number' => 'एसकेयूवेरिएशन (उदाहरण -> ABCS, ABCM)',
+     'is_inactive_column' => 'POS / ERP में निष्क्रिय',
+     'active_in_app_column' => 'ऐप / स्टोरफ्रंट में सक्रिय',
+     'export_column_pos_erp_active' => 'POS / ERP में सक्रिय',
+     'export_column_active_in_app' => 'ऐप / स्टोरफ्रंट में सक्रिय',
  ];

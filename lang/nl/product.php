@@ -50,5 +50,9 @@
      'variation_sku_format' => 'Variant SKU-indeling',
      'variation_sku_format_help_text' => 'Variant SKU-indeling - Wanneer de variant SKU leeg is, wordt dit formaat gebruikt om SKU"s voor varianten te genereren.',
      'sku_number' => 'SKU-Nummer (Voorbeeld -> ABC-1, ABC-2)',
-     'sku_variation_number' => 'SKUVariant (Voorbeeld -> ABCS, ABCM)'
+     'sku_variation_number' => 'SKUVariant (Voorbeeld -> ABCS, ABCM)',
+     'is_inactive_column' => 'Inactief in kassa / ERP',
+     'active_in_app_column' => 'Actief in app / webshop',
+     'export_column_pos_erp_active' => 'Actief in kassa / ERP',
+     'export_column_active_in_app' => 'Actief in app / webshop',
  ];

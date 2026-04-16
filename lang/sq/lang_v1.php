@@ -386,6 +386,7 @@ return [
     'import_contacts' => 'Kontaktet e importit',
     'contact_type_ins' => '<strong> Opsionet e disponueshme: klient, furnizues dhe të dyja </strong>',
     'contact_id_ins' => 'Lëreni bosh për të gjeneruar auto ID të kontaktit',
+    'import_contact_id_upsert_hint' => 'Nëse ky ID ekziston tashmë në biznesin tuaj, kontakti përditësohet nga rreshti; nëse është i ri, krijohet një kontakt.',
     'required_if_supplier' => 'Kërkohet nëse tipi i kontaktit është furnizues ose të dyja',
     'pay_term_period_ins' => 'Mundësitë e disponueshme: ditë dhe muaj',
     'your_username_will_be' => 'Emri yt i përdoruesit do të jetë',

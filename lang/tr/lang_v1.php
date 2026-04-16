@@ -391,6 +391,7 @@ return [
     'import_contacts' => 'Kişi/Firma İçe Aktar',
     'contact_type_ins' => '<strong>Uygun Seçenekler: müşteri, tedarikçi & herikisi</strong>',
     'contact_id_ins' => 'Otomatik Kişi/Firma ID oluşturmak için boş bırakın',
+    'import_contact_id_upsert_hint' => 'Bu kimlik işletmenizde zaten varsa satırdan güncellenir; yeni ise bir kişi oluşturulur.',
     'required_if_supplier' => 'Kişi/Firma türü tedarikçi veya her ikisi ise gerekli',
     'pay_term_period_ins' => 'Uygun Seçenekler: gün ve ay',
     'your_username_will_be' => 'Kullanıcı adınız şu olacak',

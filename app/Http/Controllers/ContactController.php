@@ -1003,11 +1003,17 @@ class ContactController extends Controller
      */
     public function getImportContacts()
     {
-        if (! auth()->user()->can('supplier.create') && ! auth()->user()->can('customer.create')) {
+        if (! auth()->user()->can('supplier.create') && ! auth()->user()->can('customer.create')
+            && ! auth()->user()->can('supplier.update') && ! auth()->user()->can('customer.update')) {
             abort(403, 'Unauthorized action.');
         }
 
         $zip_loaded = extension_loaded('zip') ? true : false;
+
+        $return_type = request()->get('type');
+        if (! in_array($return_type, ['customer', 'supplier'], true)) {
+            $return_type = null;
+        }
 
         //Check if zip extension it loaded or not.
         if ($zip_loaded === false) {
@@ -1015,11 +1021,11 @@ class ContactController extends Controller
                 'msg' => 'Please install/enable PHP Zip archive for import',
             ];
 
-            return view('contact.import')
+            return view('contact.import', compact('return_type'))
                 ->with('notification', $output);
-        } else {
-            return view('contact.import');
         }
+
+        return view('contact.import', compact('return_type'));
     }
 
     /**
@@ -1030,7 +1036,8 @@ class ContactController extends Controller
      */
     public function postImportContacts(Request $request)
     {
-        if (! auth()->user()->can('supplier.create') && ! auth()->user()->can('customer.create')) {
+        if (! auth()->user()->can('supplier.create') && ! auth()->user()->can('customer.create')
+            && ! auth()->user()->can('supplier.update') && ! auth()->user()->can('customer.update')) {
             abort(403, 'Unauthorized action.');
         }
 
@@ -1132,17 +1139,42 @@ class ContactController extends Controller
                         }
                     }
 
-                    //Check contact ID
-                    if (! empty(trim($value[6]))) {
-                        $count = Contact::where('business_id', $business_id)
-                                    ->where('contact_id', $value[6])
-                                    ->count();
+                    // Contact ID: optional; if it matches an existing contact, the row updates that record.
+                    $trimmed_contact_ref = trim($value[6]);
+                    $existing_contact = null;
+                    if ($trimmed_contact_ref !== '') {
+                        $existing_contact = Contact::where('business_id', $business_id)
+                            ->where('contact_id', $trimmed_contact_ref)
+                            ->first();
+                        $contact_array['contact_id'] = $trimmed_contact_ref;
+                    }
 
-                        if ($count == 0) {
-                            $contact_array['contact_id'] = $value[6];
+                    if ($existing_contact) {
+                        $can_update = false;
+                        if ($existing_contact->type == 'customer') {
+                            $can_update = auth()->user()->can('customer.update');
+                        } elseif ($existing_contact->type == 'supplier') {
+                            $can_update = auth()->user()->can('supplier.update');
                         } else {
+                            $can_update = auth()->user()->can('customer.update') || auth()->user()->can('supplier.update');
+                        }
+                        if (! $can_update) {
                             $is_valid = false;
-                            $error_msg = "Contact ID already exists in row no. $row_no";
+                            $error_msg = "Unauthorized to update contact in row no. $row_no";
+                            break;
+                        }
+                    } else {
+                        $can_create = false;
+                        if ($contact_type == 'customer') {
+                            $can_create = auth()->user()->can('customer.create');
+                        } elseif ($contact_type == 'supplier') {
+                            $can_create = auth()->user()->can('supplier.create');
+                        } else {
+                            $can_create = auth()->user()->can('customer.create') && auth()->user()->can('supplier.create');
+                        }
+                        if (! $can_create) {
+                            $is_valid = false;
+                            $error_msg = "Unauthorized to create contact in row no. $row_no";
                             break;
                         }
                     }
@@ -1210,6 +1242,8 @@ class ContactController extends Controller
                     $contact_array['custom_field3'] = $value[25];
                     $contact_array['custom_field4'] = $value[26];
 
+                    $contact_array['_existing_id'] = $existing_contact ? $existing_contact->id : null;
+
                     $formated_data[] = $contact_array;
                 }
                 if (! $is_valid) {
@@ -1218,28 +1252,39 @@ class ContactController extends Controller
 
                 if (! empty($formated_data)) {
                     foreach ($formated_data as $contact_data) {
-                        $ref_count = $this->transactionUtil->setAndGetReferenceCount('contacts');
-                        //Set contact id if empty
-                        if (empty($contact_data['contact_id'])) {
-                            $contact_data['contact_id'] = $this->commonUtil->generateReferenceNumber('contacts', $ref_count);
-                        }
+                        $existing_id = $contact_data['_existing_id'] ?? null;
+                        unset($contact_data['_existing_id']);
 
                         $opening_balance = 0;
                         if (isset($contact_data['opening_balance'])) {
-                            $opening_balance = $contact_data['opening_balance'];
+                            $opening_balance = $this->commonUtil->num_uf($contact_data['opening_balance']);
                             unset($contact_data['opening_balance']);
                         }
 
-                        $contact_data['business_id'] = $business_id;
-                        $contact_data['created_by'] = $user_id;
+                        if (! empty($existing_id)) {
+                            $contact_data['opening_balance'] = $opening_balance;
+                            $output = $this->contactUtil->updateContact($contact_data, $existing_id, $business_id);
 
-                        $contact = Contact::create($contact_data);
+                            event(new ContactCreatedOrModified($output['data'], 'updated'));
 
-                        if (! empty($opening_balance)) {
-                            $this->transactionUtil->createOpeningBalanceTransaction($business_id, $contact->id, $opening_balance, $user_id, false);
+                            $this->contactUtil->activityLog($output['data'], 'edited');
+                        } else {
+                            $ref_count = $this->transactionUtil->setAndGetReferenceCount('contacts');
+                            if (empty($contact_data['contact_id'])) {
+                                $contact_data['contact_id'] = $this->commonUtil->generateReferenceNumber('contacts', $ref_count);
+                            }
+
+                            $contact_data['business_id'] = $business_id;
+                            $contact_data['created_by'] = $user_id;
+
+                            $contact = Contact::create($contact_data);
+
+                            if (! empty($opening_balance)) {
+                                $this->transactionUtil->createOpeningBalanceTransaction($business_id, $contact->id, $opening_balance, $user_id, false);
+                            }
+
+                            $this->transactionUtil->activityLog($contact, 'imported');
                         }
-
-                        $this->transactionUtil->activityLog($contact, 'imported');
                     }
                 }
 
@@ -1257,11 +1302,31 @@ class ContactController extends Controller
                 'msg' => $e->getMessage(),
             ];
 
-            return redirect()->route('contacts.import')->with('notification', $output);
-        }
-        $type = ! empty($contact->type) && $contact->type != 'both' ? $contact->type : 'supplier';
+            $return_query = [];
+            if (in_array($request->input('return_type'), ['customer', 'supplier'], true)) {
+                $return_query['type'] = $request->input('return_type');
+            }
 
-        return redirect()->action([\App\Http\Controllers\ContactController::class, 'index'], ['type' => $type])->with('status', $output);
+            return redirect()->route('contacts.import', $return_query)->with('notification', $output);
+        }
+
+        if (! isset($output)) {
+            $return_query = [];
+            if (in_array($request->input('return_type'), ['customer', 'supplier'], true)) {
+                $return_query['type'] = $request->input('return_type');
+            }
+
+            return redirect()->route('contacts.import', $return_query)->with('notification', [
+                'success' => 0,
+                'msg' => __('messages.something_went_wrong'),
+            ]);
+        }
+
+        $redirect_type = in_array($request->input('return_type'), ['customer', 'supplier'], true)
+            ? $request->input('return_type')
+            : 'supplier';
+
+        return redirect()->action([\App\Http\Controllers\ContactController::class, 'index'], ['type' => $redirect_type])->with('status', $output);
     }
 
     /**

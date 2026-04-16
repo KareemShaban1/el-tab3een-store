@@ -47,4 +47,8 @@
      'import_products' => 'استيراد المنتجات',
      'file_to_import' => 'ملف للاستيراد',
      'file_imported_successfully' => 'تم استيراد الملف بنجاح',
+     'is_inactive_column' => 'غير نشط في نقطة البيع / النظام',
+     'active_in_app_column' => 'نشط في التطبيق / المتجر الإلكتروني',
+     'export_column_pos_erp_active' => 'نشط في نقطة البيع / النظام',
+     'export_column_active_in_app' => 'نشط في التطبيق / المتجر',
  ];

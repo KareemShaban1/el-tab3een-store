@@ -60,5 +60,9 @@ return [
     'variation_sku_format' => 'Định dạng SKU Biến thể',
     'variation_sku_format_help_text' => 'Định dạng SKU Biến thể - Khi SKU biến thể trống, định dạng này sẽ được sử dụng để tạo SKU cho các biến thể.',
     'sku_number' => 'Số SKU (Ví dụ -> ABC-1, ABC-2)',
-    'sku_variation_number' => 'Biến thể SKU (Ví dụ -> ABCS, ABCM)'
+    'sku_variation_number' => 'Biến thể SKU (Ví dụ -> ABCS, ABCM)',
+    'is_inactive_column' => 'Ngưng dùng trên POS / ERP',
+    'active_in_app_column' => 'Hiển thị trên app / cửa hàng online',
+    'export_column_pos_erp_active' => 'Đang dùng trên POS / ERP',
+    'export_column_active_in_app' => 'Hiển thị trên app / cửa hàng online',
 ];

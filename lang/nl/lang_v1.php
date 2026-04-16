@@ -386,6 +386,7 @@ return [
     'import_contacts' => 'Contactpersonen importeren',
     'contact_type_ins' => '<strong> Beschikbare opties: klant, leverancier en beide </strong>',
     'contact_id_ins' => 'Laat leeg om automatisch Contact ID te genereren',
+    'import_contact_id_upsert_hint' => 'Als dit ID al bestaat in uw bedrijf, wordt het contact bijgewerkt vanuit de rij; als het nieuw is, wordt een contact aangemaakt.',
     'required_if_supplier' => 'Vereist als contacttype leverancier of beide is',
     'pay_term_period_ins' => 'Beschikbare opties: dagen en maanden',
     'your_username_will_be' => 'Uw gebruikersnaam zal zijn',

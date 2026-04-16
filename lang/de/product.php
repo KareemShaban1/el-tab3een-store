@@ -50,5 +50,9 @@
      'variation_sku_format' => 'Variations-SKU-Format',
      'variation_sku_format_help_text' => 'Variations-SKU-Format - Wenn die Variation-SKU leer ist, wird dieses Format verwendet, um SKU für Variationen zu generieren.',
      'sku_number' => 'SKU-Nummer (Beispiel -> ABC-1, ABC-2)',
-     'sku_variation_number' => 'SKUVariations (Beispiel -> ABCS, ABCM)'
+     'sku_variation_number' => 'SKUVariations (Beispiel -> ABCS, ABCM)',
+     'is_inactive_column' => 'Inaktiv in POS / ERP',
+     'active_in_app_column' => 'In App / Shop aktiv',
+     'export_column_pos_erp_active' => 'Aktiv in POS / ERP',
+     'export_column_active_in_app' => 'In App / Shop aktiv',
  ];

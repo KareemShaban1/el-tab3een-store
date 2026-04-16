@@ -50,6 +50,9 @@
      'variation_sku_format' => '变体SKU格式',
      'variation_sku_format_help_text' => '变体SKU格式 - 当变体SKU为空时，将使用此格式生成变体的SKU。',
      'sku_number' => 'SKU编号（示例-> ABC-1，ABC-2）',
-     'sku_variation_number' => 'SKU变体（示例-> ABCS，ABCM）'
-     
+     'sku_variation_number' => 'SKU变体（示例-> ABCS，ABCM）',
+     'is_inactive_column' => '在 POS / ERP 中停用',
+     'active_in_app_column' => '在应用 / 店面中上架',
+     'export_column_pos_erp_active' => '在 POS / ERP 中启用',
+     'export_column_active_in_app' => '在应用 / 店面中启用',
  ];

@@ -323,6 +323,16 @@
                         name: 'products.sku'
                     },
                     {
+                        data: 'is_inactive',
+                        name: 'products.is_inactive',
+                        searchable: false
+                    },
+                    {
+                        data: 'active_in_app',
+                        name: 'products.active_in_app',
+                        searchable: false
+                    },
+                    {
                         data: 'product_custom_field1',
                         name: 'products.product_custom_field1',
                         visible: $('#cf_1').text().length > 0

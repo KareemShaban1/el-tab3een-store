@@ -61,5 +61,9 @@ return [
     'variation_sku_format' => 'Format SKU Variabil',
     'variation_sku_format_help_text' => 'Format SKU Variabil - Când SKU-ul variabil este gol, acest format va fi utilizat pentru a genera SKU-uri pentru variații.',
     'sku_number' => 'Număr SKU (Exemplu -> ABC-1, ABC-2)',
-    'sku_variation_number' => 'Variație SKU (Exemplu -> ABCS, ABCM)'
+    'sku_variation_number' => 'Variație SKU (Exemplu -> ABCS, ABCM)',
+    'is_inactive_column' => 'Inactive in POS / ERP',
+    'active_in_app_column' => 'Active in app / storefront',
+    'export_column_pos_erp_active' => 'Active in POS / ERP',
+    'export_column_active_in_app' => 'Active in app / storefront',
 ];
