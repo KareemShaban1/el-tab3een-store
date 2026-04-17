@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
+use App\View\Composers\StorefrontThemeLayoutComposer;
 use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Support\Facades\Storage;
 use League\Flysystem\Filesystem;
@@ -80,6 +81,8 @@ class AppServiceProvider extends ServiceProvider
 
         $asset_v = config('constants.asset_version', 1);
         View::share('asset_v', $asset_v);
+
+        View::composer('frontend.store.theme_layout', StorefrontThemeLayoutComposer::class);
 
         // Share the list of modules enabled in sidebar
         View::composer(

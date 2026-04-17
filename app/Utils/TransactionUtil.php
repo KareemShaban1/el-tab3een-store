@@ -2409,10 +2409,13 @@ class TransactionUtil extends Util
 
     private function getInvoiceScheme($business_id, $location_id)
     {
-        $scheme_id = BusinessLocation::where('business_id', $business_id)
-                    ->where('id', $location_id)
-                    ->first()
-                    ->invoice_scheme_id;
+        $location = BusinessLocation::where('business_id', $business_id)
+            ->where('id', $location_id)
+            ->first();
+
+        $scheme_id = $location?->invoice_scheme_id;
+
+        $scheme = null;
         if (! empty($scheme_id) && $scheme_id != 0) {
             $scheme = InvoiceScheme::find($scheme_id);
         }

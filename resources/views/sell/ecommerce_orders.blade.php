@@ -57,7 +57,7 @@
                             <th>@lang('sale.total_amount')</th>
                             <th>@lang('sale.payment_status')</th>
                             <th>@lang('lang_v1.shipping_status')</th>
-                            <th>E-commerce Order Status</th>
+                            <th>@lang('lang_v1.ecommerce_order_status')</th>
                             <th>@lang('lang_v1.total_items')</th>
                             <th>Show</th>
                         </tr>
@@ -117,11 +117,10 @@
                 ajax: {
                     url: "{{ route('sells.ecommerce.orders.data') }}",
                     data: function(d) {
-                        if ($('#sell_list_filter_date_range').val()) {
-                            var start = $('#sell_list_filter_date_range').data('daterangepicker').startDate.format('YYYY-MM-DD');
-                            var end = $('#sell_list_filter_date_range').data('daterangepicker').endDate.format('YYYY-MM-DD');
-                            d.start_date = start;
-                            d.end_date = end;
+                        var drp = $('#sell_list_filter_date_range').data('daterangepicker');
+                        if (drp && drp.startDate && drp.endDate) {
+                            d.start_date = drp.startDate.format('YYYY-MM-DD');
+                            d.end_date = drp.endDate.format('YYYY-MM-DD');
                         }
                         d.is_direct_sale = 1;
                         d.source = 'ecommerce';

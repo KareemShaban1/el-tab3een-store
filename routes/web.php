@@ -106,12 +106,15 @@ Route::middleware(['setData'])->group(function () {
     | Storefront routes (E-commerce)
     |--------------------------------------------------------------------------
     */
-    Route::prefix('store')->name('store.')->group(function () {
+    Route::prefix('store')->middleware('storefront.locale')->name('store.')->group(function () {
         Route::get('/', [StorefrontController::class, 'home'])->name('home');
         Route::get('/products', [StorefrontController::class, 'products'])->name('products.index');
         Route::get('/products/{id}', [StorefrontController::class, 'product'])->name('products.show');
         Route::get('/categories', [StorefrontController::class, 'categories'])->name('categories.index');
         Route::get('/flash-deals', [StorefrontController::class, 'flashDeals'])->name('flash_deals.index');
+        Route::get('/search/suggest', [StorefrontController::class, 'searchSuggest'])
+            ->middleware('throttle:90,1')
+            ->name('search.suggest');
 
         Route::get('/register', [StoreCustomerAuthController::class, 'showRegister'])->name('auth.register.form');
         Route::get('/login', [StoreCustomerAuthController::class, 'showLogin'])->name('auth.login.form');

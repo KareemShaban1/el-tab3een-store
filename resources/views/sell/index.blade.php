@@ -97,7 +97,7 @@
                             <th>@lang('lang_v1.sell_return_due')</th>
                             <th>@lang('lang_v1.shipping_status')</th>
                             @if ($is_ecommerce_orders ?? false)
-                                <th>E-commerce Order Status</th>
+                                <th>@lang('lang_v1.ecommerce_order_status')</th>
                             @endif
                             <th>@lang('lang_v1.total_items')</th>
                             <th>@lang('lang_v1.types_of_service')</th>
@@ -191,13 +191,11 @@
                 "ajax": {
                     "url": "{{ url()->current() }}",
                     "data": function(d) {
-                        if ($('#sell_list_filter_date_range').val()) {
-                            var start = $('#sell_list_filter_date_range').data('daterangepicker')
-                                .startDate.format('YYYY-MM-DD');
-                            var end = $('#sell_list_filter_date_range').data('daterangepicker').endDate
-                                .format('YYYY-MM-DD');
-                            d.start_date = start;
-                            d.end_date = end;
+                        // Always send the picker's range when initialized (input can be empty on first draw).
+                        var drp = $('#sell_list_filter_date_range').data('daterangepicker');
+                        if (drp && drp.startDate && drp.endDate) {
+                            d.start_date = drp.startDate.format('YYYY-MM-DD');
+                            d.end_date = drp.endDate.format('YYYY-MM-DD');
                         }
                         d.is_direct_sale = 1;
 

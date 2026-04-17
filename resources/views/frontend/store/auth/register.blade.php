@@ -1,33 +1,44 @@
 @extends('frontend.store.theme_layout')
 
+@push('styles')
+<style>
+    .auth-card {
+        padding: 24px;
+margin: 20px auto;
+    }
+</style>
+@endpush
 @section('content')
 <div class="auth-card">
     <h2 class="auth-title">إنشاء حساب عميل</h2>
     <p class="auth-sub">أنشئ حسابك للشراء وتتبع الطلبات واستلام العروض.</p>
-    <form method="POST" action="{{ route('store.auth.register') }}">
+
+    @include('frontend.store.auth.partials.validation_errors')
+
+    <form method="POST" action="{{ route('store.auth.register') }}" novalidate>
         @csrf
         <div class="row">
             <div>
-                <label>الاسم</label>
-                <input type="text" name="name" value="{{ old('name') }}" required>
+                <label for="register-name">الاسم</label>
+                <input id="register-name" type="text" name="name" value="{{ old('name') }}" class="@error('name') auth-input-error @enderror" aria-invalid="{{ $errors->has('name') ? 'true' : 'false' }}" required>
             </div>
             <div>
-                <label>رقم الجوال</label>
-                <input type="text" name="mobile" value="{{ old('mobile') }}">
+                <label for="register-mobile">رقم الجوال</label>
+                <input id="register-mobile" type="text" name="mobile" value="{{ old('mobile') }}" class="@error('mobile') auth-input-error @enderror" aria-invalid="{{ $errors->has('mobile') ? 'true' : 'false' }}" required>
             </div>
         </div>
 
-        <label>البريد الإلكتروني</label>
-        <input type="email" name="email" value="{{ old('email') }}" required>
+        <label for="register-email">البريد الإلكتروني</label>
+        <input id="register-email" type="email" name="email" value="{{ old('email') }}" class="@error('email') auth-input-error @enderror" aria-invalid="{{ $errors->has('email') ? 'true' : 'false' }}" autocomplete="email" required>
 
         <div class="row">
             <div>
-                <label>كلمة المرور</label>
-                <input type="password" name="password" required>
+                <label for="register-password">كلمة المرور</label>
+                <input id="register-password" type="password" name="password" class="@error('password') auth-input-error @enderror" aria-invalid="{{ $errors->has('password') ? 'true' : 'false' }}" autocomplete="new-password" required>
             </div>
             <div>
-                <label>تأكيد كلمة المرور</label>
-                <input type="password" name="password_confirmation" required>
+                <label for="register-password-confirmation">تأكيد كلمة المرور</label>
+                <input id="register-password-confirmation" type="password" name="password_confirmation" class="@error('password_confirmation') auth-input-error @enderror" aria-invalid="{{ $errors->has('password_confirmation') ? 'true' : 'false' }}" autocomplete="new-password" required>
             </div>
         </div>
 
@@ -38,4 +49,3 @@
     </form>
 </div>
 @endsection
-

@@ -15,7 +15,7 @@ class StorefrontController extends Controller
 {
     public function home(Request $request)
     {
-        $business_id = $this->resolveBusinessId($request);
+        $business_id = self::resolveBusinessId($request);
         $location_id = $this->resolveLocationId($business_id, $request);
         $products = Product::where('business_id', $business_id)
             ->active()
@@ -72,7 +72,7 @@ class StorefrontController extends Controller
 
     public function products(Request $request)
     {
-        $business_id = $this->resolveBusinessId($request);
+        $business_id = self::resolveBusinessId($request);
         $location_id = $this->resolveLocationId($business_id, $request);
         $business_location_ids = BusinessLocation::where('business_id', $business_id)->pluck('id');
         $query = Product::where('products.business_id', $business_id)
@@ -211,7 +211,7 @@ class StorefrontController extends Controller
 
     public function product(Request $request, int $id)
     {
-        $business_id = $this->resolveBusinessId($request);
+        $business_id = self::resolveBusinessId($request);
         $location_id = $this->resolveLocationId($business_id, $request);
 
         // Match catalog visibility: stock in any business location (see `products()` + `inStockByBusiness`).
@@ -331,7 +331,7 @@ class StorefrontController extends Controller
 
     public function categories(Request $request)
     {
-        $business_id = $this->resolveBusinessId($request);
+        $business_id = self::resolveBusinessId($request);
 
         $categories = Category::where('business_id', $business_id)
             ->where('category_type', 'product')
@@ -366,7 +366,7 @@ class StorefrontController extends Controller
 
     public function flashDeals(Request $request)
     {
-        $business_id = $this->resolveBusinessId($request);
+        $business_id = self::resolveBusinessId($request);
         $location_id = $this->resolveLocationId($business_id, $request);
 
         $products = Product::where('business_id', $business_id)
@@ -488,16 +488,81 @@ class StorefrontController extends Controller
         });
     }
 
-    private function resolveBusinessId(Request $request): int
+    /**
+     * Resolved business context for the storefront (shared with header search / suggestions).
+     */
+    public static function resolveBusinessId(Request $request): int
     {
+        return 273;
 
-return 273;
+        //         if ($request->filled('business_id')) {
+        //             return (int) $request->input('business_id');
+        //         }
 
-//         if ($request->filled('business_id')) {
-//             return (int) $request->input('business_id');
-//         }
+        //         return (int) Business::query()->value('id');
+    }
 
-//         return (int) Business::query()->value('id');
+    /**
+     * JSON autocomplete: active-in-app categories + catalog products (active, in-app, in stock).
+     */
+    public function searchSuggest(Request $request)
+    {
+        $business_id = self::resolveBusinessId($request);
+
+        $term = trim((string) $request->input('q', ''));
+        if (mb_strlen($term) < 3) {
+            return response()->json(['success' => true, 'results' => []]);
+        }
+        $term = mb_substr($term, 0, 100);
+        $escaped = addcslashes($term, '%_\\');
+        $like = '%'.$escaped.'%';
+
+        $categoryQuery = Category::query()
+            ->where('business_id', $business_id)
+            ->where('category_type', 'product')
+            ->activeInApp()
+            ->where('name', 'like', $like)
+            ->orderBy('name')
+            ->limit(10)
+            ->select('id', 'name');
+
+        $productQuery = Product::query()
+            ->where('business_id', $business_id)
+            ->active()
+            ->productForSales()
+            ->activeInApp()
+            ->inStockByBusiness($business_id)
+            ->where('name', 'like', $like)
+            ->orderBy('name')
+            ->limit(10)
+            ->select('id', 'name');
+
+        $categories = $categoryQuery->get();
+        $products = $productQuery->get();
+        $results = [];
+
+        foreach ($categories as $c) {
+            $results[] = [
+                'type' => 'category',
+                'id' => $c->id,
+                'name' => $c->name,
+                'url' => route('store.products.index', ['category_id' => $c->id]),
+            ];
+        }
+
+        foreach ($products as $p) {
+            $results[] = [
+                'type' => 'product',
+                'id' => $p->id,
+                'name' => $p->name,
+                'url' => route('store.products.show', ['id' => $p->id]),
+            ];
+        }
+
+        return response()->json([
+            'success' => true,
+            'results' => $results,
+        ]);
     }
 
     private function resolveLocationId(int $business_id, Request $request): int

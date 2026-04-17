@@ -1441,4 +1441,6 @@ return [
 'processing'=>'جاري المعالجة...',
 'active'=>'نشط',
 'inactive'=>'غير نشط',
+'ecommerce_order_status'=>'حالة الطلب',
+'edit_ecommerce_status'=>'تحرير حالة الطلب',
 ];

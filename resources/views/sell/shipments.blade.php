@@ -162,11 +162,10 @@ $(document).ready( function(){
         "ajax": {
             "url": "/sells",
             "data": function ( d ) {
-                if($('#sell_list_filter_date_range').val()) {
-                    var start = $('#sell_list_filter_date_range').data('daterangepicker').startDate.format('YYYY-MM-DD');
-                    var end = $('#sell_list_filter_date_range').data('daterangepicker').endDate.format('YYYY-MM-DD');
-                    d.start_date = start;
-                    d.end_date = end;
+                var drp = $('#sell_list_filter_date_range').data('daterangepicker');
+                if (drp && drp.startDate && drp.endDate) {
+                    d.start_date = drp.startDate.format('YYYY-MM-DD');
+                    d.end_date = drp.endDate.format('YYYY-MM-DD');
                 }
                 if($('#sell_list_filter_location_id').length) {
                     d.location_id = $('#sell_list_filter_location_id').val();

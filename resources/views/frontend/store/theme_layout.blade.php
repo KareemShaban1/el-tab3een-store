@@ -2,6 +2,11 @@
 <html lang="ar" dir="rtl">
 @include('frontend.store.layout.head')
 <body>
+	@if (session()->pull('clear_store_cart'))
+		<script>
+			try { localStorage.removeItem('store_cart_v1'); } catch (e) {}
+		</script>
+	@endif
     <!-- ===================== ANNOUNCEMENT BAR ===================== -->
 	<div class="announce">
 		<div class="container">
@@ -40,24 +45,36 @@
 				</a>
 
 				<!-- Search -->
-				<div class="header-search">
-					<select class="search-cat">
-						<option>كل الأقسام</option>
-						<option>هواتف</option>
-						<option>لابتوب</option>
-						<option>إكسسوارات</option>
-						<option>جيمنج</option>
-						<option>تليفزيون</option>
-					</select>
-					<input type="text" class="search-input"
-						placeholder="ابحث عن منتج، ماركة أو فئة...">
-					<button class="search-btn">
+				<form class="header-search" id="store-header-search-form" method="GET"
+					action="{{ route('store.products.index') }}">
+					<!-- <select name="category_id" class="search-cat" aria-label="تصفية حسب القسم">
+						<option value="">كل الأقسام</option>
+						@foreach ($storeHeaderFeaturedCategories ?? [] as $cat)
+							<option value="{{ $cat->id }}" @selected((string) request('category_id') === (string) $cat->id)>
+								{{ $cat->name }}
+							</option>
+						@endforeach
+					</select> -->
+					<div class="header-search-field">
+						<input type="search" name="q" id="store-search-q" class="search-input"
+							value="{{ request('q') }}"
+							placeholder="ابحث عن منتج، ماركة أو فئة..."
+							autocomplete="off" autocapitalize="off" spellcheck="false"
+							aria-autocomplete="list" aria-controls="store-search-suggestions"
+							aria-expanded="false">
+						<div id="store-search-suggestions" class="store-search-suggestions" role="listbox"
+							hidden></div>
+					</div>
+					<button type="submit" class="search-btn" aria-label="بحث">
 						<svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
 							<circle cx="11" cy="11" r="8" />
 							<path d="m21 21-4.35-4.35" />
 						</svg>
 					</button>
-				</div>
+				</form>
+				<script>
+					window.__storeSearchSuggestUrl = @json($storeSearchSuggestUrl ?? '');
+				</script>
 
 				<!-- Actions -->
 				<div class="header-actions">
@@ -181,18 +198,18 @@
 
 	<main class="page-wrap">
 	<!-- <div class="container"> -->
-		@if(session('status'))
+		<!-- @if(session('status') && ! request()->routeIs('store.auth.*'))
 		<div class="alert {{ session('status.success') ? 'success' : 'error' }}">
 			{{ session('status.msg') }}
 		</div>
 		@endif
-		@if($errors->any())
+		@if($errors->any() && ! request()->routeIs('store.auth.*'))
 		<div class="alert error">
 			@foreach($errors->all() as $error)
 			<div>{{ $error }}</div>
 			@endforeach
 		</div>
-		@endif
+		@endif -->
 
 		@yield('content')
 	<!-- </div> -->
@@ -1170,6 +1187,87 @@
 		closeMenu();
 	}
 
+	/* ── Header search: autocomplete (categories + products) ── */
+	function initStoreHeaderSearch() {
+		const input = document.getElementById('store-search-q');
+		const box = document.getElementById('store-search-suggestions');
+		const form = document.getElementById('store-header-search-form');
+		const url = window.__storeSearchSuggestUrl;
+		if (!input || !box || !form || !url) return;
+
+		let timer = null;
+
+		function esc(s) {
+			const d = document.createElement('div');
+			d.textContent = s;
+			return d.innerHTML;
+		}
+
+		function setOpen(open) {
+			input.setAttribute('aria-expanded', open ? 'true' : 'false');
+		}
+
+		function hide() {
+			box.hidden = true;
+			box.innerHTML = '';
+			setOpen(false);
+		}
+
+		function render(items) {
+			if (!items.length) {
+				hide();
+				return;
+			}
+			box.innerHTML = items.map((r) => {
+				const meta = r.type === 'category' ? 'قسم' : 'منتج';
+				const href = String(r.url || '').replace(/"/g, '&quot;');
+				return (
+					'<a class="store-search-item" role="option" href="' + href + '">' +
+					'<span class="store-search-item-name">' + esc(r.name) + '</span>' +
+					'<span class="store-search-item-meta">' + meta + '</span>' +
+					'</a>'
+				);
+			}).join('');
+			box.hidden = false;
+			setOpen(true);
+		}
+
+		function fetchSuggest() {
+			clearTimeout(timer);
+			const q = input.value.trim();
+			if (q.length < 3) {
+				hide();
+				return;
+			}
+			timer = setTimeout(async () => {
+				try {
+					const res = await fetch(
+						url + (url.includes('?') ? '&' : '?') + 'q=' + encodeURIComponent(q),
+						{
+							headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+							credentials: 'same-origin',
+						}
+					);
+					const data = await res.json();
+					render(Array.isArray(data.results) ? data.results : []);
+				} catch (e) {
+					hide();
+				}
+			 }, 280);
+		}
+
+		input.addEventListener('input', fetchSuggest);
+		input.addEventListener('focus', fetchSuggest);
+
+		document.addEventListener('click', (e) => {
+			if (!form.contains(e.target)) hide();
+		});
+
+		form.addEventListener('submit', () => {
+			hide();
+		});
+	}
+
 	/* ── Newsletter ── */
 	function initNewsletter() {
 		$('news-form')?.addEventListener('submit', e => {
@@ -1225,6 +1323,7 @@
 		initHeroDots();
 		initBrands();
 		initMobMenu();
+		initStoreHeaderSearch();
 		initNewsletter();
 		startCountdown();
 		updateBadges();

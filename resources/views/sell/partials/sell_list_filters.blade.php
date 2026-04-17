@@ -35,7 +35,7 @@
 <div class="col-md-3">
     <div class="form-group">
         {!! Form::label('created_by',  __('report.user') . ':') !!}
-        {!! Form::select('created_by', $sales_representative, null, ['class' => 'form-control select2', 'style' => 'width:100%']); !!}
+        {!! Form::select('created_by', $sales_representative, null, ['class' => 'form-control select2', 'style' => 'width:100%', 'placeholder' => __('lang_v1.all')]); !!}
     </div>
 </div>
 @endif
@@ -44,7 +44,7 @@
     <div class="col-md-3">
         <div class="form-group">
             {!! Form::label('sales_cmsn_agnt',  __('lang_v1.sales_commission_agent') . ':') !!}
-            {!! Form::select('sales_cmsn_agnt', $commission_agents, null, ['class' => 'form-control select2', 'style' => 'width:100%']); !!}
+            {!! Form::select('sales_cmsn_agnt', $commission_agents, null, ['class' => 'form-control select2', 'style' => 'width:100%', 'placeholder' => __('lang_v1.all')]); !!}
         </div>
     </div>
 @endif

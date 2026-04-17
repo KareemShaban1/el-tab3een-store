@@ -20,7 +20,7 @@ class StoreCustomerAuthController extends Controller
     public function showRegister()
     {
         if (Auth::guard('customer')->check()) {
-            return redirect()->route('store.home');
+            return redirect()->route('welcome');
         }
 
         return view('frontend.store.auth.register');
@@ -29,7 +29,7 @@ class StoreCustomerAuthController extends Controller
     public function showLogin()
     {
         if (Auth::guard('customer')->check()) {
-            return redirect()->route('store.home');
+            return redirect()->route('welcome');
         }
 
         return view('frontend.store.auth.login');
@@ -38,7 +38,7 @@ class StoreCustomerAuthController extends Controller
     public function showForgotPassword()
     {
         if (Auth::guard('customer')->check()) {
-            return redirect()->route('store.home');
+            return redirect()->route('welcome');
         }
 
         return view('frontend.store.auth.forgot_password');
@@ -56,7 +56,7 @@ class StoreCustomerAuthController extends Controller
             ->first();
 
         if (empty($contact)) {
-            return back()->withErrors(['email' => 'No customer account found for this email.'])->withInput();
+            return back()->withErrors(['email' => __('storefront.auth.no_account_for_email')])->withInput();
         }
 
         $status = Password::broker('contacts')->sendResetLink(
@@ -76,7 +76,7 @@ class StoreCustomerAuthController extends Controller
     public function showResetPassword(string $token, Request $request)
     {
         if (Auth::guard('customer')->check()) {
-            return redirect()->route('store.home');
+            return redirect()->route('welcome');
         }
 
         if (! $request->filled('email')) {
@@ -139,14 +139,14 @@ class StoreCustomerAuthController extends Controller
                 }),
             ],
             'password' => 'required|string|min:8|confirmed',
-            'mobile' => 'nullable|string|max:30',
+            'mobile' => 'required|string|max:30|unique:contacts,mobile',
         ]);
 
         $ref_count = $this->commonUtil->setAndGetReferenceCount('contacts', $business_id);
 
         $contact = Contact::create([
             'business_id' => $business_id,
-            'type' => 'customer',
+            'type' => 'app_customer',
             'name' => $validated['name'],
             'email' => $validated['email'],
             'mobile' => $validated['mobile'] ?? '0',
@@ -159,7 +159,7 @@ class StoreCustomerAuthController extends Controller
         Auth::guard('customer')->login($contact);
 
         if (! $request->expectsJson()) {
-            return redirect()->route('store.home')->with('status', [
+            return redirect()->route('welcome')->with('status', [
                 'success' => true,
                 'msg' => 'Customer registered successfully.',
             ]);
@@ -175,37 +175,45 @@ class StoreCustomerAuthController extends Controller
     public function login(Request $request)
     {
         $validated = $request->validate([
-            'email' => 'required|email',
+            // Keep request key as "email" to avoid breaking the form,
+            // but allow entering either an email or a mobile number.
+            'email' => 'required|string|max:255',
             'password' => 'required|string',
             'remember' => 'nullable|boolean',
         ]);
 
         $remember = (bool) ($validated['remember'] ?? false);
-        $contact = Contact::where('email', $validated['email'])
-            ->whereIn('type', ['customer', 'both'])
+        $login = trim($validated['email']);
+
+        $contact = Contact::query()
+            ->where(function ($q) use ($login) {
+                $q->where('email', $login)
+                    ->orWhere('mobile', $login);
+            })
+            ->whereIn('type', ['app_customer', 'both'])
             ->where('contact_status', 'active')
             ->first();
 
         if (empty($contact) || empty($contact->password) || ! Hash::check($validated['password'], $contact->password)) {
             if (! $request->expectsJson()) {
-                return back()->withErrors(['email' => 'Invalid email or password.'])->withInput();
+                return back()->withErrors(['email' => __('storefront.auth.invalid_credentials')])->withInput();
             }
 
             return $this->respond([
                 'success' => false,
-                'msg' => 'Invalid email or password.',
+                'msg' => __('storefront.auth.invalid_credentials'),
             ]);
         }
 
         Auth::guard('customer')->login($contact, $remember);
 
         if (! $request->expectsJson()) {
-            return redirect()->intended(route('store.home'));
+            return redirect()->intended(route('welcome'));
         }
 
         return $this->respond([
             'success' => true,
-            'msg' => 'Logged in successfully.',
+            'msg' => __('storefront.auth.logged_in_success'),
             'customer' => $this->customerPayload($contact),
         ]);
     }
@@ -217,7 +225,7 @@ class StoreCustomerAuthController extends Controller
         $request->session()->regenerateToken();
 
         if (! $request->expectsJson()) {
-            return redirect()->route('store.home');
+            return redirect()->route('welcome');
         }
 
         return $this->respond([
@@ -239,11 +247,12 @@ class StoreCustomerAuthController extends Controller
 
     private function resolveBusinessId(Request $request): int
     {
-        if ($request->filled('business_id')) {
-            return (int) $request->input('business_id');
-        }
+return 273;
+//         if ($request->filled('business_id')) {
+//             return (int) $request->input('business_id');
+//         }
 
-        return (int) Business::query()->value('id');
+//         return (int) Business::query()->value('id');
     }
 }
 

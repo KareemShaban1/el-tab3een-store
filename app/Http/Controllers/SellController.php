@@ -88,8 +88,8 @@ class SellController extends Controller
         $is_tables_enabled = $this->transactionUtil->isModuleEnabled('tables');
         $is_service_staff_enabled = $this->transactionUtil->isModuleEnabled('service_staff');
         $is_types_service_enabled = $this->moduleUtil->isModuleEnabled('types_of_service');
-
         if (request()->ajax()) {
+
             $payment_types = $this->transactionUtil->payment_types(null, true, $business_id);
             $with = [];
             $shipping_statuses = $this->transactionUtil->shipping_statuses();
@@ -98,11 +98,12 @@ class SellController extends Controller
             $sale_type = ! empty(request()->input('sale_type')) ? request()->input('sale_type') : 'sell';
 
             $sells = $this->transactionUtil->getListSells($business_id, $sale_type);
+            
 
             // Apply all filters in a single reusable method
             $this->applySellListFilters($sells, $business_id, $sale_type, false);
-
-            // Create cache key based on all filters for count query optimization
+           
+	 // Create cache key based on all filters for count query optimization
             $cache_key_params = [
                 'business_id' => $business_id,
                 'sale_type' => $sale_type,
@@ -1901,6 +1902,7 @@ class SellController extends Controller
             }
         }
 
+
         // Explicit payment status filter
         if (! empty(request()->input('payment_status')) && request()->input('payment_status') != 'overdue') {
             $query->where('transactions.payment_status', request()->input('payment_status'));
@@ -1932,13 +1934,14 @@ class SellController extends Controller
             $query->where('contacts.id', request()->customer_id);
         }
 
+
         // Date range
-        if (! empty(request()->start_date) && ! empty(request()->end_date)) {
-                $start = request()->start_date . ' 00:00:00';
-                $end = request()->end_date . ' 23:59:59';
-                $query->where('transactions.transaction_date', '>=', $start)
-                ->where('transactions.transaction_date', '<=', $end);
-        }
+//         if (! empty(request()->start_date) && ! empty(request()->end_date)) {
+//                 $start = request()->start_date . ' 00:00:00';
+//                 $end = request()->end_date . ' 23:59:59';
+//                 $query->where('transactions.transaction_date', '>=', $start)
+//                 ->where('transactions.transaction_date', '<=', $end);
+//         }
 
         // Direct sale flag
         if (request()->has('is_direct_sale')) {
@@ -1957,6 +1960,8 @@ class SellController extends Controller
             }
         }
 
+
+
         // Source
         if (! empty(request()->input('source'))) {
             if (request()->input('source') == 'woocommerce') {
@@ -1972,10 +1977,12 @@ class SellController extends Controller
             });
         }
 
+
         // CRM order request
         if ($this->moduleUtil->isModuleInstalled('Crm') && request()->has('crm_is_order_request')) {
             $query->where('transactions.crm_is_order_request', 1);
         }
+
 
         // Subscriptions only
         if (request()->only_subscriptions) {
@@ -1992,6 +1999,8 @@ class SellController extends Controller
         if (! empty(request()->res_waiter_id)) {
             $query->where('transactions.res_waiter_id', request()->res_waiter_id);
         }
+
+
 
         // Sub type / created_by / status
         if (! empty(request()->input('sub_type'))) {
@@ -2037,6 +2046,8 @@ class SellController extends Controller
             }
         }
 
+
+
         // Sales order view restrictions
         if ($sale_type == 'sales_order') {
             if (! auth()->user()->can('so.view_all') && auth()->user()->can('so.view_own')) {
@@ -2070,6 +2081,7 @@ class SellController extends Controller
                 $q->where('method', request()->input('payment_method'));
             });
         }
+
 
         return $query;
     }
