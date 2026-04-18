@@ -1951,7 +1951,8 @@ class ProductUtil extends Util
                         'u.short_name as second_unit',
                         'pv.name as product_variation',
                         'variations.name as variation_name',
-                        'variations.id as variation_id'
+                        'variations.id as variation_id',
+                        'p.enable_stock'
                     )
                   ->get()->first();
 
@@ -1993,6 +1994,11 @@ class ProductUtil extends Util
             'total_sell_return' => $sell_details->total_sell_return,
             'total_sell_transfer' => $sell_details->total_sell_transfer,
             'current_stock' => $current_stock->qty_available ?? 0,
+            'product_id' => $purchase_details->product_id,
+            'enable_stock' => (int) ($purchase_details->enable_stock ?? 0),
+            'has_variation_location_row' => $current_stock !== null,
+            'variation_id' => (int) $variation_id,
+            'location_id' => (int) $location_id,
         ];
 
         return $output;

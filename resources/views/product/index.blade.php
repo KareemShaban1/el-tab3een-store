@@ -539,6 +539,47 @@
                 });
             });
 
+            $('table#product_table tbody').on('click', '.product-flag-toggle, .product-flag-toggle-wrap',
+                function(e) {
+                    e.stopPropagation();
+                });
+
+            $('table#product_table tbody').on('change', '.product-flag-toggle', function(e) {
+                e.stopPropagation();
+                var $cb = $(this);
+                var previousChecked = !$cb.is(':checked');
+                var url = $cb.data('url');
+                var field = $cb.data('field');
+                if (!url || !field) {
+                    return;
+                }
+                $cb.prop('disabled', true);
+                $.ajax({
+                    method: 'POST',
+                    url: url,
+                    dataType: 'json',
+                    data: {
+                        _token: $('meta[name="csrf-token"]').attr('content'),
+                        field: field,
+                        value: $cb.is(':checked') ? 1 : 0
+                    },
+                    success: function(result) {
+                        $cb.prop('disabled', false);
+                        if (result.success == true) {
+                            toastr.success(result.msg);
+                        } else {
+                            $cb.prop('checked', previousChecked);
+                            toastr.error(result.msg);
+                        }
+                    },
+                    error: function() {
+                        $cb.prop('disabled', false);
+                        $cb.prop('checked', previousChecked);
+                        toastr.error(@json(__('messages.something_went_wrong')));
+                    }
+                });
+            });
+
             $(document).on('change',
                 '#product_list_filter_type, #product_list_filter_category_id, #product_list_filter_brand_id, #product_list_filter_unit_id, #product_list_filter_tax_id, #location_id, #active_state, #repair_model_id',
                 function() {

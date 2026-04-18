@@ -109,5 +109,28 @@
        $(document).on('change', '#variation_id, #location_id', function(){
             load_stock_history($('#variation_id').val(), $('#location_id').val());
        });
+
+        $(document).on('submit', '#form_update_current_stock_from_history', function(e) {
+            e.preventDefault();
+            var form = $(this);
+            $.ajax({
+                method: 'POST',
+                url: form.attr('action'),
+                dataType: 'json',
+                data: form.serialize(),
+                success: function(result) {
+                    if (result.success == 1 || result.success === true) {
+                        toastr.success(result.msg);
+                        load_stock_history($('#variation_id').val(), $('#location_id').val());
+                    } else {
+                        toastr.error(result.msg);
+                    }
+                },
+                error: function(xhr) {
+                    var msg = (xhr.responseJSON && xhr.responseJSON.msg) ? xhr.responseJSON.msg : @json(__('messages.something_went_wrong'));
+                    toastr.error(msg);
+                }
+            });
+        });
    </script>
 @endsection

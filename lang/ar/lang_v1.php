@@ -1119,6 +1119,8 @@ return [
     'activate' => 'تفعيل',
     'deactivate' => 'إلغاء التنشيط',
     'add_quotation' => 'إضافة اقتباس',
+    'stock_corrected_from_product_history' => 'تصحيح كمية المخزون من سجل مخزون المنتج',
+    'manual_stock_correction_hint' => 'يحدّث الكمية المخزّنة في هذا الفرع. يُسجّل في سجل النشاط مع حسابك.',
     'product_stock_history' => 'سجل مخزون المنتج',
     'quantities_in' => 'الكميات في',
     'quantities_out' => 'الكميات الخارجة',
@@ -1127,6 +1129,7 @@ return [
     'totals' => 'الإجماليات',
     'quantity_change' => 'تغيير الكمية',
     'new_quantity' => 'كمية جديدة',
+    'old_quantity' => 'الكمية السابقة',
     'no_stock_history_found' => 'لم يتم العثور على سجل مخزون',
     'add_draft' => 'إضافة مسودة',
     'labels_for_sale_shipping_custom_fields' => 'تسميات للبيع تشحن الحقول المخصصة',
@@ -1443,4 +1446,5 @@ return [
 'inactive'=>'غير نشط',
 'ecommerce_order_status'=>'حالة الطلب',
 'edit_ecommerce_status'=>'تحرير حالة الطلب',
+'app_customers'=>'عملاء التطبيق',
 ];

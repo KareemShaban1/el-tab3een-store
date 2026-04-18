@@ -180,6 +180,8 @@ Route::middleware(['setData', 'auth', 'SetSessionData', 'language', 'timezone', 
 
     Route::resource('ledger-discount', LedgerDiscountController::class)->only('edit', 'destroy', 'store', 'update');
 
+    Route::resource('contacts', ContactController::class);
+
     Route::post('check-mobile', [ContactController::class, 'checkMobile']);
     Route::get('/get-contact-due/{contact_id}', [ContactController::class, 'getContactDue']);
     Route::get('/contacts/payments/{contact_id}', [ContactController::class, 'getContactPayments']);
@@ -195,7 +197,6 @@ Route::middleware(['setData', 'auth', 'SetSessionData', 'language', 'timezone', 
     Route::post('/contacts/check-tax-number', [ContactController::class, 'checkTaxNumber']);
 
     Route::get('/contacts/customers', [ContactController::class, 'getCustomers']);
-    Route::resource('contacts', ContactController::class);
 
     Route::get('taxonomies-ajax-index-page', [TaxonomyController::class, 'getTaxonomyIndexPage']);
     Route::resource('taxonomies', TaxonomyController::class);
@@ -205,6 +206,7 @@ Route::middleware(['setData', 'auth', 'SetSessionData', 'language', 'timezone', 
     Route::get('/products/download-excel', [ProductController::class, 'downloadExcel']);
 
     Route::get('/products/stock-history/{id}', [ProductController::class, 'productStockHistory']);
+    Route::post('/products/stock-history/update-current-stock', [ProductController::class, 'updateStockHistoryCurrentStock']);
     Route::get('/delete-media/{media_id}', [ProductController::class, 'deleteMedia']);
     Route::post('/products/mass-deactivate', [ProductController::class, 'massDeactivate']);
     Route::get('/products/activate/{id}', [ProductController::class, 'activate']);
@@ -233,6 +235,7 @@ Route::middleware(['setData', 'auth', 'SetSessionData', 'language', 'timezone', 
     Route::post('/products/save_quick_product', [ProductController::class, 'saveQuickProduct']);
     Route::get('/products/get-combo-product-entry-row', [ProductController::class, 'getComboProductEntryRow']);
     Route::post('/products/toggle-woocommerce-sync', [ProductController::class, 'toggleWooCommerceSync']);
+    Route::post('/products/{id}/toggle-list-flag', [ProductController::class, 'toggleProductListFlag']);
 
     Route::resource('products', ProductController::class);
     Route::get('/toggle-subscription/{id}', 'SellPosController@toggleRecurringInvoices');

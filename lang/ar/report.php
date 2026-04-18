@@ -15,6 +15,7 @@
      'sell_minus_purchase' => 'بيع - شراء',
      'difference_due' => 'المبلغ المستحق',
      'customer' => 'العملاء',
+     'app_customer' => 'عملاء التطبيق',
      'supplier' => 'الموردين',
      'total_due' => 'الدين',
      'contacts' => 'تقرير الموردين والعملاء',

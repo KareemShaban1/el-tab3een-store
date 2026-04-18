@@ -71,7 +71,26 @@
 			<tr>
 				<th>@lang('report.current_stock')</th>
 				<td>
-					<span class="display_currency" data-is_quantity="true">{{$stock_details['current_stock']}}</span> {{$stock_details['unit']}}
+					@can('product.update')
+						@if(!empty($stock_details['enable_stock']))
+							<form method="post" action="{{ action([\App\Http\Controllers\ProductController::class, 'updateStockHistoryCurrentStock']) }}" id="form_update_current_stock_from_history" class="form-inline">
+								@csrf
+								<input type="hidden" name="product_id" value="{{ $stock_details['product_id'] }}">
+								<input type="hidden" name="variation_id" value="{{ $stock_details['variation_id'] }}">
+								<input type="hidden" name="location_id" value="{{ $stock_details['location_id'] }}">
+								<div class="form-group">
+									<input type="text" name="qty_available" class="form-control input-sm input_number" value="{{ @num_format($stock_details['current_stock']) }}" required title="@lang('lang_v1.manual_stock_correction_hint')">
+									<span class="text-muted">{{ $stock_details['unit'] }}</span>
+								</div>
+								<button type="submit" class="btn btn-primary btn-sm tw-ml-1">@lang('messages.update')</button>
+							</form>
+							<p class="help-block text-muted tw-mb-0 tw-mt-1"><small>@lang('lang_v1.manual_stock_correction_hint')</small></p>
+						@else
+							<span class="display_currency" data-is_quantity="true">{{$stock_details['current_stock']}}</span> {{$stock_details['unit']}}
+						@endif
+					@else
+						<span class="display_currency" data-is_quantity="true">{{$stock_details['current_stock']}}</span> {{$stock_details['unit']}}
+					@endcan
 				</td>
 			</tr>
 		</table>

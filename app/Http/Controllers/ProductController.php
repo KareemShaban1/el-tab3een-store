@@ -24,6 +24,7 @@ use App\Warranty;
 use Excel;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Storage;
 use Yajra\DataTables\Facades\DataTables;
 use App\Events\ProductsCreatedOrModified;
@@ -274,11 +275,34 @@ class ProductController extends Controller
                 })
                 ->editColumn('type', '@lang("lang_v1." . $type)')
                 ->editColumn('is_inactive', function ($row) {
+                    if (auth()->user()->can('product.update')) {
+                        $checked = $row->is_inactive == 1 ? 'checked' : '';
+                        $url = action([\App\Http\Controllers\ProductController::class, 'toggleProductListFlag'], [$row->id]);
+                        $title = e(__('product.is_inactive_column'));
+
+                        return '<div class="tw-flex tw-items-center tw-justify-center"><label class="tw-m-0 tw-cursor-pointer product-flag-toggle-wrap" title="'.$title.'">'
+                            .'<input type="checkbox" class="product-flag-toggle tw-h-5 tw-w-5 tw-cursor-pointer" '
+                            .'data-field="is_inactive" data-url="'.e($url).'" '.$checked.' />'
+                            .'</label></div>';
+                    }
+
                     return $row->is_inactive == 1
                         ? '<span class="label bg-gray">'.__('lang_v1.inactive').'</span>'
                         : '<span class="label label-success">'.__('lang_v1.active').'</span>';
                 })
                 ->editColumn('active_in_app', function ($row) {
+                    if (auth()->user()->can('product.update')) {
+                        $on = (bool) ($row->active_in_app ?? false);
+                        $checked = $on ? 'checked' : '';
+                        $url = action([\App\Http\Controllers\ProductController::class, 'toggleProductListFlag'], [$row->id]);
+                        $title = e(__('product.active_in_app_column'));
+
+                        return '<div class="tw-flex tw-items-center tw-justify-center"><label class="tw-m-0 tw-cursor-pointer product-flag-toggle-wrap" title="'.$title.'">'
+                            .'<input type="checkbox" class="product-flag-toggle tw-h-5 tw-w-5 tw-cursor-pointer" '
+                            .'data-field="active_in_app" data-url="'.e($url).'" '.$checked.' />'
+                            .'</label></div>';
+                    }
+
                     $on = (bool) ($row->active_in_app ?? false);
 
                     return $on
@@ -2023,6 +2047,52 @@ class ProductController extends Controller
     }
 
     /**
+     * Toggle is_inactive or active_in_app from the product list DataTable.
+     *
+     * @param  int  $id
+     * @return array|\Illuminate\Http\Response
+     */
+    public function toggleProductListFlag($id)
+    {
+        if (! auth()->user()->can('product.update')) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        if (! request()->ajax()) {
+            abort(404);
+        }
+
+        $field = request()->input('field');
+        $value = request()->input('value');
+
+        if (! in_array($field, ['is_inactive', 'active_in_app'], true)) {
+            return ['success' => false, 'msg' => __('messages.something_went_wrong')];
+        }
+
+        $value = (int) $value;
+        if (! in_array($value, [0, 1], true)) {
+            return ['success' => false, 'msg' => __('messages.something_went_wrong')];
+        }
+
+        try {
+            $business_id = request()->session()->get('user.business_id');
+            $updated = Product::where('business_id', $business_id)
+                ->where('id', $id)
+                ->update([$field => $value]);
+
+            if ($updated) {
+                return ['success' => true, 'msg' => __('lang_v1.updated_success')];
+            }
+
+            return ['success' => false, 'msg' => __('messages.something_went_wrong')];
+        } catch (\Exception $e) {
+            \Log::emergency('File:'.$e->getFile().'Line:'.$e->getLine().'Message:'.$e->getMessage());
+
+            return ['success' => false, 'msg' => __('messages.something_went_wrong')];
+        }
+    }
+
+    /**
      * Deletes a media file from storage and database.
      *
      * @param  int  $media_id
@@ -2414,6 +2484,116 @@ class ProductController extends Controller
         return $output;
     }
 
+    /**
+     * Manual correction of current stock from product stock history screen (activity log records user).
+     */
+    public function updateStockHistoryCurrentStock(Request $request)
+    {
+        if (! auth()->user()->can('product.update')) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        $business_id = (int) $request->session()->get('user.business_id');
+
+        $validator = Validator::make($request->all(), [
+            'product_id' => 'required|integer',
+            'variation_id' => 'required|integer',
+            'location_id' => 'required|integer',
+            'qty_available' => 'required|numeric|min:0',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => 0,
+                'msg' => $validator->errors()->first(),
+            ]);
+        }
+
+        $validated = $validator->validated();
+
+        $product = Product::where('business_id', $business_id)->find($validated['product_id']);
+        if (empty($product) || (int) $product->enable_stock !== 1) {
+            return response()->json([
+                'success' => 0,
+                'msg' => __('messages.something_went_wrong'),
+            ]);
+        }
+
+        $variation = Variation::where('product_id', $product->id)
+            ->where('id', $validated['variation_id'])
+            ->first();
+
+        if (empty($variation)) {
+            return response()->json([
+                'success' => 0,
+                'msg' => __('messages.something_went_wrong'),
+            ]);
+        }
+
+        $location = BusinessLocation::where('business_id', $business_id)->where('id', $validated['location_id'])->first();
+        if (empty($location)) {
+            return response()->json([
+                'success' => 0,
+                'msg' => __('messages.something_went_wrong'),
+            ]);
+        }
+
+        $new_qty = $this->productUtil->num_uf($validated['qty_available']);
+
+        DB::beginTransaction();
+        try {
+            $vld = VariationLocationDetails::where('variation_id', $variation->id)
+                ->where('product_id', $product->id)
+                ->where('location_id', $validated['location_id'])
+                ->first();
+
+
+            if (empty($vld)) {
+                $vld = VariationLocationDetails::create([
+                    'product_id' => $product->id,
+                    'location_id' => $validated['location_id'],
+                    'variation_id' => $variation->id,
+                    'product_variation_id' => $variation->product_variation_id,
+                    'qty_available' => 0,
+                ]);
+            }
+
+            $old_qty = (float) $vld->qty_available;
+            $vld->qty_available = $new_qty;
+            $vld->save();
+
+            $activity = activity()
+                ->causedBy(auth()->user())
+                ->performedOn($product)
+                ->withProperties([
+                    'variation_id' => $variation->id,
+                    'location_id' => (int) $validated['location_id'],
+                    'location_name' => $location->name,
+                    'old_quantity' => $old_qty,
+                    'new_quantity' => (float) $new_qty,
+                    'sub_sku' => $variation->sub_sku,
+                ])
+                ->log('stock_corrected_from_product_history');
+
+            $activity->business_id = $business_id;
+            $activity->save();
+
+            DB::commit();
+            return response()->json([
+                'success' => 1,
+                'msg' => __('lang_v1.updated_success'),
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            \Log::emergency('File:'.$e->getFile().'Line:'.$e->getLine().'Message:'.$e->getMessage());
+
+            return response()->json([
+                'success' => 0,
+                'msg' => __('messages.something_went_wrong'),
+            ]);
+        }
+    }
+
     public function productStockHistory($id)
     {
         if (! auth()->user()->can('product.view')) {
@@ -2428,14 +2608,9 @@ class ProductController extends Controller
             $stock_details = $this->productUtil->getVariationStockDetails($business_id, $id, request()->input('location_id'));
             $stock_history = $this->productUtil->getVariationStockHistory($business_id, $id, request()->input('location_id'));
 
-            //if mismach found update stock in variation location details
-            if (isset($stock_history[0]) && (float) $stock_details['current_stock'] != (float) $stock_history[0]['stock']) {
-                VariationLocationDetails::where('variation_id',
-                                            $id)
-                                    ->where('location_id', request()->input('location_id'))
-                                    ->update(['qty_available' => $stock_history[0]['stock']]);
-                $stock_details['current_stock'] = $stock_history[0]['stock'];
-            }
+            // Do not overwrite qty_available from ledger reconciliation here: stored stock is the
+            // source of truth (including manual corrections from stock history). Ledger rows can
+            // legitimately differ after a manual fix.
 
             return view('product.stock_history_details')
                 ->with(compact('stock_details', 'stock_history'));

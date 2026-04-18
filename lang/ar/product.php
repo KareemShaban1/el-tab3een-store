@@ -14,7 +14,7 @@
      'tax' => 'الضريبية',
      'sku' => 'SKU',
      'alert_quantity' => 'تنبيه الكمية',
-     'product_name' => 'اسم المنتج (التعيين)',
+     'product_name' => 'اسم المنتج',
      'auto_generate' => 'توليد تلقائي',
      'manage_stock' => 'إدارة المخزون؟',
      'enable_stock_help' => 'تفعيل إدارة المخزون على مستوى المنتج',

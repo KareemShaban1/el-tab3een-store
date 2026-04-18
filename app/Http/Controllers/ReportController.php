@@ -3725,6 +3725,8 @@ class ReportController extends Controller
                     $activities->where('subject_type', \App\Contact::class);
                 } elseif ($subject_type == 'user') {
                     $activities->where('subject_type', \App\User::class);
+                } elseif ($subject_type == 'product') {
+                    $activities->where('subject_type', Product::class);
                 } elseif (in_array($subject_type, ['sell', 'purchase',
                     'sales_order', 'purchase_order', 'sell_return', 'purchase_return', 'sell_transfer', 'expense', 'purchase_order', ])) {
                     $activities->where('subject_type', \App\Transaction::class);
@@ -3753,12 +3755,32 @@ class ReportController extends Controller
                                     $subject_type = isset($transaction_types[$row->subject->type]) ? $transaction_types[$row->subject->type] : '';
                                 } elseif (($row->subject_type == \App\TransactionPayment::class)) {
                                     $subject_type = __('lang_v1.payment');
+                                } elseif ($row->subject_type == Product::class) {
+                                    $subject_type = __('sale.product');
                                 }
 
                                 return $subject_type;
                             })
                             ->addColumn('note', function ($row) use ($statuses, $shipping_statuses) {
                                 $html = '';
+
+                                if ($row->subject_type == Product::class
+                                    && ($row->description === 'stock_corrected_from_product_history'
+                                        || $row->getExtraProperty('old_quantity') !== null
+                                        || $row->getExtraProperty('new_quantity') !== null)) {
+                                    $name = optional($row->subject)->name ?? '—';
+                                    $html .= '<strong>'.__('product.product_name').': '.e($name).'</strong><br>';
+                                    $html .= __('purchase.business_location').': '.e($row->getExtraProperty('location_name') ?? '').'<br>';
+                                    $sub_sku = $row->getExtraProperty('sub_sku');
+                                    if ($sub_sku !== null && $sub_sku !== '') {
+                                        $html .= __('product.sku').': '.e($sub_sku).'<br>';
+                                    }
+                                    $html .= __('lang_v1.old_quantity').': '.e((string) $row->getExtraProperty('old_quantity')).' → '
+                                        .__('lang_v1.new_quantity').': '.e((string) $row->getExtraProperty('new_quantity'));
+
+                                    return $html;
+                                }
+
                                 if (! empty($row->subject->ref_no)) {
                                     $html .= __('purchase.ref_no').': '.$row->subject->ref_no.'<br>';
                                 }
@@ -3800,7 +3822,12 @@ class ReportController extends Controller
                                 $query->whereRaw("CONCAT(COALESCE(surname, ''), ' ', COALESCE(first_name, ''), ' ', COALESCE(last_name, '')) like ?", ["%{$keyword}%"]);
                             })
                             ->editColumn('description', function ($row) {
-                                return __('lang_v1.'.$row->description);
+                                $d = $row->description;
+                                if (is_string($d) && trans()->has('lang_v1.'.$d)) {
+                                    return __('lang_v1.'.$d);
+                                }
+
+                                return $d;
                             })
                             ->rawColumns(['note'])
                             ->make(true);
