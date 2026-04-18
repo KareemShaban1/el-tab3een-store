@@ -77,14 +77,14 @@ class Contact extends Authenticatable
     /**
      * Filters only own created customers or has access to the customer
      */
-    public function scopeOnlyCustomers($query)
+    public function scopeOnlyCustomers($query, $type = 'customer')
     {
         //Commented because of issue in woocommerce sync
         // if (auth()->check() && !auth()->user()->can('customer.view') && !auth()->user()->can('customer.view_own')) {
         //     abort(403, 'Unauthorized action.');
         // }
 
-        $query->whereIn('contacts.type', ['customer', 'both']);
+        $query->whereIn('contacts.type', [$type]);
 
         if (auth()->check() && ! auth()->user()->can('customer.view') && auth()->user()->can('customer.view_own')) {
             $query->leftjoin('user_contact_access AS ucas', 'contacts.id', 'ucas.contact_id');

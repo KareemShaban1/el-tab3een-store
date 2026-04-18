@@ -317,7 +317,7 @@ class SellController extends Controller
                             $html .= '<li><a href="#" data-href="'.action([\App\Http\Controllers\SellController::class, 'editShipping'], [$row->id]).'" class="btn-modal" data-container=".view_modal"><i class="fas fa-truck" aria-hidden="true"></i>'.__('lang_v1.edit_shipping').'</a></li>';
                         }
                         if (!empty($row->source) && $row->source === 'ecommerce' && auth()->user()->can('sell.update')) {
-                            $html .= '<li><a href="#" data-href="'.action([\App\Http\Controllers\SellController::class, 'editEcommerceStatus'], [$row->id]).'" class="btn-modal" data-container=".view_modal"><i class="fas fa-store" aria-hidden="true"></i> '.__('lang_v1.edit').' E-commerce Status</a></li>';
+                            $html .= '<li><a href="#" data-href="'.action([\App\Http\Controllers\SellController::class, 'editEcommerceStatus'], [$row->id]).'" class="btn-modal" data-container=".view_modal"><i class="fas fa-store" aria-hidden="true"></i> '.__('lang_v1.edit_ecommerce_status').'</a></li>';
                         }
 
                         if ($row->type == 'sell') {
@@ -608,13 +608,14 @@ class SellController extends Controller
 
         $payment_types = $this->transactionUtil->payment_types(null, true, $business_id);
         $ecommerce_order_statuses = [
-            'new' => 'New',
-            'confirmed' => 'Confirmed',
-            'packed' => 'Packed',
+            'pending' => 'Pending',
+            'processing' => 'Processing',
             'shipped' => 'Shipped',
             'delivered' => 'Delivered',
+            'completed' => 'Completed',
             'cancelled' => 'Cancelled',
             'refunded' => 'Refunded',
+            'failed' => 'Failed',
         ];
 
 
@@ -660,13 +661,14 @@ class SellController extends Controller
         $sources['ecommerce'] = 'E-commerce';
         $payment_types = $this->transactionUtil->payment_types(null, true, $business_id);
         $ecommerce_order_statuses = [
-            'new' => 'New',
-            'confirmed' => 'Confirmed',
-            'packed' => 'Packed',
+            'pending' => 'Pending',
+            'processing' => 'Processing',
             'shipped' => 'Shipped',
             'delivered' => 'Delivered',
+            'completed' => 'Completed',
             'cancelled' => 'Cancelled',
             'refunded' => 'Refunded',
+            'failed' => 'Failed',
         ];
 
         request()->merge(['source' => 'ecommerce', 'sale_type' => 'sell']);
@@ -1688,13 +1690,14 @@ class SellController extends Controller
             'partial' => __('lang_v1.partial'),
         ];
         $ecommerce_order_statuses = [
-            'new' => 'New',
-            'confirmed' => 'Confirmed',
-            'packed' => 'Packed',
+            'pending' => 'Pending',
+            'processing' => 'Processing',
             'shipped' => 'Shipped',
             'delivered' => 'Delivered',
+            'completed' => 'Completed',
             'cancelled' => 'Cancelled',
             'refunded' => 'Refunded',
+            'failed' => 'Failed',
         ];
 
         return view('sell.partials.edit_ecommerce_status')

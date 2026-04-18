@@ -147,7 +147,7 @@
                     </div>
                 </div>
             </div>
-            <div class="col-md-3">
+            <div class="col-md-6">
                 <div class="form-group">
                     {!! Form::label('email', __('business.email') . ':') !!}
                     <div class="input-group">
@@ -158,6 +158,19 @@
                     </div>
                 </div>
             </div>
+	@if ($type == 'app_customer')         
+	<div class="col-md-6">
+                <div class="form-group">
+                    {!! Form::label('password', __('password') . ':') !!}
+                    <div class="input-group">
+                        <span class="input-group-addon">
+                            <i class="fa fa-key"></i>
+                        </span>
+                        {!! Form::text('password', null, ['class' => 'form-control','placeholder' => __('password')]); !!}
+                    </div>
+                </div>
+            </div>
+             @endif
             <div class="clearfix"></div>
             <div class="col-sm-4 individual" style="display: none;">
                 <div class="form-group">

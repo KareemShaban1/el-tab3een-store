@@ -186,13 +186,15 @@
                         @enderror
                     </div>
                 </div>
-                <label for="checkout-shipping-line1">العنوان *</label>
-                <input id="checkout-shipping-line1" type="text" name="addresses[shipping_address][shipping_address_line_1]" value="{{ old('addresses.shipping_address.shipping_address_line_1') }}" class="@error('addresses.shipping_address.shipping_address_line_1') checkout-input-error @enderror" aria-invalid="{{ $errors->has('addresses.shipping_address.shipping_address_line_1') ? 'true' : 'false' }}">
-                @error('addresses.shipping_address.shipping_address_line_1')
-                    <p class="checkout-field-error">{{ $message }}</p>
-                @enderror
 
-                <div class="row">
+  <div class="row">
+  <div>
+                        <label for="checkout-shipping-state">المحافظة</label>
+                        <input id="checkout-shipping-state" type="text" name="addresses[shipping_address][shipping_state]" value="{{ old('addresses.shipping_address.shipping_state', $customer->state) }}" class="@error('addresses.shipping_address.shipping_state') checkout-input-error @enderror" @ariaInvalid('addresses.shipping_address.shipping_state')>
+                        @error('addresses.shipping_address.shipping_state')
+                            <p class="checkout-field-error">{{ $message }}</p>
+                        @enderror
+                    </div>
                     <div>
                         <label for="checkout-shipping-city">المدينة</label>
                         <input id="checkout-shipping-city" type="text" name="addresses[shipping_address][shipping_city]" value="{{ old('addresses.shipping_address.shipping_city', $customer->city) }}" class="@error('addresses.shipping_address.shipping_city') checkout-input-error @enderror" aria-invalid="{{ $errors->has('addresses.shipping_address.shipping_city') ? 'true' : 'false' }}">
@@ -200,15 +202,16 @@
                             <p class="checkout-field-error">{{ $message }}</p>
                         @enderror
                     </div>
-                    <div>
-                        <label for="checkout-shipping-state">المحافظة</label>
-                        <input id="checkout-shipping-state" type="text" name="addresses[shipping_address][shipping_state]" value="{{ old('addresses.shipping_address.shipping_state', $customer->state) }}" class="@error('addresses.shipping_address.shipping_state') checkout-input-error @enderror" @ariaInvalid('addresses.shipping_address.shipping_state')>
-                        @error('addresses.shipping_address.shipping_state')
-                            <p class="checkout-field-error">{{ $message }}</p>
-                        @enderror
-                    </div>
+                  
                 </div>
-                <div class="row">
+                <label for="checkout-shipping-line1">العنوان *</label>
+                <input id="checkout-shipping-line1" type="text" name="addresses[shipping_address][shipping_address_line_1]" value="{{ old('addresses.shipping_address.shipping_address_line_1') }}" class="@error('addresses.shipping_address.shipping_address_line_1') checkout-input-error @enderror" aria-invalid="{{ $errors->has('addresses.shipping_address.shipping_address_line_1') ? 'true' : 'false' }}">
+                @error('addresses.shipping_address.shipping_address_line_1')
+                    <p class="checkout-field-error">{{ $message }}</p>
+                @enderror
+
+              
+                <!-- <div class="row">
                     <div>
                         <label for="checkout-shipping-country">الدولة</label>
                         <input id="checkout-shipping-country" type="text" name="addresses[shipping_address][shipping_country]" value="{{ old('addresses.shipping_address.shipping_country', $customer->country) }}" class="@error('addresses.shipping_address.shipping_country') checkout-input-error @enderror" aria-invalid="{{ $errors->has('addresses.shipping_address.shipping_country') ? 'true' : 'false' }}">
@@ -223,7 +226,7 @@
                             <p class="checkout-field-error">{{ $message }}</p>
                         @enderror
                     </div>
-                </div>
+                </div> -->
             </div>
         </div>
 

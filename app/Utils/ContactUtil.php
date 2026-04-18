@@ -213,14 +213,23 @@ class ContactUtil extends Util
 
     public function getContactQuery($business_id, $type, $contact_ids = [])
     {
-        $query = Contact::leftjoin('transactions AS t', 'contacts.id', '=', 't.contact_id')
-                    ->leftjoin('customer_groups AS cg', 'contacts.customer_group_id', '=', 'cg.id')
-                    ->where('contacts.business_id', $business_id);
+        // Pre-aggregate payments per transaction once (avoids correlated subqueries per transaction row).
+        $payment_agg = DB::table('transaction_payments')
+            ->select(
+                'transaction_id',
+                DB::raw('SUM(amount) AS tp_amount_sum'),
+                DB::raw('SUM(IF(is_return = 1, -1 * amount, amount)) AS tp_amount_net')
+            )
+            ->groupBy('transaction_id');
 
+        $query = Contact::leftJoin('transactions AS t', 'contacts.id', '=', 't.contact_id')
+            ->leftJoinSub($payment_agg, 'tp', 't.id', '=', 'tp.transaction_id')
+            ->leftJoin('customer_groups AS cg', 'contacts.customer_group_id', '=', 'cg.id')
+            ->where('contacts.business_id', $business_id);
         if ($type == 'supplier') {
             $query->onlySuppliers();
-        } elseif ($type == 'customer') {
-            $query->onlyCustomers();
+        } elseif (in_array($type, ['customer', 'app_customer'])) {
+            $query->onlyCustomers($type);
         } else {
             if (auth()->check() && ((! auth()->user()->can('customer.view') && auth()->user()->can('customer.view_own'))) || (! auth()->user()->can('supplier.view') && auth()->user()->can('supplier.view_own'))) {
                 $query->onlyOwnContact();
@@ -234,31 +243,52 @@ class ContactUtil extends Util
             'contacts.*',
             'cg.name as customer_group',
             DB::raw("SUM(IF(t.type = 'opening_balance', final_total, 0)) as opening_balance"),
-            DB::raw("SUM(IF(t.type = 'opening_balance', (SELECT SUM(IF(is_return = 1,-1*amount,amount)) FROM transaction_payments WHERE transaction_payments.transaction_id=t.id), 0)) as opening_balance_paid"),
-            DB::raw('MAX(DATE(transaction_date)) as max_transaction_date'),
+            DB::raw('SUM(IF(t.type = \'opening_balance\', IFNULL(tp.tp_amount_net, 0), 0)) as opening_balance_paid'),
+            DB::raw('MAX(DATE(t.transaction_date)) as max_transaction_date'),
+            DB::raw('MAX(t.transaction_date) AS transaction_date'),
             DB::raw("SUM(IF(t.type = 'ledger_discount', final_total, 0)) as total_ledger_discount"),
-            't.transaction_date',
         ]);
 
         if (in_array($type, ['supplier', 'both'])) {
             $query->addSelect([
                 DB::raw("SUM(IF(t.type = 'purchase', final_total, 0)) as total_purchase"),
-                DB::raw("SUM(IF(t.type = 'purchase', (SELECT SUM(amount) FROM transaction_payments WHERE transaction_payments.transaction_id=t.id), 0)) as purchase_paid"),
+                DB::raw('SUM(IF(t.type = \'purchase\', IFNULL(tp.tp_amount_sum, 0), 0)) as purchase_paid'),
                 DB::raw("SUM(IF(t.type = 'purchase_return', final_total, 0)) as total_purchase_return"),
-                DB::raw("SUM(IF(t.type = 'purchase_return', (SELECT SUM(amount) FROM transaction_payments WHERE transaction_payments.transaction_id=t.id), 0)) as purchase_return_paid"),
+                DB::raw('SUM(IF(t.type = \'purchase_return\', IFNULL(tp.tp_amount_sum, 0), 0)) as purchase_return_paid'),
             ]);
         }
 
-        if (in_array($type, ['customer', 'both'])) {
+        if (in_array($type, ['customer', 'app_customer', 'both'])) {
             $query->addSelect([
                 DB::raw("SUM(IF(t.type = 'sell' AND t.status = 'final', final_total, 0)) as total_invoice"),
-                DB::raw("SUM(IF(t.type = 'sell' AND t.status = 'final', (SELECT SUM(IF(is_return = 1,-1*amount,amount)) FROM transaction_payments WHERE transaction_payments.transaction_id=t.id), 0)) as invoice_received"),
+                DB::raw('SUM(IF(t.type = \'sell\' AND t.status = \'final\', IFNULL(tp.tp_amount_net, 0), 0)) as invoice_received'),
                 DB::raw("SUM(IF(t.type = 'sell_return', final_total, 0)) as total_sell_return"),
-                DB::raw("SUM(IF(t.type = 'sell_return', (SELECT SUM(amount) FROM transaction_payments WHERE transaction_payments.transaction_id=t.id), 0)) as sell_return_paid"),
+                DB::raw('SUM(IF(t.type = \'sell_return\', IFNULL(tp.tp_amount_sum, 0), 0)) as sell_return_paid'),
             ]);
         }
         $query->groupBy('contacts.id');
 
         return $query;
+    }
+
+    /**
+     * Fast row count for contacts list (no transaction joins). Matches getContactQuery()
+     * only when no HAVING / aggregate-based filters are applied in the controller.
+     */
+    public function getFastContactListCount(int $business_id, string $type): int
+    {
+        $query = Contact::where('contacts.business_id', $business_id);
+
+        if ($type == 'supplier') {
+            $query->onlySuppliers();
+        } elseif (in_array($type, ['customer', 'app_customer'])) {
+            $query->onlyCustomers($type);
+        } else {
+            if (auth()->check() && ((! auth()->user()->can('customer.view') && auth()->user()->can('customer.view_own'))) || (! auth()->user()->can('supplier.view') && auth()->user()->can('supplier.view_own'))) {
+                $query->onlyOwnContact();
+            }
+        }
+
+        return $query->count();
     }
 }

@@ -391,18 +391,18 @@ $(document).ready(function() {
             { data: 'mobile', name: 'mobile' },
             { data: 'due', searchable: false, orderable: false },
             { data: 'return_due', searchable: false, orderable: false },
-            { data: 'custom_field1', name: 'custom_field1'},
-            { data: 'custom_field2', name: 'custom_field2'},
-            { data: 'custom_field3', name: 'custom_field3'},
-            { data: 'custom_field4', name: 'custom_field4'},
-            { data: 'custom_field5', name: 'custom_field5'},
-            { data: 'custom_field6', name: 'custom_field6'},
-            { data: 'custom_field7', name: 'custom_field7'},
-            { data: 'custom_field8', name: 'custom_field8'},
-            { data: 'custom_field9', name: 'custom_field9'},
-            { data: 'custom_field10', name: 'custom_field10'},
+          //   { data: 'custom_field1', name: 'custom_field1'},
+          //   { data: 'custom_field2', name: 'custom_field2'},
+          //   { data: 'custom_field3', name: 'custom_field3'},
+          //   { data: 'custom_field4', name: 'custom_field4'},
+          //   { data: 'custom_field5', name: 'custom_field5'},
+          //   { data: 'custom_field6', name: 'custom_field6'},
+          //   { data: 'custom_field7', name: 'custom_field7'},
+          //   { data: 'custom_field8', name: 'custom_field8'},
+          //   { data: 'custom_field9', name: 'custom_field9'},
+          //   { data: 'custom_field10', name: 'custom_field10'},
         ];
-    } else if (contact_table_type == 'customer') {
+    } else if (contact_table_type == 'customer' || contact_table_type == 'app_customer') {
         var columns = [
             { data: 'action', searchable: false, orderable: false },
             { data: 'contact_id', name: 'contact_id' },
@@ -425,26 +425,28 @@ $(document).ready(function() {
             { data: 'mobile', name: 'mobile' },
             { data: 'due', searchable: false, orderable: false },
             { data: 'return_due', searchable: false, orderable: false },
-            { data: 'custom_field1', name: 'custom_field1'},
-            { data: 'custom_field2', name: 'custom_field2'},
-            { data: 'custom_field3', name: 'custom_field3'},
-            { data: 'custom_field4', name: 'custom_field4'},
-            { data: 'custom_field5', name: 'custom_field5'},
-            { data: 'custom_field6', name: 'custom_field6'},
-            { data: 'custom_field7', name: 'custom_field7'},
-            { data: 'custom_field8', name: 'custom_field8'},
-            { data: 'custom_field9', name: 'custom_field9'},
-            { data: 'custom_field10', name: 'custom_field10'},
+          //   { data: 'custom_field1', name: 'custom_field1'},
+          //   { data: 'custom_field2', name: 'custom_field2'},
+          //   { data: 'custom_field3', name: 'custom_field3'},
+          //   { data: 'custom_field4', name: 'custom_field4'},
+          //   { data: 'custom_field5', name: 'custom_field5'},
+          //   { data: 'custom_field6', name: 'custom_field6'},
+          //   { data: 'custom_field7', name: 'custom_field7'},
+          //   { data: 'custom_field8', name: 'custom_field8'},
+          //   { data: 'custom_field9', name: 'custom_field9'},
+          //   { data: 'custom_field10', name: 'custom_field10'},
             ]);
     }
     
     contact_table = $('#contact_table').DataTable({
         processing: true,
         serverSide: true,
+        deferRender: true,
         fixedHeader:false,
         scrollY:        "75vh",
         scrollX:        true,
         scrollCollapse: true,
+//         lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, "All"]],
         "ajax": {
             "url": "/contacts",
             "data": function ( d ) {
@@ -548,7 +550,7 @@ $(document).ready(function() {
         });
         $('div.lead_additional_div').hide();
 
-        if ($('select#contact_type').val() == 'customer') {
+        if ($('select#contact_type').val() == 'customer' || $('select#contact_type').val() == 'app_customer') {
             $('div.supplier_fields').hide();
             $('div.customer_fields').show();
         } else if ($('select#contact_type').val() == 'supplier') {
@@ -572,7 +574,7 @@ $(document).ready(function() {
             } else if (t == 'both') {
                 $('div.supplier_fields').fadeIn();
                 $('div.customer_fields').fadeIn();
-            } else if (t == 'customer') {
+            } else if (t == 'customer' || t == 'app_customer') {
                 $('div.customer_fields').fadeIn();
                 $('div.supplier_fields').fadeOut();
             } else if (t == 'lead') {

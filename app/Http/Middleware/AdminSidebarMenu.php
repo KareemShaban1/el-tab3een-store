@@ -105,6 +105,11 @@ $is_superadmin = auth()->user()->can('superadmin');
                                 __('report.customer'),
                                 ['icon' => '', 'active' => request()->input('type') == 'customer']
                             );
+                       $sub->url(
+                                action([\App\Http\Controllers\ContactController::class, 'index'], ['type' => 'app_customer']),
+                                __('report.app_customer'),
+                                ['icon' => '', 'active' => request()->input('type') == 'app_customer']
+                            );
                             $sub->url(
                                 action([\App\Http\Controllers\CustomerGroupController::class, 'index']),
                                 __('lang_v1.customer_groups'),

@@ -216,7 +216,7 @@ class StoreCheckoutController extends Controller
                 'created_by' => $user_id,
                 'status' => 'final',
                 'sub_status' => 'ecommerce_new',
-                'ecommerce_order_status' => 'new',
+                'ecommerce_order_status' => 'pending',
                 'shipping_status' => 'ordered',
                 'payment_status' => 'due',
                 'additional_notes' => '',
@@ -244,7 +244,7 @@ class StoreCheckoutController extends Controller
 
             $transaction = $this->transactionUtil->createSellTransaction($business_id, $order_data, $invoice_total, $user_id, false);
             // Ensure ecommerce-only status is persisted even if util ignores unknown keys.
-            $transaction->ecommerce_order_status = 'new';
+            $transaction->ecommerce_order_status = 'pending';
             $transaction->sub_status = 'ecommerce_new';
             $transaction->save();
             $this->transactionUtil->createOrUpdateSellLines($transaction, $order_data['products'], $location_id, false, null, [], false);

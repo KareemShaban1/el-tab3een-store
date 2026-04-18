@@ -19,7 +19,7 @@
     <!-- Main content -->
     <section class="content">
         @component('components.filters', ['title' => __('report.filters')])
-            @if ($type == 'customer')
+            @if ($type == 'customer' || $type == 'app_customer')
                 <div class="col-md-3">
                     <div class="form-group">
                         <label>
@@ -64,7 +64,7 @@
                     </label>
                 </div>
             </div>
-            @if ($type == 'customer')
+            @if ($type == 'customer' || $type == 'app_customer')
                 <div class="col-md-3">
                     <div class="form-group">
                         <label for="has_no_sell_from">@lang('lang_v1.has_no_sell_from'):</label>
@@ -121,7 +121,12 @@
                     auth()->user()->can('supplier.view_own') ||
                     auth()->user()->can('customer.view_own'))
                 @slot('tool')
-                   
+                   <div class="box-tools">
+                    <button type="button" class="btn btn-block btn-primary btn-modal" 
+                    data-href="{{ action([\App\Http\Controllers\ContactController::class, 'create'], ['type' => $type]) }}" 
+                    data-container=".contact_modal">
+                    <i class="fa fa-plus"></i> @lang('messages.add')</button>
+                </div>
                 @endslot
             @endif
             @if (auth()->user()->can('supplier.view') ||
@@ -147,7 +152,7 @@
                                     <th>@lang('contact.mobile')</th>
                                     <th>@lang('contact.total_purchase_due')</th>
                                     <th>@lang('lang_v1.total_purchase_return_due')</th>
-                                @elseif($type == 'customer')
+                                @elseif($type == 'customer' || $type == 'app_customer')
                                     <th>@lang('business.business_name')</th>
                                     <th>@lang('user.name')</th>
                                     <th>@lang('business.email')</th>
@@ -169,7 +174,7 @@
                                 @php
                                     $custom_labels = json_decode(session('business.custom_labels'), true);
                                 @endphp
-                                <th>
+                                <!-- <th>
                                     {{ $custom_labels['contact']['custom_field_1'] ?? __('lang_v1.contact_custom_field1') }}
                                 </th>
                                 <th>
@@ -198,7 +203,7 @@
                                 </th>
                                 <th>
                                     {{ $custom_labels['contact']['custom_field_10'] ?? __('lang_v1.custom_field', ['number' => 10]) }}
-                                </th>
+                                </th> -->
                             </tr>
                         </thead>
                         <tfoot>
@@ -210,7 +215,7 @@
                                 <td></td>
                                 <td></td>
                                 <td @if ($type == 'supplier') colspan="6"
-                            @elseif($type == 'customer')
+                            @elseif($type == 'customer' || $type == 'app_customer')
                                 @if ($reward_enabled)
                                     colspan="9"
                                 @else
@@ -222,16 +227,16 @@
                                 </td>
                                 <td class="footer_contact_due"></td>
                                 <td class="footer_contact_return_due"></td>
-                                <td></td>
-                                <td></td>
-                                <td></td>
-                                <td></td>
-                                <td></td>
-                                <td></td>
-                                <td></td>
-                                <td></td>
-                                <td></td>
-                                <td></td>
+                                <!-- <td></td> -->
+                                <!-- <td></td> -->
+                                <!-- <td></td> -->
+                                <!-- <td></td> -->
+                                <!-- <td></td> -->
+                                <!-- <td></td> -->
+                                <!-- <td></td> -->
+                                <!-- <td></td> -->
+                                <!-- <td></td> -->
+                                <!-- <td></td> -->
                             </tr>
                         </tfoot>
                     </table>

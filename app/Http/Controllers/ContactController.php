@@ -22,6 +22,7 @@ use Illuminate\Http\Request;
 use Spatie\Activitylog\Models\Activity;
 use Yajra\DataTables\Facades\DataTables;
 use App\Events\ContactCreatedOrModified;
+use Illuminate\Support\Facades\Hash;
 
 class ContactController extends Controller
 {
@@ -66,7 +67,7 @@ class ContactController extends Controller
 
         $type = request()->get('type');
 
-        $types = ['supplier', 'customer'];
+        $types = ['supplier', 'customer', 'app_customer'];
 
         if (empty($type) || ! in_array($type, $types)) {
             return redirect()->back();
@@ -75,8 +76,8 @@ class ContactController extends Controller
         if (request()->ajax()) {
             if ($type == 'supplier') {
                 return $this->indexSupplier();
-            } elseif ($type == 'customer') {
-                return $this->indexCustomer();
+            } elseif ($type == 'customer' || $type == 'app_customer') {
+                return $this->indexCustomer($type);
             } else {
                 exit('Not Found');
             }
@@ -87,12 +88,57 @@ class ContactController extends Controller
         $users = User::forDropdown($business_id);
 
         $customer_groups = [];
-        if ($type == 'customer') {
+        if ($type == 'customer' || $type == 'app_customer') {
             $customer_groups = CustomerGroup::forDropdown($business_id);
         }
 
         return view('contact.index')
             ->with(compact('type', 'reward_enabled', 'customer_groups', 'users'));
+    }
+
+    /**
+     * When true, contact list count must use the full aggregated query (slow on large datasets).
+     */
+    private function contactSupplierIndexRequiresAggregatedCount(): bool
+    {
+        if (request()->has('has_purchase_due')
+            || request()->has('has_purchase_return')
+            || request()->has('has_advance_balance')
+            || request()->has('has_opening_balance')
+            || request()->filled('assigned_to')
+            || request()->filled('contact_status')) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * When true, customer list count must use the full aggregated query.
+     */
+    private function contactCustomerIndexRequiresAggregatedCount(bool $is_admin): bool
+    {
+        if (request()->has('has_sell_due')
+            || request()->has('has_sell_return')
+            || request()->has('has_advance_balance')
+            || request()->has('has_opening_balance')
+            || request()->filled('assigned_to')
+            || request()->filled('contact_status')
+            || request()->filled('customer_group_id')
+            || request()->filled('has_no_sell_from')) {
+            return true;
+        }
+
+        if (! $is_admin && (
+            auth()->user()->can('customer_with_no_sell_one_month')
+            || auth()->user()->can('customer_with_no_sell_three_month')
+            || auth()->user()->can('customer_with_no_sell_six_month')
+            || auth()->user()->can('customer_with_no_sell_one_year')
+        )) {
+            return true;
+        }
+
+        return false;
     }
 
     /**
@@ -135,7 +181,12 @@ class ContactController extends Controller
                 ->where('uc.user_id', request()->input('assigned_to'));
         }
 
-        return Datatables::of($contact)
+        $dataTable = Datatables::of($contact);
+        if (! $this->contactSupplierIndexRequiresAggregatedCount()) {
+            $dataTable->setTotalRecords($this->contactUtil->getFastContactListCount($business_id, 'supplier'));
+        }
+
+        return $dataTable
             ->addColumn('address', '{{implode(", ", array_filter([$address_line_1, $address_line_2, $city, $state, $country, $zip_code]))}}')
             ->addColumn(
                 'due',
@@ -283,7 +334,7 @@ class ContactController extends Controller
      *
      * @return \Illuminate\Http\Response
      */
-    private function indexCustomer()
+    private function indexCustomer($type)
     {
         if (! auth()->user()->can('customer.view') && ! auth()->user()->can('customer.view_own')) {
             abort(403, 'Unauthorized action.');
@@ -293,7 +344,7 @@ class ContactController extends Controller
 
         $is_admin = $this->contactUtil->is_admin(auth()->user());
 
-        $query = $this->contactUtil->getContactQuery($business_id, 'customer');
+        $query = $this->contactUtil->getContactQuery($business_id, $type);
 
         if (request()->has('has_sell_due')) {
             $query->havingRaw('(COALESCE(total_invoice, 0) - COALESCE(invoice_received, 0) - COALESCE(total_ledger_discount, 0) - COALESCE(total_sell_return, 0) + COALESCE(sell_return_paid, 0)) > 0');
@@ -361,7 +412,12 @@ class ContactController extends Controller
             $query->where('contacts.contact_status', request()->input('contact_status'));
         }
 
-        $contacts = Datatables::of($query)
+        $dataTable = Datatables::of($query);
+        if (! $this->contactCustomerIndexRequiresAggregatedCount($is_admin)) {
+            $dataTable->setTotalRecords($this->contactUtil->getFastContactListCount($business_id, $type));
+        }
+
+        $contacts = $dataTable
             ->addColumn('address', '{{implode(", ", array_filter([$address_line_1, $address_line_2, $city, $state, $country, $zip_code]))}}')
         //    + $sell_return_paid add this in due because after paymnet for sell return not calculated 
             ->addColumn(
@@ -554,6 +610,9 @@ class ContactController extends Controller
         if (auth()->user()->can('customer.create') || auth()->user()->can('customer.view_own')) {
             $types['customer'] = __('report.customer');
         }
+	if (auth()->user()->can('app_customer.create') || auth()->user()->can('app_customer.view_own')) {
+            $types['app_customer'] = __('report.app_customer');
+        }
         if (auth()->user()->can('supplier.create') && auth()->user()->can('customer.create') || auth()->user()->can('supplier.view_own') || auth()->user()->can('customer.view_own')) {
             $types['both'] = __('lang_v1.both_supplier_customer');
         }
@@ -592,6 +651,9 @@ class ContactController extends Controller
             $input = $request->only(['type', 'supplier_business_name',
                 'prefix', 'first_name', 'middle_name', 'last_name', 'tax_number', 'pay_term_number', 'pay_term_type', 'mobile', 'landline', 'alternate_number', 'city', 'state', 'country', 'address_line_1', 'address_line_2', 'customer_group_id', 'zip_code', 'contact_id', 'custom_field1', 'custom_field2', 'custom_field3', 'custom_field4', 'custom_field5', 'custom_field6', 'custom_field7', 'custom_field8', 'custom_field9', 'custom_field10', 'email', 'shipping_address', 'position', 'dob', 'shipping_custom_field_details', 'assigned_to_users', 'land_mark', 'street_name', 'building_number', 'additional_number']);
 
+	if ($request->input('type') == 'app_customer') {
+		$input['password'] = Hash::make($request->input('password'));
+	}
             $name_array = [];
 
             if (! empty($input['prefix'])) {
@@ -735,6 +797,9 @@ class ContactController extends Controller
             if (auth()->user()->can('customer.create')) {
                 $types['customer'] = __('report.customer');
             }
+	if (auth()->user()->can('app_customer.create')) {
+                $types['app_customer'] = __('report.app_customer');
+            }
             if (auth()->user()->can('supplier.create') && auth()->user()->can('customer.create')) {
                 $types['both'] = __('lang_v1.both_supplier_customer');
             }
@@ -782,6 +847,9 @@ class ContactController extends Controller
                 $input = $request->only(['type', 'supplier_business_name', 'prefix', 'first_name', 'middle_name', 'last_name', 'tax_number', 'pay_term_number', 'pay_term_type', 'mobile', 'address_line_1', 'address_line_2', 'zip_code', 'dob', 'alternate_number', 'city', 'state', 'country', 'landline', 'customer_group_id', 'contact_id', 'custom_field1', 'custom_field2', 'custom_field3', 'custom_field4', 'custom_field5', 'custom_field6', 'custom_field7', 'custom_field8', 'custom_field9', 'custom_field10', 'email', 'shipping_address', 'position', 'shipping_custom_field_details', 'export_custom_field_1', 'export_custom_field_2', 'export_custom_field_3', 'export_custom_field_4', 'export_custom_field_5',
                     'export_custom_field_6', 'assigned_to_users', 'land_mark', 'street_name', 'building_number', 'additional_number']);
 
+		if ($request->input('type') == 'app_customer') {
+		$input['password'] = Hash::make($request->input('password'));
+		}
                 $name_array = [];
 
                 if (! empty($input['prefix'])) {
