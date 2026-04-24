@@ -110,7 +110,7 @@
                             <th>@lang('lang_v1.added_by')</th>
                             <th>@lang('sale.sell_note')</th>
                             <th>@lang('sale.staff_note')</th>
-                            <th>@lang('sale.shipping_details')</th>
+                            <!-- <th>@lang('sale.shipping_details')</th> -->
                             <th>@lang('restaurant.table')</th>
                             <th>@lang('restaurant.service_staff')</th>
                         </tr>
@@ -355,10 +355,10 @@
                         data: 'staff_note',
                         name: 'staff_note'
                     },
-                    {
-                        data: 'shipping_details',
-                        name: 'shipping_details'
-                    },
+                    // {
+                    //     data: 'shipping_details',
+                    //     name: 'shipping_details'
+                    // },
                     {
                         data: 'table_name',
                         name: 'tables.name',

@@ -466,6 +466,8 @@ class SellController extends Controller
                             $ecommerce_status = substr($ecommerce_status, 10);
                         }
                         $ecommerce_status_label = ! empty($ecommerce_status) ? ucwords(str_replace('_', ' ', $ecommerce_status)) : 'E-commerce';
+                        $invoice_no .= ' &nbsp;<small class="label bg-green label-round no-print">'. __('lang_v1.ecommerce_seller') .'</small>';
+// show ecommerce label in invoice no
                         $invoice_no .= ' &nbsp;<small class="label bg-blue label-round no-print">'.$ecommerce_status_label.'</small>';
                     }
 
@@ -502,7 +504,33 @@ class SellController extends Controller
 
                     return $html;
                 })
-                ->addColumn('conatct_name', '@if(!empty($supplier_business_name)) {{$supplier_business_name}}, <br> @endif {{$name}}')
+                ->addColumn('conatct_name', function ($row) {
+                    $contact_name = trim((string) ($row->name ?? ''));
+                    $supplier_business_name = trim((string) ($row->supplier_business_name ?? ''));
+
+                    if ($contact_name !== '' || $supplier_business_name !== '') {
+                        $html = '';
+                        if ($supplier_business_name !== '') {
+                            $html .= e($supplier_business_name) . ', <br>';
+                        }
+                        $html .= e($contact_name);
+
+                        return $html;
+                    }
+
+                    // E-commerce orders can exist without a linked contact; fall back to shipping name.
+                    if (! empty($row->source) && $row->source === 'ecommerce' && ! empty($row->order_addresses)) {
+                        $decoded = json_decode($row->order_addresses, true);
+                        if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                            $shipping_name = trim((string) data_get($decoded, 'shipping_address.shipping_name', ''));
+                            if ($shipping_name !== '') {
+                                return e($shipping_name);
+                            }
+                        }
+                    }
+
+                    return '';
+                })
                 ->editColumn('total_items', '{{@format_quantity($total_items)}}')
                 ->filterColumn('conatct_name', function ($query, $keyword) {
                     $query->where(function ($q) use ($keyword) {
@@ -518,6 +546,10 @@ class SellController extends Controller
                         $payment_method = $payment_types[$methods[0]] ?? '';
                     } elseif ($count > 1) {
                         $payment_method = __('lang_v1.checkout_multi_pay');
+                    }
+
+                    if (empty($payment_method) && ! empty($row->prefer_payment_method)) {
+                        $payment_method = $payment_types[$row->prefer_payment_method] ?? $row->prefer_payment_method;
                     }
 
                     $html = ! empty($payment_method) ? '<span class="payment-method" data-orig-value="'.$payment_method.'" data-status-name="'.$payment_method.'">'.$payment_method.'</span>' : '';
@@ -1974,10 +2006,10 @@ class SellController extends Controller
             }
         } else {
             // Keep ERP sell list separate from e-commerce orders by default.
-            $query->where(function ($q) {
-                $q->whereNull('transactions.source')
-                    ->orWhere('transactions.source', '!=', 'ecommerce');
-            });
+          //   $query->where(function ($q) {
+          //       $q->whereNull('transactions.source')
+          //           ->orWhere('transactions.source', '!=', 'ecommerce');
+          //   });
         }
 
 

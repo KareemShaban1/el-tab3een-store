@@ -1447,4 +1447,5 @@ return [
 'ecommerce_order_status'=>'حالة الطلب',
 'edit_ecommerce_status'=>'تحرير حالة الطلب',
 'app_customers'=>'عملاء التطبيق',
+'ecommerce_seller'=>'بيع من التطبيق',
 ];
