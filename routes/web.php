@@ -65,7 +65,7 @@ use App\Http\Controllers\VariationTemplateController;
 use App\Http\Controllers\WarrantyController;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
-
+use App\Http\Controllers\EcommerceSellController;
 /*
 |--------------------------------------------------------------------------
 | Web Routes
@@ -271,7 +271,7 @@ Route::middleware(['setData', 'auth', 'SetSessionData', 'language', 'timezone', 
     Route::get('/sells/ecommerce/orders', [SellController::class, 'ecommerceOrders'])->name('sells.ecommerce.orders');
     Route::get('/sells/ecommerce/orders/data', [SellController::class, 'ecommerceOrdersData'])->name('sells.ecommerce.orders.data');
     Route::get('/sells/{id}/ecommerce-status/edit', [SellController::class, 'editEcommerceStatus'])->name('sells.ecommerce.status.edit');
-    Route::post('/sells/{id}/ecommerce-status', [SellController::class, 'updateEcommerceStatus'])->name('sells.ecommerce.status');
+    Route::post('/sells/{id}/ecommerce-status', [EcommerceSellController::class, 'updateEcommerceStatus'])->name('sells.ecommerce.status');
 
     Route::get('/import-sales', [ImportSalesController::class, 'index']);
     Route::post('/import-sales/preview', [ImportSalesController::class, 'preview']);

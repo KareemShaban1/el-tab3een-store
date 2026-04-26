@@ -2121,59 +2121,7 @@ class SellController extends Controller
         return $query;
     }
 
-    /**
-     * Update ecommerce order status from backoffice.
-     */
-    public function updateEcommerceStatus(Request $request, $id)
-    {
-        if (! auth()->user()->can('sell.update')) {
-            return $this->respondUnauthorized();
-        }
-
-        $business_id = request()->session()->get('user.business_id');
-        $transaction = Transaction::where('business_id', $business_id)
-            ->where('type', 'sell')
-            ->where('source', 'ecommerce')
-            ->findOrFail($id);
-
-        $validated = $request->validate([
-            'ecommerce_order_status' => 'nullable|string|max:60',
-            'shipping_status' => 'nullable|string|max:60',
-            'payment_status' => 'nullable|string|max:60',
-            'delivered_to' => 'nullable|string|max:255',
-            'delivery_person' => 'nullable|integer',
-            'shipping_details' => 'nullable|string',
-        ]);
-
-        if ($request->filled('ecommerce_order_status')) {
-            $transaction->ecommerce_order_status = $validated['ecommerce_order_status'];
-            // Backward compatibility for existing flows still using sub_status.
-            $transaction->sub_status = 'ecommerce_' . $validated['ecommerce_order_status'];
-        }
-        if ($request->filled('shipping_status')) {
-            $transaction->shipping_status = $validated['shipping_status'];
-        }
-        if ($request->filled('payment_status')) {
-            $transaction->payment_status = $validated['payment_status'];
-        }
-        if ($request->filled('delivered_to')) {
-            $transaction->delivered_to = $validated['delivered_to'];
-        }
-        if ($request->filled('delivery_person')) {
-            $transaction->delivery_person = $validated['delivery_person'];
-        }
-        if ($request->filled('shipping_details')) {
-            $transaction->shipping_details = $validated['shipping_details'];
-        }
-        $transaction->save();
-
-        $this->transactionUtil->activityLog($transaction, 'edited');
-
-        return $this->respond([
-            'success' => true,
-            'msg' => 'E-commerce order status updated successfully.',
-        ]);
-    }
+ 
 
     /**
      * Checks if invoice number exists
