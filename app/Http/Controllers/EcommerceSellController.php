@@ -125,6 +125,13 @@ class EcommerceSellController extends Controller
 
  protected function makeSalePayment($salePaymentData)
     {
+        \Log::info('Ecommerce payment flow started', [
+            'transaction_id' => $salePaymentData['transaction_id'] ?? null,
+            'business_id' => $salePaymentData['business_id'] ?? null,
+            'amount' => $salePaymentData['amount'] ?? null,
+            'method' => $salePaymentData['method'] ?? null,
+        ]);
+
         try {
             $business_id = $salePaymentData['business_id'];
             $transaction_id = $salePaymentData['transaction_id'];
@@ -132,6 +139,15 @@ class EcommerceSellController extends Controller
 
             $location = BusinessLocation::find($salePaymentData['business_location_id']);
             $transaction_before = $transaction->replicate();
+
+            \Log::info('Ecommerce payment transaction loaded', [
+                'transaction_id' => $transaction->id,
+                'invoice_no' => $transaction->invoice_no,
+                'current_payment_status' => $transaction->payment_status,
+                'final_total' => $transaction->final_total,
+                'location_id' => $salePaymentData['business_location_id'] ?? null,
+                'location_found' => ! empty($location),
+            ]);
 
             if ($transaction->payment_status != 'paid') {
                 // $inputs = $request->only(['amount', 'method', 'note', 'card_number', 'card_holder_name',
@@ -156,6 +172,12 @@ class EcommerceSellController extends Controller
                     }
                 }
 
+                \Log::info('Ecommerce payment account resolution', [
+                    'transaction_id' => $transaction_id,
+                    'has_default_accounts' => ! empty($location?->default_payment_accounts),
+                    'account_id' => $salePaymentData['account_id'] ?? null,
+                ]);
+
 
                 $prefix_type = 'purchase_payment';
                 if (in_array($transaction->type, ['sell', 'sell_return'])) {
@@ -179,6 +201,17 @@ class EcommerceSellController extends Controller
                     $tp = TransactionPayment::create($salePaymentData);
                     $salePaymentData['transaction_type'] = $transaction->type;
                     event(new TransactionPaymentAdded($tp, $salePaymentData));
+                    \Log::info('Ecommerce payment transaction created', [
+                        'transaction_id' => $transaction_id,
+                        'transaction_payment_id' => $tp->id ?? null,
+                        'payment_ref_no' => $salePaymentData['payment_ref_no'] ?? null,
+                        'amount' => $salePaymentData['amount'] ?? null,
+                    ]);
+                } else {
+                    \Log::warning('Ecommerce payment skipped: empty amount', [
+                        'transaction_id' => $transaction_id,
+                        'raw_amount' => $salePaymentData['amount'] ?? null,
+                    ]);
                 }
 
                 //update payment status
@@ -188,6 +221,12 @@ class EcommerceSellController extends Controller
                 $this->transactionUtil->activityLog($transaction, 'payment_edited', $transaction_before);
 
                 DB::commit();
+            } else {
+                \Log::warning('Ecommerce payment skipped: transaction already paid', [
+                    'transaction_id' => $transaction_id,
+                    'invoice_no' => $transaction->invoice_no,
+                    'payment_status' => $transaction->payment_status,
+                ]);
             }
 
             $output = [
@@ -197,6 +236,15 @@ class EcommerceSellController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             $msg = __('messages.something_went_wrong');
+            \Log::error('Ecommerce payment creation failed', [
+                'transaction_id' => $salePaymentData['transaction_id'] ?? null,
+                'business_id' => $salePaymentData['business_id'] ?? null,
+                'payload' => $salePaymentData,
+                'error_message' => $e->getMessage(),
+                'error_file' => $e->getFile(),
+                'error_line' => $e->getLine(),
+                'trace' => $e->getTraceAsString(),
+            ]);
 
 
             $output = [
