@@ -373,145 +373,8 @@ $(document).ready(function() {
     });
 
     //Start: CRUD for Contacts
-    // contacts table — only init on the contacts list page; app.js runs on every page
-    if ($('#contact_table').length && $('#contact_type').length) {
-        var contact_table_type = String($('#contact_type').val() || '').trim();
-        var columns;
-        if (contact_table_type == 'supplier') {
-            columns = [
-                { data: 'action', searchable: false, orderable: false },
-                { data: 'contact_id', name: 'contact_id' },
-                { data: 'supplier_business_name', name: 'supplier_business_name' },
-                { data: 'name', name: 'name' },
-                { data: 'email', name: 'email' },
-                { data: 'tax_number', name: 'tax_number' },
-                { data: 'pay_term', name: 'pay_term', searchable: false, orderable: false },
-                { data: 'opening_balance', name: 'opening_balance', searchable: false },
-                { data: 'balance', name: 'balance', searchable: false },
-                { data: 'created_at', name: 'contacts.created_at' },
-                { data: 'address', name: 'address', orderable: false },
-                { data: 'mobile', name: 'mobile' },
-                { data: 'due', searchable: false, orderable: false },
-                { data: 'return_due', searchable: false, orderable: false },
-            ];
-        } else if (contact_table_type == 'customer' || contact_table_type == 'app_customer') {
-            columns = [
-                { data: 'action', searchable: false, orderable: false },
-                { data: 'contact_id', name: 'contact_id' },
-                { data: 'supplier_business_name', name: 'supplier_business_name' },
-                { data: 'name', name: 'name' },
-                { data: 'email', name: 'email' },
-                { data: 'tax_number', name: 'tax_number' },
-                { data: 'credit_limit', name: 'credit_limit' },
-                { data: 'pay_term', name: 'pay_term', searchable: false, orderable: false },
-                { data: 'opening_balance', name: 'opening_balance', searchable: false },
-                { data: 'balance', name: 'balance', searchable: false },
-                { data: 'created_at', name: 'contacts.created_at' },
-            ];
-
-            if ($('#rp_col').length) {
-                columns.push({ data: 'total_rp', name: 'total_rp' });
-            }
-            Array.prototype.push.apply(columns, [
-                { data: 'customer_group', name: 'cg.name' },
-                { data: 'address', name: 'address', orderable: false },
-                { data: 'mobile', name: 'mobile' },
-                { data: 'due', searchable: false, orderable: false },
-                { data: 'return_due', searchable: false, orderable: false },
-            ]);
-        }
-
-        if (columns && columns.length) {
-            contact_table = $('#contact_table').DataTable({
-                processing: true,
-                serverSide: true,
-                deferRender: true,
-                fixedHeader: false,
-                scrollY: '75vh',
-                scrollX: true,
-                scrollCollapse: true,
-                ajax: {
-                    url: '/contacts',
-                    data: function (d) {
-                        d.type = $('#contact_type').val();
-                        d = __datatable_ajax_callback(d);
-
-                        if ($('#has_sell_due').length > 0 && $('#has_sell_due').is(':checked')) {
-                            d.has_sell_due = true;
-                        }
-
-                        if ($('#has_sell_return').length > 0 && $('#has_sell_return').is(':checked')) {
-                            d.has_sell_return = true;
-                        }
-
-                        if ($('#has_purchase_due').length > 0 && $('#has_purchase_due').is(':checked')) {
-                            d.has_purchase_due = true;
-                        }
-
-                        if ($('#has_purchase_return').length > 0 && $('#has_purchase_return').is(':checked')) {
-                            d.has_purchase_return = true;
-                        }
-
-                        if ($('#has_advance_balance').length > 0 && $('#has_advance_balance').is(':checked')) {
-                            d.has_advance_balance = true;
-                        }
-
-                        if ($('#has_opening_balance').length > 0 && $('#has_opening_balance').is(':checked')) {
-                            d.has_opening_balance = true;
-                        }
-
-                        if ($('#has_no_sell_from').length > 0) {
-                            d.has_no_sell_from = $('#has_no_sell_from').val();
-                        }
-
-                        if ($('#assigned_to').length > 0) {
-                            d.assigned_to = $('#assigned_to').val();
-                        }
-
-                        if ($('#cg_filter').length > 0) {
-                            d.customer_group_id = $('#cg_filter').val();
-                        }
-
-                        if ($('#status_filter').length > 0) {
-                            d.contact_status = $('#status_filter').val();
-                        }
-                    },
-                },
-                aaSorting: [[1, 'desc']],
-                columns: columns,
-                fnDrawCallback: function (oSettings) {
-                    __currency_convert_recursively($('#contact_table'));
-                },
-                footerCallback: function (row, data, start, end, display) {
-                    var total_due = 0;
-                    var total_return_due = 0;
-                    for (var r in data) {
-                        total_due += $(data[r].due).data('orig-value')
-                            ? parseFloat($(data[r].due).data('orig-value'))
-                            : 0;
-
-                        total_return_due += $(data[r].return_due).data('orig-value')
-                            ? parseFloat($(data[r].return_due).data('orig-value'))
-                            : 0;
-                    }
-                    $('.footer_contact_due').html(__currency_trans_from_en(total_due));
-                    $('.footer_contact_return_due').html(__currency_trans_from_en(total_return_due));
-                },
-            });
-
-            $(document).on(
-                'ifChanged',
-                '#has_sell_due, #has_sell_return, #has_purchase_due, #has_purchase_return, #has_advance_balance, #has_opening_balance',
-                function () {
-                    contact_table.ajax.reload();
-                }
-            );
-
-            $(document).on('change', '#has_no_sell_from, #cg_filter, #status_filter, #assigned_to', function () {
-                contact_table.ajax.reload();
-            });
-        }
-    }
+    // contact list DataTable: initialized from resources/views/contact/partials/index_datatable_script.blade.php
+    // (server $type, avoids undefined columns and cache issues with public/js/app.js on installs).
 
     //On display of add contact modal
     $('.contact_modal').on('shown.bs.modal', function(e) {
@@ -727,7 +590,9 @@ $(document).ready(function() {
                     success: function(result) {
                         if (result.success == true) {
                             toastr.success(result.msg);
-                            contact_table.ajax.reload();
+                            if (typeof window.contact_table !== 'undefined' && window.contact_table) {
+                                window.contact_table.ajax.reload();
+                            }
                         } else {
                             toastr.error(result.msg);
                         }
@@ -2754,7 +2619,9 @@ $(document).on('click', 'a.update_contact_status', function(e){
         success: function(data) {
             if (data.success == true) {
                 toastr.success(data.msg);
-                contact_table.ajax.reload();
+                if (typeof window.contact_table !== 'undefined' && window.contact_table) {
+                    window.contact_table.ajax.reload();
+                }
             } else {
                 toastr.error(data.msg);
             }
@@ -2886,8 +2753,8 @@ function submitContactForm(form) {
                 $('div.contact_modal').modal('hide');
                 toastr.success(result.msg);
 
-                if (typeof(contact_table) != 'undefined') {
-                    contact_table.ajax.reload();
+                if (typeof window.contact_table !== 'undefined' && window.contact_table) {
+                    window.contact_table.ajax.reload();
                 }
 
                 var lead_view = urlSearchParam('lead_view');

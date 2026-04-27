@@ -352,4 +352,10 @@
             });
         </script>
     @endif
+    @if (auth()->user()->can('supplier.view') ||
+            auth()->user()->can('customer.view') ||
+            auth()->user()->can('supplier.view_own') ||
+            auth()->user()->can('customer.view_own'))
+        @include('contact.partials.index_datatable_script')
+    @endif
 @endsection
