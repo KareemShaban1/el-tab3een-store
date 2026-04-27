@@ -373,155 +373,145 @@ $(document).ready(function() {
     });
 
     //Start: CRUD for Contacts
-    //contacts table
-    var contact_table_type = $('#contact_type').val();
-    if (contact_table_type == 'supplier') {
-        var columns = [
-            { data: 'action', searchable: false, orderable: false },
-            { data: 'contact_id', name: 'contact_id' },
-            { data: 'supplier_business_name', name: 'supplier_business_name' },
-            { data: 'name', name: 'name' },
-            { data: 'email', name: 'email' },
-            { data: 'tax_number', name: 'tax_number' },
-            { data: 'pay_term', name: 'pay_term', searchable: false, orderable: false },
-            { data: 'opening_balance', name: 'opening_balance', searchable: false },
-            { data: 'balance', name: 'balance', searchable: false },
-            { data: 'created_at', name: 'contacts.created_at' },
-            { data: 'address', name: 'address', orderable: false },
-            { data: 'mobile', name: 'mobile' },
-            { data: 'due', searchable: false, orderable: false },
-            { data: 'return_due', searchable: false, orderable: false },
-          //   { data: 'custom_field1', name: 'custom_field1'},
-          //   { data: 'custom_field2', name: 'custom_field2'},
-          //   { data: 'custom_field3', name: 'custom_field3'},
-          //   { data: 'custom_field4', name: 'custom_field4'},
-          //   { data: 'custom_field5', name: 'custom_field5'},
-          //   { data: 'custom_field6', name: 'custom_field6'},
-          //   { data: 'custom_field7', name: 'custom_field7'},
-          //   { data: 'custom_field8', name: 'custom_field8'},
-          //   { data: 'custom_field9', name: 'custom_field9'},
-          //   { data: 'custom_field10', name: 'custom_field10'},
-        ];
-    } else if (contact_table_type == 'customer' || contact_table_type == 'app_customer') {
-        var columns = [
-            { data: 'action', searchable: false, orderable: false },
-            { data: 'contact_id', name: 'contact_id' },
-            { data: 'supplier_business_name', name: 'supplier_business_name' },
-            { data: 'name', name: 'name' },
-            { data: 'email', name: 'email' },
-            { data: 'tax_number', name: 'tax_number' },
-            { data: 'credit_limit', name: 'credit_limit' },
-            { data: 'pay_term', name: 'pay_term', searchable: false, orderable: false },
-            { data: 'opening_balance', name: 'opening_balance', searchable: false },
-            { data: 'balance', name: 'balance', searchable: false },
-            { data: 'created_at', name: 'contacts.created_at' }
-        ];
+    // contacts table — only init on the contacts list page; app.js runs on every page
+    if ($('#contact_table').length && $('#contact_type').length) {
+        var contact_table_type = String($('#contact_type').val() || '').trim();
+        var columns;
+        if (contact_table_type == 'supplier') {
+            columns = [
+                { data: 'action', searchable: false, orderable: false },
+                { data: 'contact_id', name: 'contact_id' },
+                { data: 'supplier_business_name', name: 'supplier_business_name' },
+                { data: 'name', name: 'name' },
+                { data: 'email', name: 'email' },
+                { data: 'tax_number', name: 'tax_number' },
+                { data: 'pay_term', name: 'pay_term', searchable: false, orderable: false },
+                { data: 'opening_balance', name: 'opening_balance', searchable: false },
+                { data: 'balance', name: 'balance', searchable: false },
+                { data: 'created_at', name: 'contacts.created_at' },
+                { data: 'address', name: 'address', orderable: false },
+                { data: 'mobile', name: 'mobile' },
+                { data: 'due', searchable: false, orderable: false },
+                { data: 'return_due', searchable: false, orderable: false },
+            ];
+        } else if (contact_table_type == 'customer' || contact_table_type == 'app_customer') {
+            columns = [
+                { data: 'action', searchable: false, orderable: false },
+                { data: 'contact_id', name: 'contact_id' },
+                { data: 'supplier_business_name', name: 'supplier_business_name' },
+                { data: 'name', name: 'name' },
+                { data: 'email', name: 'email' },
+                { data: 'tax_number', name: 'tax_number' },
+                { data: 'credit_limit', name: 'credit_limit' },
+                { data: 'pay_term', name: 'pay_term', searchable: false, orderable: false },
+                { data: 'opening_balance', name: 'opening_balance', searchable: false },
+                { data: 'balance', name: 'balance', searchable: false },
+                { data: 'created_at', name: 'contacts.created_at' },
+            ];
 
-        if ($('#rp_col').length) {
-            columns.push({ data: 'total_rp', name: 'total_rp' });
-        }
-        Array.prototype.push.apply(columns, [{ data: 'customer_group', name: 'cg.name' },
-            { data: 'address', name: 'address', orderable: false },
-            { data: 'mobile', name: 'mobile' },
-            { data: 'due', searchable: false, orderable: false },
-            { data: 'return_due', searchable: false, orderable: false },
-          //   { data: 'custom_field1', name: 'custom_field1'},
-          //   { data: 'custom_field2', name: 'custom_field2'},
-          //   { data: 'custom_field3', name: 'custom_field3'},
-          //   { data: 'custom_field4', name: 'custom_field4'},
-          //   { data: 'custom_field5', name: 'custom_field5'},
-          //   { data: 'custom_field6', name: 'custom_field6'},
-          //   { data: 'custom_field7', name: 'custom_field7'},
-          //   { data: 'custom_field8', name: 'custom_field8'},
-          //   { data: 'custom_field9', name: 'custom_field9'},
-          //   { data: 'custom_field10', name: 'custom_field10'},
+            if ($('#rp_col').length) {
+                columns.push({ data: 'total_rp', name: 'total_rp' });
+            }
+            Array.prototype.push.apply(columns, [
+                { data: 'customer_group', name: 'cg.name' },
+                { data: 'address', name: 'address', orderable: false },
+                { data: 'mobile', name: 'mobile' },
+                { data: 'due', searchable: false, orderable: false },
+                { data: 'return_due', searchable: false, orderable: false },
             ]);
-    }
-    
-    contact_table = $('#contact_table').DataTable({
-        processing: true,
-        serverSide: true,
-        deferRender: true,
-        fixedHeader:false,
-        scrollY:        "75vh",
-        scrollX:        true,
-        scrollCollapse: true,
-//         lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, "All"]],
-        "ajax": {
-            "url": "/contacts",
-            "data": function ( d ) {
-                d.type = $('#contact_type').val();
-                d = __datatable_ajax_callback(d);
-
-                if ($('#has_sell_due').length > 0 && $('#has_sell_due').is(':checked')) {
-                    d.has_sell_due = true;
-                }
-
-                if ($('#has_sell_return').length > 0 && $('#has_sell_return').is(':checked')) {
-                    d.has_sell_return = true;
-                }
-
-                if ($('#has_purchase_due').length > 0 && $('#has_purchase_due').is(':checked')) {
-                    d.has_purchase_due = true;
-                }
-
-                if ($('#has_purchase_return').length > 0 && $('#has_purchase_return').is(':checked')) {
-                    d.has_purchase_return = true;
-                }
-
-                if ($('#has_advance_balance').length > 0 && $('#has_advance_balance').is(':checked')) {
-                    d.has_advance_balance = true;
-                }
-
-                if ($('#has_opening_balance').length > 0 && $('#has_opening_balance').is(':checked')) {
-                    d.has_opening_balance = true;
-                }
-
-                if ($('#has_no_sell_from').length > 0) {
-                    d.has_no_sell_from = $('#has_no_sell_from').val();
-                }
-
-                if ($('#assigned_to').length > 0) {
-                    d.assigned_to = $('#assigned_to').val();
-                }
-
-                if ($('#cg_filter').length > 0) {
-                    d.customer_group_id = $('#cg_filter').val();
-                }
-
-                if ($('#status_filter').length > 0) {
-                    d.contact_status = $('#status_filter').val();
-                }
-            }
-        },
-        aaSorting: [[1, 'desc']],
-        columns: columns,
-        fnDrawCallback: function(oSettings) {
-            __currency_convert_recursively($('#contact_table'));
-        },
-        "footerCallback": function ( row, data, start, end, display ) {
-            var total_due = 0;
-            var total_return_due = 0;
-            for (var r in data){
-                total_due += $(data[r].due).data('orig-value') ? 
-                parseFloat($(data[r].due).data('orig-value')) : 0;
-
-                total_return_due += $(data[r].return_due).data('orig-value') ? 
-                parseFloat($(data[r].return_due).data('orig-value')) : 0;
-            }
-            $('.footer_contact_due').html(__currency_trans_from_en(total_due));
-            $('.footer_contact_return_due').html(__currency_trans_from_en(total_return_due));
         }
-    });
 
-    $(document).on('ifChanged', '#has_sell_due, #has_sell_return, \
-    #has_purchase_due, #has_purchase_return, #has_advance_balance, #has_opening_balance', function(){
-        contact_table.ajax.reload();
-    });
+        if (columns && columns.length) {
+            contact_table = $('#contact_table').DataTable({
+                processing: true,
+                serverSide: true,
+                deferRender: true,
+                fixedHeader: false,
+                scrollY: '75vh',
+                scrollX: true,
+                scrollCollapse: true,
+                ajax: {
+                    url: '/contacts',
+                    data: function (d) {
+                        d.type = $('#contact_type').val();
+                        d = __datatable_ajax_callback(d);
 
-    $(document).on('change', '#has_no_sell_from, #cg_filter, #status_filter, #assigned_to', function(){
-        contact_table.ajax.reload();
-    });
+                        if ($('#has_sell_due').length > 0 && $('#has_sell_due').is(':checked')) {
+                            d.has_sell_due = true;
+                        }
+
+                        if ($('#has_sell_return').length > 0 && $('#has_sell_return').is(':checked')) {
+                            d.has_sell_return = true;
+                        }
+
+                        if ($('#has_purchase_due').length > 0 && $('#has_purchase_due').is(':checked')) {
+                            d.has_purchase_due = true;
+                        }
+
+                        if ($('#has_purchase_return').length > 0 && $('#has_purchase_return').is(':checked')) {
+                            d.has_purchase_return = true;
+                        }
+
+                        if ($('#has_advance_balance').length > 0 && $('#has_advance_balance').is(':checked')) {
+                            d.has_advance_balance = true;
+                        }
+
+                        if ($('#has_opening_balance').length > 0 && $('#has_opening_balance').is(':checked')) {
+                            d.has_opening_balance = true;
+                        }
+
+                        if ($('#has_no_sell_from').length > 0) {
+                            d.has_no_sell_from = $('#has_no_sell_from').val();
+                        }
+
+                        if ($('#assigned_to').length > 0) {
+                            d.assigned_to = $('#assigned_to').val();
+                        }
+
+                        if ($('#cg_filter').length > 0) {
+                            d.customer_group_id = $('#cg_filter').val();
+                        }
+
+                        if ($('#status_filter').length > 0) {
+                            d.contact_status = $('#status_filter').val();
+                        }
+                    },
+                },
+                aaSorting: [[1, 'desc']],
+                columns: columns,
+                fnDrawCallback: function (oSettings) {
+                    __currency_convert_recursively($('#contact_table'));
+                },
+                footerCallback: function (row, data, start, end, display) {
+                    var total_due = 0;
+                    var total_return_due = 0;
+                    for (var r in data) {
+                        total_due += $(data[r].due).data('orig-value')
+                            ? parseFloat($(data[r].due).data('orig-value'))
+                            : 0;
+
+                        total_return_due += $(data[r].return_due).data('orig-value')
+                            ? parseFloat($(data[r].return_due).data('orig-value'))
+                            : 0;
+                    }
+                    $('.footer_contact_due').html(__currency_trans_from_en(total_due));
+                    $('.footer_contact_return_due').html(__currency_trans_from_en(total_return_due));
+                },
+            });
+
+            $(document).on(
+                'ifChanged',
+                '#has_sell_due, #has_sell_return, #has_purchase_due, #has_purchase_return, #has_advance_balance, #has_opening_balance',
+                function () {
+                    contact_table.ajax.reload();
+                }
+            );
+
+            $(document).on('change', '#has_no_sell_from, #cg_filter, #status_filter, #assigned_to', function () {
+                contact_table.ajax.reload();
+            });
+        }
+    }
 
     //On display of add contact modal
     $('.contact_modal').on('shown.bs.modal', function(e) {
