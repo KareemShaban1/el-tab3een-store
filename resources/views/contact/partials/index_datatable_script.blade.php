@@ -1,11 +1,56 @@
-{{-- Server-driven DataTable init: avoids undefined columns and wrong type when app.js is cached or #contact_type mismatches. --}}
+{{-- Server-side $type; single options init; if table already initialised, only attach API + filter listeners. --}}
 <script type="text/javascript">
-    (function () {
+    jQuery(function ($) {
+        'use strict';
+
         var $table = $('#contact_table');
         if (!$table.length) {
             return;
         }
-        if ($.fn.dataTable && typeof $.fn.dataTable.isDataTable === 'function' && $.fn.dataTable.isDataTable($table[0])) {
+
+        function bindContactListFilterListeners() {
+            if (window.__tab3ContactListFilterListenersBound) {
+                return;
+            }
+            window.__tab3ContactListFilterListenersBound = true;
+            $(document).on(
+                'ifChanged',
+                '#has_sell_due, #has_sell_return, #has_purchase_due, #has_purchase_return, #has_advance_balance, #has_opening_balance',
+                function () {
+                    if (window.contact_table) {
+                        window.contact_table.ajax.reload();
+                    }
+                }
+            );
+            $(document).on('change', '#has_no_sell_from, #cg_filter, #status_filter, #assigned_to', function () {
+                if (window.contact_table) {
+                    window.contact_table.ajax.reload();
+                }
+            });
+        }
+
+        var el = $table[0];
+        var alreadyInit = false;
+        if ($.fn.dataTable && typeof $.fn.dataTable.isDataTable === 'function' && $.fn.dataTable.isDataTable(el)) {
+            alreadyInit = true;
+        } else if ($.fn.DataTable && typeof $.fn.DataTable.isDataTable === 'function' && $.fn.DataTable.isDataTable(el)) {
+            alreadyInit = true;
+        } else if ($table.hasClass('dataTable')) {
+            alreadyInit = true;
+        }
+
+        if (alreadyInit) {
+            try {
+                window.contact_table = $table.DataTable();
+            } catch (err) {
+                /* table may be mid-state; avoid second options-based init below */
+            }
+            bindContactListFilterListeners();
+            return;
+        }
+
+        if (window.__tab3ContactListDtOptionsApplied) {
+            bindContactListFilterListeners();
             return;
         }
 
@@ -125,19 +170,7 @@
             },
         });
 
-        $(document).on(
-            'ifChanged',
-            '#has_sell_due, #has_sell_return, #has_purchase_due, #has_purchase_return, #has_advance_balance, #has_opening_balance',
-            function () {
-                if (window.contact_table) {
-                    window.contact_table.ajax.reload();
-                }
-            }
-        );
-        $(document).on('change', '#has_no_sell_from, #cg_filter, #status_filter, #assigned_to', function () {
-            if (window.contact_table) {
-                window.contact_table.ajax.reload();
-            }
-        });
-    })();
+        window.__tab3ContactListDtOptionsApplied = true;
+        bindContactListFilterListeners();
+    });
 </script>
