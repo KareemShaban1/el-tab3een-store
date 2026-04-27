@@ -1,4 +1,13 @@
 $(document).ready(function() {
+    // app.js loads on every backoffice page; only init DataTables for tables that exist.
+    function __dtIfPresent(selector, options) {
+        var $t = $(selector);
+        if (!$t.length) {
+            return null;
+        }
+        return $t.DataTable(options);
+    }
+
     getTotalUnreadNotifications();
     $('body').on('click', 'label', function(e) {
         var field_id = $(this).attr('for');
@@ -67,7 +76,7 @@ $(document).ready(function() {
                     $('div.brands_modal').modal('hide');
                     toastr.success(result.msg);
                     if(typeof brands_table !== 'undefined') {
-                        brands_table.ajax.reload();
+                        brands_table && brands_table.ajax.reload();
                     }
                     var evt = new CustomEvent("brandAdded", {detail: result.data});
                     window.dispatchEvent(evt);
@@ -82,7 +91,7 @@ $(document).ready(function() {
     });
 
     //Brands table
-    var brands_table = $('#brands_table').DataTable({
+    var brands_table = __dtIfPresent('#brands_table', {
         processing: true,
         serverSide: true,
         fixedHeader:false,
@@ -117,7 +126,7 @@ $(document).ready(function() {
                         if (result.success == true) {
                             $('div.brands_modal').modal('hide');
                             toastr.success(result.msg);
-                            brands_table.ajax.reload();
+                            brands_table && brands_table.ajax.reload();
                         } else {
                             toastr.error(result.msg);
                         }
@@ -147,7 +156,7 @@ $(document).ready(function() {
                     success: function(result) {
                         if (result.success == true) {
                             toastr.success(result.msg);
-                            brands_table.ajax.reload();
+                            brands_table && brands_table.ajax.reload();
                         } else {
                             toastr.error(result.msg);
                         }
@@ -160,7 +169,7 @@ $(document).ready(function() {
     //Start: CRUD for tax Rate
 
     //Tax Rates table
-    var tax_rates_table = $('#tax_rates_table').DataTable({
+    var tax_rates_table = __dtIfPresent('#tax_rates_table', {
         processing: true,
         serverSide: true,
         fixedHeader:false,
@@ -191,7 +200,7 @@ $(document).ready(function() {
                 if (result.success == true) {
                     $('div.tax_rate_modal').modal('hide');
                     toastr.success(result.msg);
-                    tax_rates_table.ajax.reload();
+                    tax_rates_table && tax_rates_table.ajax.reload();
                 } else {
                     toastr.error(result.msg);
                 }
@@ -220,8 +229,8 @@ $(document).ready(function() {
                         if (result.success == true) {
                             $('div.tax_rate_modal').modal('hide');
                             toastr.success(result.msg);
-                            tax_rates_table.ajax.reload();
-                            tax_groups_table.ajax.reload();
+                            tax_rates_table && tax_rates_table.ajax.reload();
+                            tax_groups_table && tax_groups_table.ajax.reload();
                         } else {
                             toastr.error(result.msg);
                         }
@@ -251,8 +260,8 @@ $(document).ready(function() {
                     success: function(result) {
                         if (result.success == true) {
                             toastr.success(result.msg);
-                            tax_rates_table.ajax.reload();
-                            tax_groups_table.ajax.reload();
+                            tax_rates_table && tax_rates_table.ajax.reload();
+                            tax_groups_table && tax_groups_table.ajax.reload();
                         } else {
                             toastr.error(result.msg);
                         }
@@ -266,7 +275,7 @@ $(document).ready(function() {
 
     //Start: CRUD for unit
     //Unit table
-    var units_table = $('#unit_table').DataTable({
+    var units_table = __dtIfPresent('#unit_table', {
         processing: true,
         serverSide: true,
         fixedHeader:false,
@@ -303,7 +312,7 @@ $(document).ready(function() {
                 if (result.success == true) {
                     $('div.unit_modal').modal('hide');
                     toastr.success(result.msg);
-                    units_table.ajax.reload();
+                    units_table && units_table.ajax.reload();
                 } else {
                     toastr.error(result.msg);
                 }
@@ -332,7 +341,7 @@ $(document).ready(function() {
                         if (result.success == true) {
                             $('div.unit_modal').modal('hide');
                             toastr.success(result.msg);
-                            units_table.ajax.reload();
+                            units_table && units_table.ajax.reload();
                         } else {
                             toastr.error(result.msg);
                         }
@@ -362,7 +371,7 @@ $(document).ready(function() {
                     success: function(result) {
                         if (result.success == true) {
                             toastr.success(result.msg);
-                            units_table.ajax.reload();
+                            units_table && units_table.ajax.reload();
                         } else {
                             toastr.error(result.msg);
                         }
@@ -604,7 +613,7 @@ $(document).ready(function() {
 
     //Start: CRUD for product variations
     //Variations table
-    var variation_table = $('#variation_table').DataTable({
+    var variation_table = __dtIfPresent('#variation_table', {
         processing: true,
         serverSide: true,
         fixedHeader:false,
@@ -644,7 +653,7 @@ $(document).ready(function() {
                 if (result.success === true) {
                     $('div.variation_modal').modal('hide');
                     toastr.success(result.msg);
-                    variation_table.ajax.reload();
+                    variation_table && variation_table.ajax.reload();
                 } else {
                     toastr.error(result.msg);
                 }
@@ -673,7 +682,7 @@ $(document).ready(function() {
                         if (result.success === true) {
                             $('div.variation_modal').modal('hide');
                             toastr.success(result.msg);
-                            variation_table.ajax.reload();
+                            variation_table && variation_table.ajax.reload();
                         } else {
                             toastr.error(result.msg);
                         }
@@ -703,7 +712,7 @@ $(document).ready(function() {
                     success: function(result) {
                         if (result.success === true) {
                             toastr.success(result.msg);
-                            variation_table.ajax.reload();
+                            variation_table && variation_table.ajax.reload();
                         } else {
                             toastr.error(result.msg);
                         }
@@ -861,8 +870,8 @@ $(document).ready(function() {
         },
     });
 
-    //Tax Rates table
-    var tax_groups_table = $('#tax_groups_table').DataTable({
+    //Tax group table
+    var tax_groups_table = __dtIfPresent('#tax_groups_table', {
         processing: true,
         serverSide: true,
         fixedHeader:false,
@@ -906,7 +915,7 @@ $(document).ready(function() {
                 if (result.success == true) {
                     $('div.tax_group_modal').modal('hide');
                     toastr.success(result.msg);
-                    tax_groups_table.ajax.reload();
+                    tax_groups_table && tax_groups_table.ajax.reload();
                 } else {
                     toastr.error(result.msg);
                 }
@@ -931,7 +940,7 @@ $(document).ready(function() {
                 if (result.success == true) {
                     $('div.tax_group_modal').modal('hide');
                     toastr.success(result.msg);
-                    tax_groups_table.ajax.reload();
+                    tax_groups_table && tax_groups_table.ajax.reload();
                 } else {
                     toastr.error(result.msg);
                 }
@@ -959,7 +968,7 @@ $(document).ready(function() {
                     success: function(result) {
                         if (result.success == true) {
                             toastr.success(result.msg);
-                            tax_groups_table.ajax.reload();
+                            tax_groups_table && tax_groups_table.ajax.reload();
                         } else {
                             toastr.error(result.msg);
                         }
@@ -1007,7 +1016,7 @@ $(document).ready(function() {
     $(document).on('change', '#total_digits', function() {
         show_invoice_preview();
     });
-    var invoice_table = $('#invoice_table').DataTable({
+    var invoice_table = __dtIfPresent('#invoice_table', {
         processing: true,
         serverSide: true,
         bPaginate: false,
@@ -1040,7 +1049,7 @@ $(document).ready(function() {
                     $('div.invoice_modal').modal('hide');
                     $('div.invoice_edit_modal').modal('hide');
                     toastr.success(result.msg);
-                    invoice_table.ajax.reload();
+                    invoice_table && invoice_table.ajax.reload();
                 } else {
                     toastr.error(result.msg);
                 }
@@ -1059,7 +1068,7 @@ $(document).ready(function() {
             success: function(result) {
                 if (result.success === true) {
                     toastr.success(result.msg);
-                    invoice_table.ajax.reload();
+                    invoice_table && invoice_table.ajax.reload();
                 } else {
                     toastr.error(result.msg);
                 }
@@ -1089,7 +1098,7 @@ $(document).ready(function() {
                     success: function(result) {
                         if (result.success === true) {
                             toastr.success(result.msg);
-                            invoice_table.ajax.reload();
+                            invoice_table && invoice_table.ajax.reload();
                         } else {
                             toastr.error(result.msg);
                         }
@@ -1154,7 +1163,7 @@ $(document).ready(function() {
     });
 
     //Business locations CRUD
-    business_locations = $('#business_location_table').DataTable({
+    business_locations = __dtIfPresent('#business_location_table', {
         processing: true,
         serverSide: true,
         bPaginate: false,
@@ -1217,7 +1226,7 @@ $(document).ready(function() {
                                 $('div.location_add_modal').modal('hide');
                                 $('div.location_edit_modal').modal('hide');
                                 toastr.success(result.msg);
-                                business_locations.ajax.reload();
+                                business_locations && business_locations.ajax.reload();
                             } else {
                                 toastr.error(result.msg);
                             }
@@ -1267,7 +1276,7 @@ $(document).ready(function() {
 
     //Start: CRUD for expense category
     //Expense category table
-    var expense_cat_table = $('#expense_category_table').DataTable({
+    var expense_cat_table = __dtIfPresent('#expense_category_table', {
         processing: true,
         serverSide: true,
         ajax: '/expense-categories',
@@ -1292,7 +1301,7 @@ $(document).ready(function() {
                 if (result.success === true) {
                     $('div.expense_category_modal').modal('hide');
                     toastr.success(result.msg);
-                    expense_cat_table.ajax.reload();
+                    expense_cat_table && expense_cat_table.ajax.reload();
                 } else {
                     toastr.error(result.msg);
                 }
@@ -1319,7 +1328,7 @@ $(document).ready(function() {
                     success: function(result) {
                         if (result.success === true) {
                             toastr.success(result.msg);
-                            expense_cat_table.ajax.reload();
+                            expense_cat_table && expense_cat_table.ajax.reload();
                         } else {
                             toastr.error(result.msg);
                         }
@@ -1337,18 +1346,18 @@ $(document).ready(function() {
                 $('#expense_date_range').val(
                     start.format(moment_date_format) + ' ~ ' + end.format(moment_date_format)
                 );
-                expense_table.ajax.reload();
+                expense_table && expense_table.ajax.reload();
             }
         );
 
         $('#expense_date_range').on('cancel.daterangepicker', function(ev, picker) {
             $('#product_sr_date_filter').val('');
-            expense_table.ajax.reload();
+            expense_table && expense_table.ajax.reload();
         });
     }
 
     //Expense table
-    expense_table = $('#expense_table').DataTable({
+    expense_table = __dtIfPresent('#expense_table', {
         processing: true,
         serverSide: true,
         fixedHeader:false,
@@ -1411,7 +1420,7 @@ $(document).ready(function() {
         select#expense_sub_category_id_filter').on(
         'change',
         function() {
-            expense_table.ajax.reload();
+            expense_table && expense_table.ajax.reload();
         }
     );
 
@@ -1442,7 +1451,7 @@ $(document).ready(function() {
                     success: function(result) {
                         if (result.success === true) {
                             toastr.success(result.msg);
-                            expense_table.ajax.reload();
+                            expense_table && expense_table.ajax.reload();
                         } else {
                             toastr.error(result.msg);
                         }
@@ -1589,7 +1598,7 @@ $(document).ready(function() {
     });
 
     //Sales commission agent
-    var sales_commission_agent_table = $('#sales_commission_agent_table').DataTable({
+    var sales_commission_agent_table = __dtIfPresent('#sales_commission_agent_table', {
         processing: true,
         serverSide: true,
         fixedHeader:false,
@@ -1629,7 +1638,7 @@ $(document).ready(function() {
                             if (result.success == true) {
                                 $('div.commission_agent_modal').modal('hide');
                                 toastr.success(result.msg);
-                                sales_commission_agent_table.ajax.reload();
+                                sales_commission_agent_table && sales_commission_agent_table.ajax.reload();
                             } else {
                                 toastr.error(result.msg);
                             }
@@ -1656,7 +1665,7 @@ $(document).ready(function() {
                     success: function(result) {
                         if (result.success == true) {
                             toastr.success(result.msg);
-                            sales_commission_agent_table.ajax.reload();
+                            sales_commission_agent_table && sales_commission_agent_table.ajax.reload();
                         } else {
                             toastr.error(result.msg);
                         }
@@ -1686,7 +1695,7 @@ $(document).ready(function() {
                 if (result.success == true) {
                     $('div.customer_groups_modal').modal('hide');
                     toastr.success(result.msg);
-                    customer_groups_table.ajax.reload();
+                    customer_groups_table && customer_groups_table.ajax.reload();
                 } else {
                     toastr.error(result.msg);
                 }
@@ -1695,7 +1704,7 @@ $(document).ready(function() {
     });
 
     //Customer Group table
-    var customer_groups_table = $('#customer_groups_table').DataTable({
+    var customer_groups_table = __dtIfPresent('#customer_groups_table', {
         processing: true,
         serverSide: true,
         fixedHeader:false,
@@ -1726,7 +1735,7 @@ $(document).ready(function() {
                         if (result.success == true) {
                             $('div.customer_groups_modal').modal('hide');
                             toastr.success(result.msg);
-                            customer_groups_table.ajax.reload();
+                            customer_groups_table && customer_groups_table.ajax.reload();
                         } else {
                             toastr.error(result.msg);
                         }
@@ -1756,7 +1765,7 @@ $(document).ready(function() {
                     success: function(result) {
                         if (result.success == true) {
                             toastr.success(result.msg);
-                            customer_groups_table.ajax.reload();
+                            customer_groups_table && customer_groups_table.ajax.reload();
                         } else {
                             toastr.error(result.msg);
                         }
@@ -1837,7 +1846,7 @@ $(document).ready(function() {
 
     setInterval(function(){ getTotalUnreadNotifications() }, __new_notification_count_interval);
 
-    discounts_table = $('#discounts_table').DataTable({
+    discounts_table = __dtIfPresent('#discounts_table', {
                     processing: true,
                     serverSide: true,
                     fixedHeader:false,
@@ -1866,7 +1875,7 @@ $(document).ready(function() {
                 });
 
 
-    types_of_service_table = $('#types_of_service_table').DataTable({
+    types_of_service_table = __dtIfPresent('#types_of_service_table', {
                         processing: true,
                         serverSide: true,
                         fixedHeader:false,
@@ -2014,7 +2023,7 @@ $(document).on('submit', 'form#discount_form', function(e) {
             if (result.success == true) {
                 $('div.discount_modal').modal('hide');
                 toastr.success(result.msg);
-                discounts_table.ajax.reload();
+                discounts_table && discounts_table.ajax.reload();
             } else {
                 toastr.error(result.msg);
             }
@@ -2041,7 +2050,7 @@ $(document).on('click', 'button.delete_discount_button', function() {
                 success: function(result) {
                     if (result.success == true) {
                         toastr.success(result.msg);
-                        discounts_table.ajax.reload();
+                        discounts_table && discounts_table.ajax.reload();
                     } else {
                         toastr.error(result.msg);
                     }
@@ -2354,7 +2363,7 @@ $(document).on('submit', 'form#types_of_service_form', function(e) {
             if (result.success == true) {
                 $('div.type_of_service_modal').modal('hide');
                 toastr.success(result.msg);
-                types_of_service_table.ajax.reload();
+                types_of_service_table && types_of_service_table.ajax.reload();
             } else {
                 toastr.error(result.msg);
             }
@@ -2382,7 +2391,7 @@ $(document).on('click', 'button.delete_type_of_service', function(e) {
                 success: function(result) {
                     if (result.success == true) {
                         toastr.success(result.msg);
-                        types_of_service_table.ajax.reload();
+                        types_of_service_table && types_of_service_table.ajax.reload();
                     } else {
                         toastr.error(result.msg);
                     }
@@ -2544,7 +2553,7 @@ $(document).on('click', 'button.activate-deactivate-location', function(){
                 success: function(result) {
                     if (result.success == true) {
                         toastr.success(result.msg);
-                        business_locations.ajax.reload();
+                        business_locations && business_locations.ajax.reload();
                     } else {
                         toastr.error(result.msg);
                     }
