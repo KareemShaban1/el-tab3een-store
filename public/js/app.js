@@ -461,45 +461,45 @@ lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, "All"]],
                 d.type = $('#contact_type').val();
                 d = __datatable_ajax_callback(d);
 
-                if ($('#has_sell_due').length > 0 && $('#has_sell_due').is(':checked')) {
-                    d.has_sell_due = true;
-                }
+          //       if ($('#has_sell_due').length > 0 && $('#has_sell_due').is(':checked')) {
+          //           d.has_sell_due = true;
+          //       }
 
-                if ($('#has_sell_return').length > 0 && $('#has_sell_return').is(':checked')) {
-                    d.has_sell_return = true;
-                }
+          //       if ($('#has_sell_return').length > 0 && $('#has_sell_return').is(':checked')) {
+          //           d.has_sell_return = true;
+          //       }
 
-                if ($('#has_purchase_due').length > 0 && $('#has_purchase_due').is(':checked')) {
-                    d.has_purchase_due = true;
-                }
+          //       if ($('#has_purchase_due').length > 0 && $('#has_purchase_due').is(':checked')) {
+          //           d.has_purchase_due = true;
+          //       }
 
-                if ($('#has_purchase_return').length > 0 && $('#has_purchase_return').is(':checked')) {
-                    d.has_purchase_return = true;
-                }
+          //       if ($('#has_purchase_return').length > 0 && $('#has_purchase_return').is(':checked')) {
+          //           d.has_purchase_return = true;
+          //       }
 
-                if ($('#has_advance_balance').length > 0 && $('#has_advance_balance').is(':checked')) {
-                    d.has_advance_balance = true;
-                }
+          //       if ($('#has_advance_balance').length > 0 && $('#has_advance_balance').is(':checked')) {
+          //           d.has_advance_balance = true;
+          //       }
 
-                if ($('#has_opening_balance').length > 0 && $('#has_opening_balance').is(':checked')) {
-                    d.has_opening_balance = true;
-                }
+          //       if ($('#has_opening_balance').length > 0 && $('#has_opening_balance').is(':checked')) {
+          //           d.has_opening_balance = true;
+          //       }
 
-                if ($('#has_no_sell_from').length > 0) {
-                    d.has_no_sell_from = $('#has_no_sell_from').val();
-                }
+          //       if ($('#has_no_sell_from').length > 0) {
+          //           d.has_no_sell_from = $('#has_no_sell_from').val();
+          //       }
 
-                if ($('#assigned_to').length > 0) {
-                    d.assigned_to = $('#assigned_to').val();
-                }
+          //       if ($('#assigned_to').length > 0) {
+          //           d.assigned_to = $('#assigned_to').val();
+          //       }
 
-                if ($('#cg_filter').length > 0) {
-                    d.customer_group_id = $('#cg_filter').val();
-                }
+          //       if ($('#cg_filter').length > 0) {
+          //           d.customer_group_id = $('#cg_filter').val();
+          //       }
 
-                if ($('#status_filter').length > 0) {
-                    d.contact_status = $('#status_filter').val();
-                }
+          //       if ($('#status_filter').length > 0) {
+          //           d.contact_status = $('#status_filter').val();
+          //       }
             }
         },
         aaSorting: [[1, 'desc']],
