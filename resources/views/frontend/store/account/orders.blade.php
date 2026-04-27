@@ -31,8 +31,8 @@
 <div class="card">
     <div class="orders-head">
         <div>
-            <h2 class="orders-title">My Orders</h2>
-            <p class="orders-sub">Track your e-commerce orders, shipping, and payment status.</p>
+            <h2 class="orders-title"> {{ __('lang_v1.my_orders') }}</h2>
+            <p class="orders-sub"> {{ __('lang_v1.track_your_ecommerce_orders_shipping_and_payment_status') }}</p>
         </div>
     </div>
 </div>
@@ -56,39 +56,39 @@
                 <div class="order-date">{{ \Carbon\Carbon::parse($order->transaction_date)->format('d M Y, h:i A') }}</div>
             </div>
             <span class="chip {{ in_array($orderStatusClass, ['chip-new','chip-confirmed','chip-packed','chip-shipped','chip-delivered','chip-cancelled','chip-refunded']) ? $orderStatusClass : 'chip-default' }}">
-                {{ str_replace('_', ' ', $orderStatus) }}
+                {{ __('lang_v1.'.str_replace('_', ' ', strtolower($orderStatus))) }}
             </span>
         </div>
 
         <div class="meta-grid">
             <div class="meta-box">
-                <p class="meta-label">Total</p>
+                <p class="meta-label"> {{ __('lang_v1.total') }}</p>
                 <p class="meta-value">{{ number_format((float)$order->final_total, 2) }}</p>
             </div>
             <div class="meta-box">
-                <p class="meta-label">Payment</p>
+                <p class="meta-label"> {{ __('lang_v1.payment') }}</p>
                 <p class="meta-value">
-                    <span class="chip {{ in_array($paymentStatusClass, ['chip-due','chip-paid','chip-partial']) ? $paymentStatusClass : 'chip-default' }}">{{ str_replace('_', ' ', $paymentStatus) }}</span>
+                    <span class="chip {{ in_array($paymentStatusClass, ['chip-due','chip-paid','chip-partial']) ? $paymentStatusClass : 'chip-default' }}">{{ __('lang_v1.'.str_replace('_', ' ', strtolower($paymentStatus))) }}</span>
                 </p>
             </div>
             <div class="meta-box">
-                <p class="meta-label">Shipping</p>
+                <p class="meta-label"> {{ __('lang_v1.shipping') }}</p>
                 <p class="meta-value">
                     <span class="chip {{ in_array($shippingStatusClass, ['chip-ordered','chip-packed','chip-shipped','chip-delivered']) ? $shippingStatusClass : 'chip-default' }}">{{ str_replace('_', ' ', $shippingStatus) }}</span>
                 </p>
             </div>
             <div class="meta-box">
-                <p class="meta-label">Order ID</p>
+                <p class="meta-label"> {{ __('lang_v1.order_id') }}</p>
                 <p class="meta-value">#{{ $order->id }}</p>
             </div>
         </div>
 
         <div class="order-actions">
-            <a class="btn" href="{{ route('store.account.orders.show', $order->id) }}">View Details</a>
+            <a class="btn" href="{{ route('store.account.orders.show', $order->id) }}"> {{ __('lang_v1.view_details') }}</a>
         </div>
     </div>
 @empty
-    <div class="card empty-state">You do not have any e-commerce orders yet.</div>
+    <div class="card empty-state"> {{ __('lang_v1.you_do_not_have_any_ecommerce_orders_yet') }}</div>
 @endforelse
 
 <div class="card">

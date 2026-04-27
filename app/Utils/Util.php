@@ -1262,6 +1262,8 @@ class Util
             'shipped' => __('lang_v1.shipped'),
             'delivered' => __('lang_v1.delivered'),
             'cancelled' => __('restaurant.cancelled'),
+            'returned' => __('lang_v1.returned'),
+            'refunded' => __('lang_v1.refunded'),
         ];
 
         return $statuses;

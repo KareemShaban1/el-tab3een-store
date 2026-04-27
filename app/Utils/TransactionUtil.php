@@ -1672,13 +1672,14 @@ class TransactionUtil extends Util
 
             $output['show_qr_code'] = ! empty($il->show_qr_code) ? true : false;
             $zatca_qr = ! empty($il->common_settings['zatca_qr']) ? true : false;
+            $qr_code_text = '';
             if ($zatca_qr) {
                 $total_order_tax = $transaction->tax_amount + $total_line_taxes;
                 $zatca_phase = ! empty($il->common_settings['zatca_phase']) ? $il->common_settings['zatca_phase'] : '';
                 $qr_code_text = $this->_zatca_qr_text($business_details->name, $business_details->tax_number_1, $transaction, $total_order_tax, $zatca_phase);
             } 
 
-            if ($transaction->status == 'final') {
+            if ($transaction->status == 'final' && !empty($qr_code_text)) {
                 $output['qr_code_text'] = $qr_code_text;
             }
         }
@@ -6224,6 +6225,15 @@ class TransactionUtil extends Util
             $sell_return->update($sell_return_data);
 
             $this->activityLog($sell_return, 'edited', $sell_return_before);
+        }
+
+        if ($sell->source === 'ecommerce') {
+            $sell_before = $sell->replicate();
+            $sell->ecommerce_order_status = 'refunded';
+            $sell->shipping_status = 'refunded';
+            $sell->save();
+
+            $this->activityLog($sell, 'edited', $sell_before);
         }
 
         if ($business->enable_rp == 1 && ! empty($sell->rp_earned)) {

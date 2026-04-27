@@ -20,8 +20,8 @@
 
 <div class="container profile-wrap">
 <div class="card profile-card">
-    <h2 class="profile-title">My Profile</h2>
-    <p class="profile-sub">Keep your contact and shipping information up to date for faster checkout.</p>
+    <h2 class="profile-title"> {{ __('lang_v1.my_profile') }}</h2>
+    <p class="profile-sub"> {{ __('lang_v1.keep_your_contact_and_shipping_information_up_to_date_for_faster_checkout') }}</p>
 </div>
 
 <div class="card profile-card">
@@ -30,50 +30,50 @@
         @method('PUT')
 
         <div class="section-block">
-            <h3 class="section-title">Basic Information</h3>
+            <h3 class="section-title"> {{ __('lang_v1.basic_information') }}</h3>
             <div class="field-grid">
                 <div class="field">
-                    <label for="profile_name">Name</label>
+                    <label for="profile_name"> {{ __('lang_v1.name') }}</label>
                     <input id="profile_name" type="text" name="name" value="{{ old('name', $customer->name) }}" required>
                 </div>
                 <div class="field">
-                    <label for="profile_mobile">Mobile</label>
+                    <label for="profile_mobile"> {{ __('lang_v1.mobile') }}</label>
                     <input id="profile_mobile" type="text" name="mobile" value="{{ old('mobile', $customer->mobile) }}">
                 </div>
             </div>
         </div>
 
         <div class="section-block">
-            <h3 class="section-title">Shipping Address</h3>
+            <h3 class="section-title"> {{ __('lang_v1.shipping_address') }}</h3>
             <div class="field">
-                <label for="shipping_address">Address</label>
+                <label for="shipping_address"> {{ __('lang_v1.address') }}</label>
                 <textarea id="shipping_address" name="shipping_address" rows="3">{{ old('shipping_address', $customer->shipping_address) }}</textarea>
-                <small>This address will be used as your default shipping address.</small>
+                <small> {{ __('lang_v1.this_address_will_be_used_as_your_default_shipping_address') }}</small>
             </div>
 
             <div class="field-grid" style="margin-top:12px;">
                 <div class="field">
-                    <label for="profile_city">City</label>
+                    <label for="profile_city"> {{ __('lang_v1.city') }}</label>
                     <input id="profile_city" type="text" name="city" value="{{ old('city', $customer->city) }}">
                 </div>
                 <div class="field">
-                    <label for="profile_state">State</label>
+                    <label for="profile_state"> {{ __('lang_v1.state') }}</label>
                     <input id="profile_state" type="text" name="state" value="{{ old('state', $customer->state) }}">
                 </div>
-                <div class="field">
-                    <label for="profile_country">Country</label>
+                <!-- <div class="field">
+                    <label for="profile_country"> {{ __('lang_v1.country') }}</label>
                     <input id="profile_country" type="text" name="country" value="{{ old('country', $customer->country) }}">
-                </div>
-                <div class="field">
-                    <label for="profile_zip">ZIP Code</label>
+                </div> -->
+                <!-- <div class="field">
+                    <label for="profile_zip"> {{ __('lang_v1.zip_code') }}</label>
                     <input id="profile_zip" type="text" name="zip_code" value="{{ old('zip_code', $customer->zip_code) }}">
-                </div>
+                </div> -->
             </div>
         </div>
 
         <div class="form-actions">
-            <a href="{{ route('store.account.orders') }}" class="btn-soft">My Orders</a>
-            <button class="btn" type="submit">Save Profile</button>
+            <a href="{{ route('store.account.orders') }}" class="btn-soft"> {{ __('lang_v1.my_orders') }}</a>
+            <button class="btn" type="submit"> {{ __('lang_v1.save_profile') }}</button>
         </div>
     </form>
 </div>

@@ -43,23 +43,24 @@ class StoreAccountController extends Controller
             'shipping_address' => 'nullable|string',
             'city' => 'nullable|string|max:120',
             'state' => 'nullable|string|max:120',
-            'country' => 'nullable|string|max:120',
-            'zip_code' => 'nullable|string|max:20',
+          //   'country' => 'nullable|string|max:120',
+          //   'zip_code' => 'nullable|string|max:20',
         ]);
 
+$validated['country'] = 'Egypt';
         $customer->fill($validated);
         $customer->save();
 
         if (! $request->expectsJson()) {
             return back()->with('status', [
                 'success' => true,
-                'msg' => 'Profile updated.',
+                'msg' => __('lang_v1.profile_updated'),
             ]);
         }
 
         return $this->respond([
             'success' => true,
-            'msg' => 'Profile updated.',
+            'msg' => __('lang_v1.profile_updated'),
         ]);
     }
 

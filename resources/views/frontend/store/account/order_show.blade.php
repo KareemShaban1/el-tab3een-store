@@ -124,47 +124,47 @@ padding: 30px;
     <div class="card">
         <div class="order-header">
             <div>
-                <h2 class="order-id">Order #{{ $order->invoice_no ?: $order->id }}</h2>
-                <p class="order-sub">Placed on {{ \Carbon\Carbon::parse($order->transaction_date)->format('d M Y, h:i A') }}</p>
+                <h2 class="order-id"> {{ __('lang_v1.order_id') }} #{{ $order->invoice_no ?: $order->id }}</h2>
+                <p class="order-sub"> {{ __('lang_v1.placed_on') }} {{ \Carbon\Carbon::parse($order->transaction_date)->format('d M Y, h:i A') }}</p>
             </div>
             <span class="chip {{ in_array($statusClass, ['chip-new','chip-confirmed','chip-packed','chip-shipped','chip-delivered','chip-cancelled','chip-refunded']) ? $statusClass : 'chip-default' }}">
-                {{ str_replace('_', ' ', $orderStatus) }}
+                {{ __('lang_v1.'.str_replace('_', ' ', strtolower($orderStatus))) }}
             </span>
         </div>
     </div>
 
     <div class="order-grid">
         <div class="metric-card">
-            <p class="metric-label">Total Amount</p>
+            <p class="metric-label"> {{ __('lang_v1.total_amount') }}</p>
             <p class="metric-value">{{ number_format((float) $order->final_total, 2) }}</p>
         </div>
         <div class="metric-card">
-            <p class="metric-label">Payment</p>
+            <p class="metric-label"> {{ __('lang_v1.payment') }}</p>
             <p class="metric-value">
                 <span class="chip {{ in_array($paymentClass, ['chip-due','chip-paid','chip-partial']) ? $paymentClass : 'chip-default' }}">
-                    {{ str_replace('_', ' ', $paymentStatus) }}
+                    {{ __('lang_v1.'.str_replace('_', ' ', strtolower($paymentStatus))) }}
                 </span>
             </p>
         </div>
         <div class="metric-card">
-            <p class="metric-label">Shipping</p>
+            <p class="metric-label"> {{ __('lang_v1.shipping') }}</p>
             <p class="metric-value">
                 <span class="chip {{ in_array($shippingClass, ['chip-ordered','chip-packed','chip-shipped','chip-delivered']) ? $shippingClass : 'chip-default' }}">
-                    {{ str_replace('_', ' ', $shippingStatus) }}
+                    {{ __('lang_v1.'.str_replace('_', ' ', strtolower($shippingStatus))) }}
                 </span>
             </p>
         </div>
     </div>
 
     <div class="card">
-        <h3 class="section-title">Order Items</h3>
-        <table class="items-table">
+        <h3 class="section-title"> {{ __('lang_v1.order_items') }}</h3>
+        <table class="items-table" style="text-align: right;">
             <thead>
                 <tr>
-                    <th>Item</th>
-                    <th class="txt-right">Qty</th>
-                    <th class="txt-right">Unit Price</th>
-                    <th class="txt-right">Line Total</th>
+                    <th class="txt-right"> {{ __('lang_v1.item') }}</th>
+                    <th class="txt-right"> {{ __('lang_v1.qty') }}</th>
+                    <th class="txt-right"> {{ __('lang_v1.unit_price') }}</th>
+                    <th class="txt-right"> {{ __('lang_v1.line_total') }}</th>
                 </tr>
             </thead>
             <tbody>
@@ -176,7 +176,7 @@ padding: 30px;
                         $variantName = optional($line->variations)->name ?: ('Variation #' . $line->variation_id);
                     @endphp
                     <tr>
-                        <td>
+                        <td class="txt-right">
                             <div><strong>{{ $itemName }}</strong></div>
                             <div class="muted">{{ $variantName }}</div>
                         </td>
@@ -188,7 +188,7 @@ padding: 30px;
             </tbody>
             <tfoot>
                 <tr>
-                    <td colspan="3" class="txt-right"><strong>Grand Total</strong></td>
+                    <td colspan="3" class="txt-right"><strong> {{ __('lang_v1.grand_total') }}</strong></td>
                     <td class="txt-right"><strong>{{ number_format((float) $order->final_total, 2) }}</strong></td>
                 </tr>
             </tfoot>
@@ -196,11 +196,11 @@ padding: 30px;
 </div>
 
 <div class="card">
-    <h3 class="section-title">Shipping Details</h3>
+    	<h3 class="section-title"> {{ __('lang_v1.shipping_details') }}</h3>
     @if(!empty($shippingAddress))
-        <div><strong>Name:</strong> {{ $shippingAddress['name'] ?? '-' }}</div>
-        <div><strong>Mobile:</strong> {{ data_get($order->order_addresses ? json_decode($order->order_addresses, true) : [], 'shipping_address.shipping_mobile', '-') }}</div>
-        <div><strong>Address:</strong> {{ implode(', ', array_filter([
+        <div><strong> {{ __('lang_v1.name') }}:</strong> {{ $shippingAddress['name'] ?? '-' }}</div>
+        <div><strong> {{ __('lang_v1.mobile') }}:</strong> {{ data_get($order->order_addresses ? json_decode($order->order_addresses, true) : [], 'shipping_address.shipping_mobile', '-') }}</div>
+        <div><strong> {{ __('lang_v1.address') }}:</strong> {{ implode(', ', array_filter([
             $shippingAddress['address_line_1'] ?? null,
             $shippingAddress['address_line_2'] ?? null,
             $shippingAddress['city'] ?? null,
@@ -209,14 +209,14 @@ padding: 30px;
             $shippingAddress['zipcode'] ?? null,
         ])) ?: '-' }}</div>
     @else
-        <div class="muted">No shipping details found for this order.</div>
+        <div class="muted"> {{ __('lang_v1.no_shipping_details_found_for_this_order') }}</div>
     @endif
 </div>
 
     <div class="card">
         <div class="card-actions">
-            <a href="{{ route('store.account.orders') }}" class="btn-soft">Back to orders</a>
-            <a href="{{ route('store.products.index') }}" class="btn-soft">Continue shopping</a>
+            <a href="{{ route('store.account.orders') }}" class="btn-soft"> {{ __('lang_v1.back_to_orders') }}</a>
+            <a href="{{ route('store.products.index') }}" class="btn-soft"> {{ __('lang_v1.continue_shopping') }}</a>
         </div>
     </div>
 </div>

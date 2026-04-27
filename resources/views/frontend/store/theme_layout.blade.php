@@ -12,9 +12,9 @@
 		<div class="container">
 			<span>🎉 خصم يصل لـ 50% على أحدث الهواتف الذكية! <a href="#">تسوق الآن ←</a></span>
 			<div class="announce-links">
-				<a href="#">تتبع طلبي</a>
-				<a href="#">حسابي</a>
-				<a href="#">مراكز الصيانة</a>
+				<a href="{{ route('store.account.orders') }}">تتبع طلبي</a>
+				<a href="{{ route('store.account.profile') }}">حسابي</a>
+				<!-- <a href="#">مراكز الصيانة</a> -->
 				<span style="color:var(--accent);font-weight:700;">📞 19900</span>
 			</div>
 		</div>

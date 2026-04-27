@@ -67,6 +67,17 @@ class SellController extends Controller
             'delivered' => 'bg-green',
             'cancelled' => 'bg-red',
         ];
+
+        $this->ecommerce_status_colors = [
+            'pending' => 'bg-yellow',
+            'processing' => 'bg-aqua',
+            'shipped' => 'bg-navy',
+            'delivered' => 'bg-green',
+            'completed' => 'bg-teal',
+            'cancelled' => 'bg-red',
+            'refunded' => 'bg-maroon',
+            'failed' => 'bg-black',
+        ];
     }
 
     /**
@@ -465,10 +476,11 @@ class SellController extends Controller
                         if (! empty($ecommerce_status) && strpos($ecommerce_status, 'ecommerce_') === 0) {
                             $ecommerce_status = substr($ecommerce_status, 10);
                         }
-                        $ecommerce_status_label = ! empty($ecommerce_status) ? ucwords(str_replace('_', ' ', $ecommerce_status)) : 'E-commerce';
+                        $ecommerce_status_label = ! empty($ecommerce_status) ? str_replace('_', ' ', strtolower($ecommerce_status)) : 'ecommerce';
+                        $ecommerce_status_color = ! empty($this->ecommerce_status_colors[$ecommerce_status]) ? $this->ecommerce_status_colors[$ecommerce_status] : 'bg-blue';
                         $invoice_no .= ' &nbsp;<small class="label bg-green label-round no-print">'. __('lang_v1.ecommerce_seller') .'</small>';
-// show ecommerce label in invoice no
-                        $invoice_no .= ' &nbsp;<small class="label bg-blue label-round no-print">'.$ecommerce_status_label.'</small>';
+			// show ecommerce label in invoice no
+                        $invoice_no .= ' &nbsp;<small class="label '.$ecommerce_status_color.' label-round no-print">' . __('lang_v1.'.$ecommerce_status_label).'</small>';
                     }
 
                     return $invoice_no;
@@ -495,8 +507,9 @@ class SellController extends Controller
                     if (! empty($status) && strpos($status, 'ecommerce_') === 0) {
                         $status = substr($status, 10);
                     }
-                    $label = ! empty($status) ? ucwords(str_replace('_', ' ', $status)) : 'New';
-                    $html = '<span class="label bg-blue">'.$label.'</span>';
+                    $label = ! empty($status) ? __('lang_v1.'.str_replace('_', ' ', strtolower($status))) : __('lang_v1.new');
+                    $status_color = ! empty($this->ecommerce_status_colors[$status]) ? $this->ecommerce_status_colors[$status] : 'bg-blue';
+                    $html = '<span class="label '.$status_color.'">'.$label.'</span>';
 
                     if (auth()->user()->can('sell.update')) {
                         $html = '<a href="#" class="btn-modal" data-href="'.action([\App\Http\Controllers\SellController::class, 'editEcommerceStatus'], [$row->id]).'" data-container=".view_modal">'.$html.'</a>';
@@ -640,14 +653,14 @@ class SellController extends Controller
 
         $payment_types = $this->transactionUtil->payment_types(null, true, $business_id);
         $ecommerce_order_statuses = [
-            'pending' => 'Pending',
-            'processing' => 'Processing',
-            'shipped' => 'Shipped',
-            'delivered' => 'Delivered',
-            'completed' => 'Completed',
-            'cancelled' => 'Cancelled',
-            'refunded' => 'Refunded',
-            'failed' => 'Failed',
+            'pending' => __('lang_v1.pending'),
+            'processing' => __('lang_v1.processing'),
+            'shipped' => __('lang_v1.shipped'),
+            'delivered' => __('lang_v1.delivered'),
+            'completed' => __('lang_v1.completed'),
+            'cancelled' => __('lang_v1.cancelled'),
+            'refunded' => __('lang_v1.refunded'),
+            'failed' => __('lang_v1.failed'),
         ];
 
 
@@ -693,14 +706,14 @@ class SellController extends Controller
         $sources['ecommerce'] = 'E-commerce';
         $payment_types = $this->transactionUtil->payment_types(null, true, $business_id);
         $ecommerce_order_statuses = [
-            'pending' => 'Pending',
-            'processing' => 'Processing',
-            'shipped' => 'Shipped',
-            'delivered' => 'Delivered',
-            'completed' => 'Completed',
-            'cancelled' => 'Cancelled',
-            'refunded' => 'Refunded',
-            'failed' => 'Failed',
+            'pending' => __('lang_v1.pending'),
+            'processing' => __('lang_v1.processing'),
+            'shipped' => __('lang_v1.shipped'),
+            'delivered' => __('lang_v1.delivered'),
+            'completed' => __('lang_v1.completed'),
+            'cancelled' => __('lang_v1.cancelled'),
+            'refunded' => __('lang_v1.refunded'),
+            'failed' => __('lang_v1.failed'),
         ];
 
         request()->merge(['source' => 'ecommerce', 'sale_type' => 'sell']);
@@ -1722,14 +1735,14 @@ class SellController extends Controller
             'partial' => __('lang_v1.partial'),
         ];
         $ecommerce_order_statuses = [
-            'pending' => 'Pending',
-            'processing' => 'Processing',
-            'shipped' => 'Shipped',
-            'delivered' => 'Delivered',
-            'completed' => 'Completed',
-            'cancelled' => 'Cancelled',
-            'refunded' => 'Refunded',
-            'failed' => 'Failed',
+            'pending' => __('lang_v1.pending'),
+            'processing' => __('lang_v1.processing'),
+            'shipped' => __('lang_v1.shipped'),
+            'delivered' => __('lang_v1.delivered'),
+            'completed' => __('lang_v1.completed'),
+            'cancelled' => __('lang_v1.cancelled'),
+            'refunded' => __('lang_v1.refunded'),
+            'failed' => __('lang_v1.failed'),
         ];
 
         return view('sell.partials.edit_ecommerce_status')

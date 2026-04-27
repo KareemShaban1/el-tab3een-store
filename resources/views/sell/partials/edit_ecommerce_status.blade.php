@@ -9,7 +9,7 @@
             <div class="row">
                 <div class="col-md-6">
                     <div class="form-group">
-                        {!! Form::label('ecommerce_order_status', 'Order Status:') !!}
+                        {!! Form::label('ecommerce_order_status', __('lang_v1.ecommerce_order_status') . ':') !!}
                         {!! Form::select('ecommerce_order_status', $ecommerce_order_statuses, !empty($transaction->ecommerce_order_status) ? $transaction->ecommerce_order_status : (!empty($transaction->sub_status) ? str_replace('ecommerce_', '', $transaction->sub_status) : null), ['class' => 'form-control select2', 'style' => 'width:100%', 'placeholder' => __('messages.please_select')]) !!}
                     </div>
                 </div>
