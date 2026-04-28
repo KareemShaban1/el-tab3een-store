@@ -291,6 +291,7 @@ class StorefrontController extends Controller
                     ->values()
                     ->all();
 
+
                 return [
                     'variation_id' => $variation->id,
                     'sku' => $sku,
@@ -312,6 +313,7 @@ class StorefrontController extends Controller
             'data' => [
                 'id' => $product->id,
                 'name' => is_scalar($product->name) ? (string) $product->name : '',
+                'description' => is_scalar($product->product_description) ? (string) $product->product_description : '',
                 'image_url' => $product->image_url,
                 'brand' => is_scalar($brandName) ? (string) $brandName : null,
                 'category' => is_scalar($categoryName) ? (string) $categoryName : null,

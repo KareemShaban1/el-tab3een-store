@@ -370,7 +370,8 @@
 		background: transparent;
 		border: none;
 		font-size: .93rem;
-		color: var(--text)
+		color: var(--text);
+                    margin-bottom: 0 !important;
 	}
 
 	.search-input::placeholder {
@@ -378,7 +379,7 @@
 	}
 
 	.search-btn {
-		padding: 15px 20px;
+		padding: 15px;
 		background: var(--accent);
 		border: none;
 		color: #fff;
@@ -386,7 +387,7 @@
 		transition: var(--t);
 		display: flex;
 		align-items: center;
-border-radius: 40px;
+                    border-radius: 40px;
 	}
 
 	.search-btn:hover {

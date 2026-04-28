@@ -164,7 +164,7 @@
 					</div>
 
 					<!-- Nav Links -->
-					<div class="nav-links">
+					<!-- <div class="nav-links">
 						<a href="#" class="nav-link active">🏠 الرئيسية</a>
 						<a href="#" class="nav-link">🛒 المتجر</a>
 						<a href="#" class="nav-link">📱 هواتف</a>
@@ -172,7 +172,7 @@
 						<a href="#" class="nav-link">🎮 جيمنج</a>
 						<a href="#" class="nav-link">🔌 إكسسوارات</a>
 						<a href="#" class="nav-link nav-link-hot">🔥 العروض</a>
-					</div>
+					</div> -->
 
 				</div>
 			</div>

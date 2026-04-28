@@ -100,7 +100,7 @@
 					<span class="flash-icon">⚡</span>
 					عروض سريعة
 				</div>
-				<div style="display:flex;align-items:center;gap:14px;">
+				<!-- <div style="display:flex;align-items:center;gap:14px;">
 					<span style="color:rgba(255,255,255,.6);font-size:.85rem;">تنتهي
 						خلال:</span>
 					<div class="timer">
@@ -116,7 +116,7 @@
 								id="t-s">22</span><span
 								class="t-lbl">ثانية</span></div>
 					</div>
-				</div>
+				</div> -->
 			</div>
 			<div class="flash-grid" id="dynamic-flash-grid"></div>
 		</div>
@@ -172,7 +172,7 @@
 	</section>
 
 	<!-- ===================== TESTIMONIALS ===================== -->
-	<section class="testi-section section">
+	<!-- <section class="testi-section section">
 		<div class="container">
 			<div class="sec-head" style="text-align:center;">
 				<h2 class="sec-title">ماذا يقول <span>عملاؤنا</span></h2>
@@ -223,10 +223,10 @@
 				</div>
 			</div>
 		</div>
-	</section>
+	</section> -->
 
 	<!-- ===================== NEWSLETTER ===================== -->
-	<section class="news-section">
+	<!-- <section class="news-section">
 		<div class="container">
 			<h2 class="news-title">📧 اشترك في نشرتنا البريدية</h2>
 			<p class="news-sub">احصل على أحدث العروض والخصومات مباشرة في بريدك الإلكتروني</p>
@@ -236,6 +236,6 @@
 				<button type="submit" class="news-btn">اشترك الآن</button>
 			</form>
 		</div>
-	</section>
+	</section> -->
 
 	@endsection

@@ -38,7 +38,7 @@
 
 @section('content')
 <style>
-    .product-page { display: grid; gap: 16px; max-width: 1200px; margin-inline: auto; }
+    .product-page { display: grid; gap: 16px; max-width: 1200px; margin: 30px auto; }
     .product-hero { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
     .product-media { background: #fff; border: 1px solid #e5e7eb; border-radius: 14px; padding: 12px; position: sticky; top: 12px; }
     .product-image { width: 100%; max-height: 480px; object-fit: cover; border-radius: 12px; background: #f8fafc; }
@@ -113,11 +113,23 @@
         </div>
         <div class="product-summary">
             <div>
-                <a href="{{ route('store.products.index') }}" class="back-link">← {{ __('Back to products') }}</a>
+                <a href="{{ route('store.products.index') }}" class="back-link">← {{ __('lang_v1.back_to_products') }}</a>
             </div>
-            <div class="crumb">{{ $sfStr($product['brand'] ?? '') ?: $tx('Brand') }} | {{ $sfStr($product['category'] ?? '') ?: $tx('Category') }}</div>
             <h2 class="product-name">{{ $sfStr($product['name'] ?? '') }}</h2>
-            <div class="meta-grid">
+            <!-- product description -->
+            @php
+                $productDescription = $sfStr($product['description'] ?? '');
+                $descriptionHasHtml = $productDescription !== strip_tags($productDescription);
+            @endphp
+            <div class="crumb product-description">
+                @if($descriptionHasHtml)
+                    {!! $productDescription !!}
+                @else
+                    {{ $productDescription }}
+                @endif
+            </div>
+
+            <!-- <div class="meta-grid">
                 <div class="meta-box">
                     <p class="meta-label">{{ $tx('Unit') }}</p>
                     <p class="meta-value">{{ $sfStr($product['unit'] ?? '') ?: '—' }}</p>
@@ -126,72 +138,76 @@
                     <p class="meta-label">{{ $tx('Options') }}</p>
                     <p class="meta-value">{{ count($variations) }}</p>
                 </div>
-            </div>
+            </div> -->
 
             @if(! empty($variations))
                 <div class="purchase-block" id="product-purchase"
                      data-checkout-base="{{ route('store.checkout.form') }}"
                      data-is-customer="{{ auth('customer')->check() ? '1' : '0' }}">
-                    <div>
-                        <label class="field-label" for="product-variant-select">{{ $tx('Choose variation') }}</label>
-                        <select id="product-variant-select" class="variant-select" aria-describedby="variant-details-panel">
-                            @foreach($variations as $index => $v)
-                                @php
-                                    $qty = (float) ($v['qty_available'] ?? 0);
-                                    $vName = $sfStr($v['name'] ?? '');
-                                    $label = ($vName ?: $tx('Default')) . ' — ' . number_format((float) ($v['price_inc_tax'] ?? 0), 2);
-                                    if ($qty <= 5 && $qty > 0) {
-                                        $label .= ' (' . $tx('Low stock') . ')';
-                                    }
-                                @endphp
-                                <option value="{{ $sfStr($v['variation_id'] ?? '') }}"
-                                    data-sku="{{ e($sfStr($v['sku'] ?? '')) }}"
-                                    data-qty="{{ $qty }}"
-                                    data-price="{{ (float) ($v['price_inc_tax'] ?? 0) }}"
-                                    @selected($index === 0)
-                                >{{ $label }}</option>
-                            @endforeach
-                        </select>
-                    </div>
+                    <div style="display: flex; gap: 10px;">
+                        <div style="flex: 1;">
+			<label class="field-label" for="product-variant-select">{{ __('lang_v1.choose_variation') }}</label>
+			<select id="product-variant-select" class="variant-select" aria-describedby="variant-details-panel">
+			@foreach($variations as $index => $v)
+				@php
+				$qty = (float) ($v['qty_available'] ?? 0);
+				$vName = $sfStr($v['name'] ?? '');
+				$label = ($vName ?: $tx('Default')) . ' — ' . number_format((float) ($v['price_inc_tax'] ?? 0), 2);
+				if ($qty <= 5 && $qty > 0) {
+					$label .= ' (' . __('lang_v1.low_stock') . ')';
+				}
+				@endphp
+				<option value="{{ $sfStr($v['variation_id'] ?? '') }}"
+				data-sku="{{ e($sfStr($v['sku'] ?? '')) }}"
+				data-qty="{{ $qty }}"
+				data-price="{{ (float) ($v['price_inc_tax'] ?? 0) }}"
+				@selected($index === 0)
+				>{{ $label }}</option>
+			@endforeach
+			</select>
+		     </div>
 
-                    <div id="variant-details-panel" class="variant-details" role="region" aria-live="polite">
-                        <div class="detail-row">
-                            <span class="detail-key">{{ $tx('Availability') }}</span>
-                            <span id="variant-stock-chip" class="chip chip-ok"></span>
-                        </div>
-                        <div class="detail-row">
-                            <span class="detail-key">{{ $tx('SKU') }}</span>
-                            <span id="variant-sku" class="detail-val">—</span>
-                        </div>
-                        <div class="detail-row">
-                            <span class="detail-key">{{ $tx('In stock') }}</span>
-                            <span id="variant-qty-text" class="detail-val">—</span>
-                        </div>
-                        <div class="detail-row" style="border-top: 1px solid #e5e7eb; padding-top: 10px; margin-top: 4px;">
-                            <span class="detail-key">{{ $tx('Price') }}</span>
-                            <span id="variant-price" class="detail-price">—</span>
-                        </div>
-                        <div class="detail-row loc-block" style="border-top: 1px solid #e5e7eb; padding-top: 10px; margin-top: 4px;">
-                            <div class="loc-list-header" style="width:100%;">
-                                <span>{{ $tx('Location') }}</span>
-                                <span>{{ $tx('Quantity') }}</span>
-                            </div>
-                            <ul id="variant-locations" class="loc-list" aria-label="{{ $tx('Stock by location') }}"></ul>
-                        </div>
-                    </div>
-
-                    <div class="qty-row">
+ 		<div class="qty-row" style="flex: 1;">
                         <div style="grid-column: 1 / -1;">
-                            <label class="field-label" for="product-variant-qty">{{ $tx('Quantity') }}</label>
+                            <label class="field-label" for="product-variant-qty">{{ __('lang_v1.quantity') }}</label>
                             <input type="number" id="product-variant-qty" name="qty" value="1" min="1" step="1">
                         </div>
                     </div>
+                    </div>
+
+                    <div id="variant-details-panel" class="variant-details" role="region" aria-live="polite">
+                        <!-- <div class="detail-row">
+                            <span class="detail-key">{{ __('lang_v1.availability') }}</span>
+                            <span id="variant-stock-chip" class="chip chip-ok"></span>
+                        </div> -->
+                        <div class="detail-row">
+                            <span class="detail-key">{{ __('lang_v1.sku') }}</span>
+                            <span id="variant-sku" class="detail-val">—</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-key">{{ __('lang_v1.in_stock') }}</span>
+                            <span id="variant-qty-text" class="detail-val">—</span>
+                        </div>
+                        <div class="detail-row" style="border-top: 1px solid #e5e7eb; padding-top: 10px; margin-top: 4px;">
+                            <span class="detail-key">{{ __('lang_v1.price') }}</span>
+                            <span id="variant-price" class="detail-price">—</span>
+                        </div>
+                        <!-- <div class="detail-row loc-block" style="border-top: 1px solid #e5e7eb; padding-top: 10px; margin-top: 4px;">
+                            <div class="loc-list-header" style="width:100%;">
+                                <span>{{ __('lang_v1.location') }}</span>
+                                <span>{{ __('lang_v1.quantity') }}</span>
+                            </div>
+                            <ul id="variant-locations" class="loc-list" aria-label="{{ __('lang_v1.stock_by_location') }}"></ul>
+                        </div> -->
+                    </div>
+
+                   
 
                     <div class="cta-row">
                         @auth('customer')
-                            <a id="product-buy-btn" class="btn" href="#">{{ $tx('Buy now') }}</a>
+                            <a id="product-buy-btn" class="btn" href="#">{{ __('lang_v1.buy_now') }}</a>
                         @else
-                            <a id="product-buy-btn" class="btn secondary" href="{{ route('store.auth.login.form') }}">{{ $tx('Login to purchase') }}</a>
+                            <a id="product-buy-btn" class="btn secondary" href="{{ route('store.auth.login.form') }}">{{ __('lang_v1.login_to_purchase') }}</a>
                         @endauth
                     </div>
                 </div>
