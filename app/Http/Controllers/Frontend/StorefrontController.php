@@ -75,6 +75,7 @@ class StorefrontController extends Controller
         $business_id = self::resolveBusinessId($request);
         $location_id = $this->resolveLocationId($business_id, $request);
         $business_location_ids = BusinessLocation::where('business_id', $business_id)->where('is_active', 1)->pluck('id');
+
         $query = Product::where('products.business_id', $business_id)
             ->active()
             ->productForSales()
@@ -107,7 +108,7 @@ class StorefrontController extends Controller
         $products = $query->paginate(20);
 
 
-        $items = $products->getCollection()->map(function ($product) use ($business_location_ids) {
+        $items = $products->getCollection()->map(function ($product) use ($business_location_ids, $location_id) {
             $variations = Variation::where('product_id', $product->id)
                 ->with(['variation_location_details' => function ($q) use ($business_location_ids) {
                     $q->whereIn('location_id', $business_location_ids)->where('qty_available', '>', 0);
@@ -116,7 +117,12 @@ class StorefrontController extends Controller
             $in_stock_variations = $variations->filter(function ($v) {
                 return (float) $v->variation_location_details->sum('qty_available') > 0;
             })->values();
-            $primary_variation = $in_stock_variations->first();
+
+            $primary_variation = $in_stock_variations->first(function ($v) use ($location_id) {
+                return $v->variation_location_details->contains(function ($row) use ($location_id) {
+                    return (int) $row->location_id === (int) $location_id && (float) $row->qty_available > 0;
+                });
+            }) ?? $in_stock_variations->first();
 
             $in_stock = $in_stock_variations->sum(function ($v) {
                 return (float) $v->variation_location_details->sum('qty_available');
@@ -132,27 +138,47 @@ class StorefrontController extends Controller
                 'variation_id' => optional($primary_variation)->id,
                 'min_price' => optional($in_stock_variations->sortBy('sell_price_inc_tax')->first())->sell_price_inc_tax,
                 'max_price' => optional($in_stock_variations->sortByDesc('sell_price_inc_tax')->first())->sell_price_inc_tax,
-                'variations' => $in_stock_variations->map(function ($v) {
+                'variations' => $in_stock_variations->map(function ($v) use ($location_id) {
+                    $locations = $v->variation_location_details
+                        ->filter(function ($row) {
+                            return (float) ($row->qty_available ?? 0) > 0;
+                        })
+                        ->map(function ($row) use ($location_id) {
+                            $lid = (int) $row->location_id;
+
+                            return [
+                                'location_id' => $lid,
+                                'qty_available' => (float) $row->qty_available,
+                                'is_checkout_location' => $lid === (int) $location_id,
+                            ];
+                        })
+                        ->sortByDesc(function ($locRow) {
+                            return $locRow['is_checkout_location'] ? 1 : 0;
+                        })
+                        ->values()
+                        ->all();
+
                     return [
                         'variation_id' => $v->id,
                         'name' => $v->name,
                         'sku' => $v->sub_sku,
                         'price_inc_tax' => (float) $v->sell_price_inc_tax,
                         'qty_available' => (float) $v->variation_location_details->sum('qty_available'),
+                        'locations' => $locations,
                     ];
                 })->values(),
             ];
         })
-//       ->filter(function ($item) {
-//             return ! empty($item['variation_id']) && (float) $item['in_stock_qty'] > 0;
-//         })
-->values();
+            ->filter(function ($item) {
+                return (float) ($item['in_stock_qty'] ?? 0) > 0;
+            })
+            ->values();
+
 
         // Keep pagination metadata (current/last page, URLs, etc) but swap the collection
         // from Eloquent models to the lightweight arrays needed by the storefront view.
         $products->setCollection($items);
         $products->appends($request->query());
-
         $filterQuery = array_filter([
             'q' => $request->filled('q') ? (string) $request->input('q') : null,
             'category_id' => $request->filled('category_id') ? (string) $request->input('category_id') : null,

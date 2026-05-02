@@ -1,13 +1,16 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 @include('frontend.store.layout.head')
+
 <body>
 	@if (session()->pull('clear_store_cart'))
-		<script>
-			try { localStorage.removeItem('store_cart_v1'); } catch (e) {}
-		</script>
+	<script>
+	try {
+		localStorage.removeItem('store_cart_v1');
+	} catch (e) {}
+	</script>
 	@endif
-    <!-- ===================== ANNOUNCEMENT BAR ===================== -->
+	<!-- ===================== ANNOUNCEMENT BAR ===================== -->
 	<div class="announce">
 		<div class="container">
 			<span>🎉 خصم يصل لـ 50% على أحدث الهواتف الذكية! <a href="#">تسوق الآن ←</a></span>
@@ -56,13 +59,15 @@
 						@endforeach
 					</select> -->
 					<div class="header-search-field">
-						<input type="search" name="q" id="store-search-q" class="search-input"
-							value="{{ request('q') }}"
+						<input type="search" name="q" id="store-search-q"
+							class="search-input" value="{{ request('q') }}"
 							placeholder="ابحث عن منتج، ماركة أو فئة..."
-							autocomplete="off" autocapitalize="off" spellcheck="false"
-							aria-autocomplete="list" aria-controls="store-search-suggestions"
+							autocomplete="off" autocapitalize="off"
+							spellcheck="false" aria-autocomplete="list"
+							aria-controls="store-search-suggestions"
 							aria-expanded="false">
-						<div id="store-search-suggestions" class="store-search-suggestions" role="listbox"
+						<div id="store-search-suggestions"
+							class="store-search-suggestions" role="listbox"
 							hidden></div>
 					</div>
 					<button type="submit" class="search-btn" aria-label="بحث">
@@ -73,39 +78,45 @@
 					</button>
 				</form>
 				<script>
-					window.__storeSearchSuggestUrl = @json($storeSearchSuggestUrl ?? '');
+				window.__storeSearchSuggestUrl = @json($storeSearchSuggestUrl ?? '');
 				</script>
 
 				<!-- Actions -->
 				<div class="header-actions">
 					@auth('customer')
-						<div class="account-dropdown">
-							<button type="button" class="h-action account-toggle">
-								<svg fill="none" stroke="currentColor" stroke-width="1.9" viewBox="0 0 24 24">
-									<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-									<circle cx="12" cy="7" r="4" />
-								</svg>
-								<span>حسابي</span>
-							</button>
-							<div class="account-menu">
-								<a href="{{ route('store.account.profile') }}">الملف الشخصي</a>
-								<a href="{{ route('store.account.orders') }}">طلباتي</a>
-								<form method="POST" action="{{ route('store.auth.logout') }}">
-									@csrf
-									<button type="submit">تسجيل خروج</button>
-								</form>
-							</div>
-						</div>
-					@else
-						<a href="{{ route('store.auth.login.form') }}" class="h-action">
-							<svg fill="none" stroke="currentColor" stroke-width="1.9"
-								viewBox="0 0 24 24">
+					<div class="account-dropdown">
+						<button type="button" class="h-action account-toggle">
+							<svg fill="none" stroke="currentColor"
+								stroke-width="1.9" viewBox="0 0 24 24">
 								<path
 									d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
 								<circle cx="12" cy="7" r="4" />
 							</svg>
-							<span>تسجيل دخول</span>
-						</a>
+							<span>حسابي</span>
+						</button>
+						<div class="account-menu">
+							<a href="{{ route('store.account.profile') }}">الملف
+								الشخصي</a>
+							<a
+								href="{{ route('store.account.orders') }}">طلباتي</a>
+							<form method="POST"
+								action="{{ route('store.auth.logout') }}">
+								@csrf
+								<button type="submit">تسجيل
+									خروج</button>
+							</form>
+						</div>
+					</div>
+					@else
+					<a href="{{ route('store.auth.login.form') }}" class="h-action">
+						<svg fill="none" stroke="currentColor" stroke-width="1.9"
+							viewBox="0 0 24 24">
+							<path
+								d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+							<circle cx="12" cy="7" r="4" />
+						</svg>
+						<span>تسجيل دخول</span>
+					</a>
 					@endauth
 					<!-- <button class="h-action" style="position:relative;">
 						<svg fill="none" stroke="currentColor" stroke-width="1.9"
@@ -151,14 +162,22 @@
 						</button>
 						<div class="mega-menu" id="mega-menu">
 							<div class="mega-sidebar" id="mega-sidebar">
-								<div class="mega-sitem mega-sitem--loading" style="cursor:default;pointer-events:none;color:var(--muted);">
+								<div class="mega-sitem mega-sitem--loading"
+									style="cursor:default;pointer-events:none;color:var(--muted);">
 									جاري تحميل الأقسام…
 								</div>
 							</div>
 							<div class="mega-content">
-								<p class="mega-content-title" id="mega-content-title">المنتجات</p>
-								<div class="mega-grid" id="mega-products-grid"></div>
-								<a href="{{ route('store.products.index') }}" class="mega-view-all" id="mega-view-all" style="display:none;">عرض الكل في القسم ←</a>
+								<p class="mega-content-title"
+									id="mega-content-title">
+									المنتجات</p>
+								<div class="mega-grid"
+									id="mega-products-grid"></div>
+								<a href="{{ route('store.products.index') }}"
+									class="mega-view-all"
+									id="mega-view-all"
+									style="display:none;">عرض الكل
+									في القسم ←</a>
 							</div>
 						</div>
 					</div>
@@ -197,7 +216,7 @@
 	</div>
 
 	<main class="page-wrap">
-	<!-- <div class="container"> -->
+		<!-- <div class="container"> -->
 		<!-- @if(session('status') && ! request()->routeIs('store.auth.*'))
 		<div class="alert {{ session('status.success') ? 'success' : 'error' }}">
 			{{ session('status.msg') }}
@@ -212,10 +231,10 @@
 		@endif -->
 
 		@yield('content')
-	<!-- </div> -->
+		<!-- </div> -->
 	</main>
 
-    
+
 	<!-- ===================== FOOTER ===================== -->
 	<footer class="site-footer">
 		<div class="container">
@@ -356,21 +375,21 @@
 				المفضلة
 			</button>
 			@auth('customer')
-				<a class="mob-nav-item" href="{{ route('store.account.orders') }}">
-					<svg fill="none" stroke="currentColor" stroke-width="1.9" viewBox="0 0 24 24">
-						<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-						<circle cx="12" cy="7" r="4" />
-					</svg>
-					حسابي
-				</a>
+			<a class="mob-nav-item" href="{{ route('store.account.orders') }}">
+				<svg fill="none" stroke="currentColor" stroke-width="1.9" viewBox="0 0 24 24">
+					<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+					<circle cx="12" cy="7" r="4" />
+				</svg>
+				حسابي
+			</a>
 			@else
-				<a class="mob-nav-item" href="{{ route('store.auth.login.form') }}">
-					<svg fill="none" stroke="currentColor" stroke-width="1.9" viewBox="0 0 24 24">
-						<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-						<circle cx="12" cy="7" r="4" />
-					</svg>
-					دخول
-				</a>
+			<a class="mob-nav-item" href="{{ route('store.auth.login.form') }}">
+				<svg fill="none" stroke="currentColor" stroke-width="1.9" viewBox="0 0 24 24">
+					<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+					<circle cx="12" cy="7" r="4" />
+				</svg>
+				دخول
+			</a>
 			@endauth
 		</div>
 	</nav>
@@ -500,14 +519,16 @@
 		const grid = $('dynamic-products-grid');
 		if (!grid) return;
 		if (!products.length) {
-			grid.innerHTML = `<div class="prod-card"><div class="prod-info"><div class="prod-name">لا توجد منتجات متاحة حالياً</div></div></div>`;
+			grid.innerHTML =
+				`<div class="prod-card"><div class="prod-info"><div class="prod-name">لا توجد منتجات متاحة حالياً</div></div></div>`;
 			return;
 		}
 
 		grid.innerHTML = products.map((p, idx) => {
 			const variations = Array.isArray(p.variations) ? p.variations : [];
 			const defaultVariant = variations[0] || null;
-			const defaultPrice = Number(defaultVariant ? defaultVariant.price_inc_tax : (p.min_price || p.price || 0));
+			const defaultPrice = Number(defaultVariant ? defaultVariant.price_inc_tax : (p
+				.min_price || p.price || 0));
 			PRODUCTS[p.id] = {
 				name: p.name,
 				brand: p.brand || '',
@@ -516,12 +537,16 @@
 				price: defaultPrice,
 				old: null,
 				img: p.image_url,
-				stars: '⭐⭐⭐⭐⭐',
+				// stars: '⭐⭐⭐⭐⭐',
 				reviews: 'متوفر',
-				variation_id: defaultVariant ? Number(defaultVariant.variation_id) : (p.variation_id || p.id),
+				variation_id: defaultVariant ? Number(defaultVariant
+					.variation_id) : (p.variation_id || p
+					.id),
 				variations
 			};
-			const variantsOptions = variations.map(v => `<option value="${Number(v.variation_id)}" data-price="${Number(v.price_inc_tax)}">${(v.name || 'Default')} - ${fmt(Number(v.price_inc_tax))}</option>`).join('');
+			const variantsOptions = variations.map(v =>
+				`<option value="${Number(v.variation_id)}" data-price="${Number(v.price_inc_tax)}">${(v.name || 'Default')} - ${fmt(Number(v.price_inc_tax))}</option>`
+			).join('');
 			return `
 			<div class="prod-card">
 				<div class="prod-img-wrap">
@@ -542,7 +567,7 @@
 				<div class="prod-info">
 					<div class="prod-brand">${p.brand || 'Brand'}</div>
 					<div class="prod-name"><a href="${storeProductShowUrl(p.id)}" title="عرض تفاصيل المنتج">${p.name}</a></div>
-					<div class="stars-row"><span class="stars">⭐⭐⭐⭐⭐</span><span class="rev-count">(متوفر)</span></div>
+					 <!-- <div class="stars-row"><span class="stars">⭐⭐⭐⭐⭐</span><span class="rev-count">(متوفر)</span></div> -->
 					${variations.length ? `<div class="prod-variant-wrap"><select class="prod-variant" data-id="${p.id}">${variantsOptions}</select></div>` : ''}
 					<div class="price-row"><span class="price-now" id="prod-price-${p.id}">${fmt(defaultPrice)}</span></div>
 				</div>
@@ -573,12 +598,17 @@
 		$$('.prod-variant').forEach(select => {
 			select.onchange = () => {
 				const productId = +(select.dataset.id || 0);
-				const selectedOption = select.options[select.selectedIndex];
+				const selectedOption = select.options[select
+					.selectedIndex];
 				const selectedVariationId = +(selectedOption?.value || 0);
-				const selectedPrice = +(selectedOption?.dataset.price || 0);
-				const btn = document.querySelector(`.pa-cart[data-id="${productId}"]`);
+				const selectedPrice = +(selectedOption?.dataset.price ||
+					0);
+				const btn = document.querySelector(
+					`.pa-cart[data-id="${productId}"]`);
 				if (btn) {
-					btn.dataset.variationId = String(selectedVariationId || productId);
+					btn.dataset.variationId = String(
+						selectedVariationId ||
+						productId);
 					btn.dataset.price = String(selectedPrice || 0);
 				}
 				const priceEl = $(`prod-price-${productId}`);
@@ -627,7 +657,9 @@
 	async function fetchStoreCategoriesList() {
 		try {
 			const res = await fetch(STORE_CATEGORIES_URL, {
-				headers: { Accept: 'application/json' },
+				headers: {
+					Accept: 'application/json'
+				},
 				credentials: 'same-origin',
 			});
 			const data = await res.json();
@@ -663,7 +695,8 @@
 		if (!side) return;
 		megaMenuCategories = categories;
 
-		const allRow = `<div class="mega-sitem mega-sitem--all active" data-category-id="" role="button" tabindex="0"><span class="mega-sitem-ico" aria-hidden="true">📦</span><span>كل المنتجات</span></div>`;
+		const allRow =
+			`<div class="mega-sitem mega-sitem--all active" data-category-id="" role="button" tabindex="0"><span class="mega-sitem-ico" aria-hidden="true">📦</span><span>كل المنتجات</span></div>`;
 		if (!categories.length) {
 			side.innerHTML = allRow;
 			loadMegaCategoryProducts('', 'كل المنتجات');
@@ -673,7 +706,7 @@
 		const rows = [allRow].concat(
 			categories.map(
 				(c, idx) =>
-					`<div class="mega-sitem" data-category-id="${Number(c.id)}" role="button" tabindex="0"><span class="mega-sitem-ico" aria-hidden="true">${categoryIconByIndex(idx)}</span><span>${megaEsc(c.name || '')}</span></div>`
+				`<div class="mega-sitem" data-category-id="${Number(c.id)}" role="button" tabindex="0"><span class="mega-sitem-ico" aria-hidden="true">${categoryIconByIndex(idx)}</span><span>${megaEsc(c.name || '')}</span></div>`
 			)
 		);
 		side.innerHTML = rows.join('');
@@ -738,10 +771,13 @@
 				grid.innerHTML = items
 					.slice(0, 12)
 					.map((p) => {
-						const variations = Array.isArray(p.variations) ? p.variations : [];
+						const variations = Array.isArray(p.variations) ?
+							p.variations : [];
 						const def = variations[0];
-						const price = Number(def ? def.price_inc_tax : p.min_price || 0);
-						const img = String(p.image_url || '').replace(/"/g, '');
+						const price = Number(def ? def.price_inc_tax : p
+							.min_price || 0);
+						const img = String(p.image_url || '').replace(
+							/"/g, '');
 						const name = megaEsc(p.name || '');
 						const pid = Number(p.id);
 						return `<a href="${storeProductShowUrl(pid)}" class="mega-item mega-item--product">
@@ -828,7 +864,9 @@
 						name: d.name,
 						brand: d.brand || '',
 						price: Number(d.price || 0),
-						old: d.old_price ? Number(d.old_price) : null,
+						old: d.old_price ? Number(d
+							.old_price
+						) : null,
 						img: d.image_url,
 						stars: '⭐⭐⭐⭐⭐',
 						reviews: 'عرض',
@@ -950,7 +988,8 @@
 					const vars = Array.isArray(d.variations) ? d.variations : [];
 					const def = vars[0];
 					const prev = PRODUCTS[id] || {};
-					const defPrice = def ? Number(def.price_inc_tax) : Number(prev.price || 0);
+					const defPrice = def ? Number(def.price_inc_tax) : Number(prev
+						.price || 0);
 					PRODUCTS[id] = {
 						name: d.name,
 						brand: d.brand || prev.brand || '',
@@ -961,13 +1000,27 @@
 						img: d.image_url || prev.img || '',
 						stars: prev.stars || '⭐⭐⭐⭐⭐',
 						reviews: prev.reviews || 'متوفر',
-						variation_id: def ? Number(def.variation_id) : Number(prev.variation_id || id),
+						variation_id: def ? Number(def.variation_id) :
+							Number(prev.variation_id || id),
 						variations: vars.map((v) => ({
-							variation_id: v.variation_id,
+							variation_id: v
+								.variation_id,
 							name: v.name,
-							price_inc_tax: Number(v.price_inc_tax),
-							sku: v.sku != null ? String(v.sku) : '',
-							qty_available: Number(v.qty_available || 0),
+							price_inc_tax: Number(
+								v
+								.price_inc_tax
+							),
+							sku: v.sku !=
+								null ?
+								String(v
+									.sku
+								) :
+								'',
+							qty_available: Number(
+								v
+								.qty_available ||
+								0
+							),
 						})),
 					};
 				}
@@ -1005,9 +1058,9 @@
 
 		const crumb = [p.brand, p.category].filter((x) => String(x).trim()).join(' · ');
 		const imgSrc = String(p.img || '').replace(/"/g, '');
-		const unitLine = p.unit
-			? `<div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;">الوحدة: ${modalEsc(p.unit)}</div>`
-			: '';
+		const unitLine = p.unit ?
+			`<div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;">الوحدة: ${modalEsc(p.unit)}</div>` :
+			'';
 
 		modalBody.innerHTML = `
     <img src="${imgSrc}" style="border-radius:12px;width:100%;aspect-ratio:1;object-fit:contain;background:var(--bg-soft);padding:16px;" alt="${modalEsc(p.name)}">
@@ -1043,7 +1096,8 @@
 			const option = quickVariant.options[quickVariant.selectedIndex];
 			const sku = option?.dataset?.sku || '—';
 			const qty = option?.dataset?.qty ?? '0';
-			metaRow.innerHTML = `<span>SKU: <strong style="color:var(--primary)">${sku}</strong></span><span>المخزون: <strong style="color:var(--primary)">${qty}</strong></span>`;
+			metaRow.innerHTML =
+				`<span>SKU: <strong style="color:var(--primary)">${sku}</strong></span><span>المخزون: <strong style="color:var(--primary)">${qty}</strong></span>`;
 		}
 
 		quickVariant?.addEventListener('change', () => {
@@ -1055,15 +1109,17 @@
 		syncQuickMeta();
 
 		$('quick-add-btn')?.addEventListener('click', () => {
-			const selectedVariationId = +(quickVariant
-				? quickVariant.value
-				: defaultVariant.variation_id || p.variation_id || id);
+			const selectedVariationId = +(quickVariant ?
+				quickVariant.value :
+				defaultVariant.variation_id || p.variation_id ||
+				id);
 			const selectedPrice = +(
-				quickVariant
-					? quickVariant.options[quickVariant.selectedIndex]?.dataset.price ||
-						defaultVariant.price_inc_tax ||
-						p.price
-					: defaultVariant.price_inc_tax || p.price
+				quickVariant ?
+				quickVariant.options[quickVariant.selectedIndex]
+				?.dataset.price ||
+				defaultVariant.price_inc_tax ||
+				p.price :
+				defaultVariant.price_inc_tax || p.price
 			);
 			addToCart(id, p.name, selectedPrice, p.img, selectedVariationId);
 			toast('تم الإضافة للسلة! 🛒');
@@ -1108,7 +1164,8 @@
 			menu.classList.toggle('open');
 		});
 		document.addEventListener('click', e => {
-			if (!menu.contains(e.target) && e.target !== btn) menu.classList.remove('open');
+			if (!menu.contains(e.target) && e.target !== btn) menu.classList.remove(
+				'open');
 		});
 		sidebar?.addEventListener('click', (e) => {
 			const item = e.target.closest('.mega-sitem');
@@ -1222,9 +1279,12 @@
 				const meta = r.type === 'category' ? 'قسم' : 'منتج';
 				const href = String(r.url || '').replace(/"/g, '&quot;');
 				return (
-					'<a class="store-search-item" role="option" href="' + href + '">' +
-					'<span class="store-search-item-name">' + esc(r.name) + '</span>' +
-					'<span class="store-search-item-meta">' + meta + '</span>' +
+					'<a class="store-search-item" role="option" href="' +
+					href + '">' +
+					'<span class="store-search-item-name">' + esc(r
+						.name) + '</span>' +
+					'<span class="store-search-item-meta">' + meta +
+					'</span>' +
 					'</a>'
 				);
 			}).join('');
@@ -1242,18 +1302,23 @@
 			timer = setTimeout(async () => {
 				try {
 					const res = await fetch(
-						url + (url.includes('?') ? '&' : '?') + 'q=' + encodeURIComponent(q),
-						{
-							headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+						url + (url.includes('?') ?
+							'&' : '?') + 'q=' +
+						encodeURIComponent(q), {
+							headers: {
+								Accept: 'application/json',
+								'X-Requested-With': 'XMLHttpRequest'
+							},
 							credentials: 'same-origin',
 						}
 					);
 					const data = await res.json();
-					render(Array.isArray(data.results) ? data.results : []);
+					render(Array.isArray(data.results) ? data
+						.results : []);
 				} catch (e) {
 					hide();
 				}
-			 }, 280);
+			}, 280);
 		}
 
 		input.addEventListener('input', fetchSuggest);
