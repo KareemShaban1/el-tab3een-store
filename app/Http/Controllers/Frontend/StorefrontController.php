@@ -74,7 +74,7 @@ class StorefrontController extends Controller
     {
         $business_id = self::resolveBusinessId($request);
         $location_id = $this->resolveLocationId($business_id, $request);
-        $business_location_ids = BusinessLocation::where('business_id', $business_id)->pluck('id');
+        $business_location_ids = BusinessLocation::where('business_id', $business_id)->where('is_active', 1)->pluck('id');
         $query = Product::where('products.business_id', $business_id)
             ->active()
             ->productForSales()
@@ -225,6 +225,7 @@ class StorefrontController extends Controller
             ->findOrFail($id);
 
         $location_records = BusinessLocation::where('business_id', $business_id)
+            ->where('is_active', 1)
             ->select('id', 'name', 'landmark', 'city', 'state', 'country', 'zip_code', 'mobile')
             ->get()
             ->keyBy('id');
@@ -573,6 +574,6 @@ class StorefrontController extends Controller
             return (int) $request->input('location_id');
         }
 
-        return (int) \App\BusinessLocation::where('business_id', $business_id)->value('id');
+        return (int) \App\BusinessLocation::where('business_id', $business_id)->where('is_active', 1)->value('id');
     }
 }

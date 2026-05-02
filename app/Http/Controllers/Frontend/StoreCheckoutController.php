@@ -317,7 +317,7 @@ class StoreCheckoutController extends Controller
             return (int) $request->input('location_id');
         }
 
-        return (int) \App\BusinessLocation::where('business_id', $business_id)->value('id');
+        return (int) \App\BusinessLocation::where('business_id', $business_id)->where('is_active', 1)->value('id');
     }
 
     private function resolveCheckoutLocationId(int $business_id, int $preferred_location_id, \Illuminate\Support\Collection $variation_map): int
@@ -327,7 +327,7 @@ class StoreCheckoutController extends Controller
             return $preferred_location_id;
         }
 
-        $location_ids = \App\BusinessLocation::where('business_id', $business_id)->pluck('id');
+        $location_ids = \App\BusinessLocation::where('business_id', $business_id)->where('is_active', 1)->pluck('id');
         if ($location_ids->isEmpty()) {
             return $preferred_location_id;
         }
@@ -402,6 +402,7 @@ class StoreCheckoutController extends Controller
         }
 
         $location_ids = \App\BusinessLocation::where('business_id', $business_id)
+            ->where('is_active', 1)
             ->pluck('id')
             ->map(fn ($id) => (int) $id)
             ->all();
@@ -719,4 +720,3 @@ class StoreCheckoutController extends Controller
         ];
     }
 }
-
