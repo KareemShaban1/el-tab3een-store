@@ -37,6 +37,29 @@
 @endphp
 
 @section('content')
+@if(! empty($variations))
+@php
+    $productIdForCart = (int) ($product['id'] ?? 0);
+    $firstVarForCart = $variations[0] ?? [];
+    $initialVariationIdForCart = (int) ($firstVarForCart['variation_id'] ?? $productIdForCart);
+    $initialPriceForCart = (float) ($firstVarForCart['price_inc_tax'] ?? 0);
+@endphp
+<script>
+window.__SSR_STORE_PRODUCTS__ = window.__SSR_STORE_PRODUCTS__ || {};
+window.__SSR_STORE_PRODUCTS__[{{ $productIdForCart }}] = {
+    name: @json($sfStr($product['name'] ?? '')),
+    brand: @json($sfStr($product['brand'] ?? '')),
+    category: '',
+    unit: '',
+    price: {{ $initialPriceForCart }},
+    old: null,
+    img: @json($sfStr($product['image_url'] ?? '')),
+    reviews: 'متوفر',
+    variation_id: {{ $initialVariationIdForCart }},
+    variations: @json($variations),
+};
+</script>
+@endif
 <style>
     .product-page { display: grid; gap: 16px; max-width: 1200px; margin: 30px auto; }
     .product-hero { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
@@ -95,6 +118,7 @@
     .qty-row input:focus { outline: none; border-color: var(--accent, #ea541a); }
     .cta-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; padding-top: 4px; }
     .cta-row .btn { flex: 1; min-width: 140px; justify-content: center; text-align: center; }
+    .cta-row .btn.pa-cart { padding: 12px 14px; font-size: 0.95rem; border-radius: 10px; }
     .cta-row .btn.is-disabled { opacity: 0.55; pointer-events: none; cursor: not-allowed; }
     .empty-variations {
         text-align: center; color: #6b7280; padding: 20px; border: 1px dashed #d1d5db; border-radius: 12px; background: #fafafa;
@@ -141,9 +165,7 @@
             </div> -->
 
             @if(! empty($variations))
-                <div class="purchase-block" id="product-purchase"
-                     data-checkout-base="{{ route('store.checkout.form') }}"
-                     data-is-customer="{{ auth('customer')->check() ? '1' : '0' }}">
+                <div class="purchase-block" id="product-purchase">
                     <div style="display: flex; gap: 10px;">
                         <div style="flex: 1;">
 			<label class="field-label" for="product-variant-select">{{ __('lang_v1.choose_variation') }}</label>
@@ -205,9 +227,20 @@
 
                     <div class="cta-row">
                         @auth('customer')
-                            <a id="product-buy-btn" class="btn" href="#">{{ __('lang_v1.buy_now') }}</a>
+                            <button type="button" id="product-buy-btn" class="btn pa-cart"
+                                data-id="{{ $productIdForCart }}"
+                                data-name="{{ e($sfStr($product['name'] ?? '')) }}"
+                                data-price="{{ $initialPriceForCart }}"
+                                data-variation-id="{{ $initialVariationIdForCart }}"
+                                data-img="{{ e($sfStr($product['image_url'] ?? '')) }}">
+                                <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
+                                    <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
+                                    <line x1="3" y1="6" x2="21" y2="6" />
+                                </svg>
+                                أضف للسلة
+                            </button>
                         @else
-                            <a id="product-buy-btn" class="btn secondary" href="{{ route('store.auth.login.form') }}">{{ __('lang_v1.login_to_purchase') }}</a>
+                            <a class="btn secondary" href="{{ route('store.auth.login.form') }}">{{ __('lang_v1.login_to_purchase') }}</a>
                         @endauth
                     </div>
                 </div>
@@ -335,15 +368,17 @@
             }
         }
 
-        if (qtyAvail <= 5 && qtyAvail > 0) {
-            chipEl.className = 'chip chip-low';
-            chipEl.textContent = @json($tx('Low stock'));
-        } else if (qtyAvail > 0) {
-            chipEl.className = 'chip chip-ok';
-            chipEl.textContent = @json($tx('In stock'));
-        } else {
-            chipEl.className = 'chip chip-low';
-            chipEl.textContent = @json($tx('Out of stock'));
+        if (chipEl) {
+            if (qtyAvail <= 5 && qtyAvail > 0) {
+                chipEl.className = 'chip chip-low';
+                chipEl.textContent = @json($tx('Low stock'));
+            } else if (qtyAvail > 0) {
+                chipEl.className = 'chip chip-ok';
+                chipEl.textContent = @json($tx('In stock'));
+            } else {
+                chipEl.className = 'chip chip-low';
+                chipEl.textContent = @json($tx('Out of stock'));
+            }
         }
 
         var maxQ = Math.max(1, Math.floor(qtyAvail));
@@ -386,6 +421,39 @@
     });
 
     syncDetails();
+
+    document.addEventListener('DOMContentLoaded', function () {
+        setTimeout(function () {
+            var btn = document.getElementById('product-buy-btn');
+            if (!btn || typeof window.addToCart !== 'function') return;
+
+            btn.onclick = function () {
+                if (btn.disabled || btn.classList.contains('is-disabled')) return;
+
+                var id = +btn.dataset.id;
+                var name = btn.dataset.name || '';
+                var price = +btn.dataset.price;
+                var variationId = +(btn.dataset.variationId || id);
+                var img = btn.dataset.img || '';
+                var n = parseInt(qtyInput.value, 10) || 1;
+                if (n < 1) n = 1;
+
+                var i;
+                for (i = 0; i < n; i++) {
+                    window.addToCart(id, name, price, img, variationId);
+                }
+
+                if (typeof window.toast === 'function') {
+                    window.toast('تم إضافة "' + name + '" للسلة 🛒');
+                }
+                if (typeof window.animBtn === 'function') {
+                    window.animBtn(btn);
+                } else if (typeof animBtn === 'function') {
+                    animBtn(btn);
+                }
+            };
+        }, 0);
+    });
 })();
 </script>
 @endif
