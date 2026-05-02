@@ -56,7 +56,7 @@
                 'price' => $price,
                 'old' => null,
                 'img' => (string) ($item['image_url'] ?? ''),
-                'stars' => '⭐⭐⭐⭐⭐',
+                // 'stars' => '⭐⭐⭐⭐⭐',
                 'reviews' => 'متوفر',
                 'variation_id' => $vid,
                 'variations' => $item['variations'] ?? [],
@@ -428,13 +428,13 @@ window.__SSR_STORE_PRODUCTS__ = @json($productsSeed);
         data-step="{{ $sPstep }}"></div>
 
     <aside class="card filters-card">
-        <h3 class="filters-title">Filters</h3>
-        <p class="filters-sub">Find products faster by search, category, and brand.</p>
+        <h3 class="filters-title">{{ __('lang_v1.filters') }}</h3>
+        <p class="filters-sub">{{ __('lang_v1.find_products_faster_by_search_category_and_brand') }}</p>
 
         <div class="active-filters js-store-active-filters">
             @if($activeQ !== '')
                 <a class="filter-pill js-store-ajax-nav" href="{{ route('store.products.index', $queryWithoutQ) }}" title="Remove search filter">
-                    <span class="pill-label">Search</span>
+                    <span class="pill-label">{{ __('lang_v1.search') }} </span>
                     <span>“{{ $activeQ }}”</span>
                     <span class="pill-x">✕</span>
                 </a>
@@ -450,7 +450,7 @@ window.__SSR_STORE_PRODUCTS__ = @json($productsSeed);
                 @endphp
                 @if($activeCategoryName !== '')
                     <a class="filter-pill js-store-ajax-nav" href="{{ route('store.products.index', $queryWithoutCategory) }}" title="Remove category filter">
-                        <span class="pill-label">Category</span>
+                        <span class="pill-label">{{ __('lang_v1.category') }}</span>
                         <span>{{ $activeCategoryName }}</span>
                         <span class="pill-x">✕</span>
                     </a>
@@ -467,7 +467,7 @@ window.__SSR_STORE_PRODUCTS__ = @json($productsSeed);
                 @endphp
                 @if($activeBrandName !== '')
                     <a class="filter-pill js-store-ajax-nav" href="{{ route('store.products.index', $queryWithoutBrand) }}" title="Remove brand filter">
-                        <span class="pill-label">Brand</span>
+                        <span class="pill-label">{{ __('lang_v1.brand') }}</span>
                         <span>{{ $activeBrandName }}</span>
                         <span class="pill-x">✕</span>
                     </a>
@@ -493,25 +493,25 @@ window.__SSR_STORE_PRODUCTS__ = @json($productsSeed);
 
         <form method="GET" action="{{ route('store.products.index') }}" class="js-store-filter-form" id="store-products-filters-desktop" novalidate>
             <div class="filter-group">
-                <label for="filter-q-desktop">Search</label>
+                <label for="filter-q-desktop">{{ __('lang_v1.search') }}</label>
                 <div class="search-wrap">
-                    <input id="filter-q-desktop" type="text" name="q" value="{{ request('q') }}" placeholder="Product name">
+                    <input id="filter-q-desktop" type="text" name="q" value="{{ request('q') }}" placeholder="{{ __('lang_v1.product_name') }}">
                     @if($activeQ !== '')
                         <a class="clear-q-btn js-store-ajax-nav" href="{{ route('store.products.index', $queryWithoutQ) }}" aria-label="Clear search">✕</a>
                     @endif
                 </div>
             </div>
             <div class="filter-group">
-                <label for="filter-category-desktop">Category</label>
+                <label for="filter-category-desktop">{{ __('lang_v1.category') }}</label>
                 <select id="filter-category-desktop" name="category_id">
-                    <option value="">All</option>
+                    <option value="">{{ __('lang_v1.all') }}</option>
                     @foreach($categories as $category)
                         <option value="{{ $category->id }}" @selected((string)request('category_id') === (string)$category->id)>{{ $category->name }}</option>
                     @endforeach
                 </select>
             </div>
             <div class="filter-group">
-                <label for="filter-brand-desktop">Brand</label>
+                <label for="filter-brand-desktop">{{ __('lang_v1.brand') }}</label>
                 <select id="filter-brand-desktop" name="brand_id">
                     <option value="">All</option>
                     @foreach($brands as $brand)
@@ -520,7 +520,7 @@ window.__SSR_STORE_PRODUCTS__ = @json($productsSeed);
                 </select>
             </div>
             <div class="filter-group filter-group--price-slider">
-                <label>Price range</label>
+                <label>{{ __('lang_v1.price_range') }}</label>
                 <div class="price-dual-range">
                     <div class="price-dual-range__values" id="price-slider-label-desktop"></div>
                     <div class="price-dual-range__rail">
@@ -536,8 +536,8 @@ window.__SSR_STORE_PRODUCTS__ = @json($productsSeed);
                 <input type="hidden" name="price_max" id="filter-price-max-desktop" value="{{ $hiddenPriceMax }}">
             </div>
             <div class="filter-actions">
-                <button class="btn" type="submit">Apply</button>
-                <button type="button" class="btn-soft js-store-filters-reset">Reset</button>
+                <button class="btn" type="submit">{{ __('lang_v1.apply') }}</button>
+                <button type="button" class="btn-soft js-store-filters-reset">{{ __('lang_v1.reset') }}</button>
             </div>
         </form>
     </aside>
@@ -546,10 +546,10 @@ window.__SSR_STORE_PRODUCTS__ = @json($productsSeed);
         <div class="card">
             <div class="products-head">
                 <div>
-                    <h2 class="products-title">Products</h2>
-                    <div class="products-meta">Total: {{ $products->total() }}</div>
+                    <h2 class="products-title">{{ __('lang_v1.products') }}</h2>
+                    <div class="products-meta">{{ __('lang_v1.total') }}: {{ $products->total() }}</div>
                 </div>
-                <button type="button" class="btn mobile-filter-toggle" id="open-filter-sheet">Filter</button>
+                <button type="button" class="btn mobile-filter-toggle" id="open-filter-sheet">{{ __('lang_v1.filter') }}</button>
             </div>
 
             <div class="products-grid">
@@ -588,7 +588,7 @@ window.__SSR_STORE_PRODUCTS__ = @json($productsSeed);
                             <div class="prod-name">
                                 <a href="{{ route('store.products.show', $item['id']) }}" title="عرض تفاصيل المنتج">{{ $item['name'] }}</a>
                             </div>
-                            <div class="stars-row"><span class="stars">⭐⭐⭐⭐⭐</span><span class="rev-count">(متوفر)</span></div>
+                            <!-- <div class="stars-row"><span class="stars">⭐⭐⭐⭐⭐</span><span class="rev-count">(متوفر)</span></div> -->
                             @if($vars->isNotEmpty())
                                 <div class="prod-variant-wrap">
                                     <select class="prod-variant" data-id="{{ (int) $item['id'] }}">
@@ -866,7 +866,7 @@ window.__SSR_STORE_PRODUCTS__ = @json($productsSeed);
 
             const fullRange = vLo <= b.min && vHi >= b.max;
             if (fullRange) {
-                lab.textContent = 'Any price (' + fmtMoney(b.min) + ' – ' + fmtMoney(b.max) + ')';
+                lab.textContent = '(' + fmtMoney(b.min) + ' – ' + fmtMoney(b.max) + ')';
             } else {
                 lab.textContent = fmtMoney(vLo) + ' – ' + fmtMoney(vHi);
             }
@@ -1154,7 +1154,7 @@ window.__SSR_STORE_PRODUCTS__ = @json($productsSeed);
                     price: defaultPrice,
                     old: null,
                     img: p.image_url,
-                    stars: '⭐⭐⭐⭐⭐',
+                    // stars: '⭐⭐⭐⭐⭐',
                     reviews: 'متوفر',
                     variation_id: defaultVariant ? Number(defaultVariant.variation_id) : Number(p.variation_id || p.id),
                     variations,
@@ -1204,7 +1204,7 @@ window.__SSR_STORE_PRODUCTS__ = @json($productsSeed);
                     <div class="prod-info">
                         <div class="prod-brand">${brand}</div>
                         <div class="prod-name"><a href="${productUrl(pid)}" title="عرض تفاصيل المنتج">${nm}</a></div>
-                        <div class="stars-row"><span class="stars">⭐⭐⭐⭐⭐</span><span class="rev-count">(متوفر)</span></div>
+					    <!-- <div class="stars-row"><span class="stars">⭐⭐⭐⭐⭐</span><span class="rev-count">(متوفر)</span></div> -->
                         ${variantBlock}
                         <div class="price-row"><span class="price-now" id="prod-price-${pid}">${fmtStorePrice(defaultPrice)}</span></div>
                     </div>

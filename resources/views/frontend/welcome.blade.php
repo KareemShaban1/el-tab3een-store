@@ -93,14 +93,14 @@
 	</section>
 
 	<!-- ===================== FLASH DEALS ===================== -->
-	<section class="flash-section section">
+	<!-- <section class="flash-section section">
 		<div class="container">
 			<div class="flash-head">
 				<div class="flash-title">
 					<span class="flash-icon">⚡</span>
 					عروض سريعة
 				</div>
-				<!-- <div style="display:flex;align-items:center;gap:14px;">
+				<div style="display:flex;align-items:center;gap:14px;">
 					<span style="color:rgba(255,255,255,.6);font-size:.85rem;">تنتهي
 						خلال:</span>
 					<div class="timer">
@@ -116,11 +116,11 @@
 								id="t-s">22</span><span
 								class="t-lbl">ثانية</span></div>
 					</div>
-				</div> -->
+				</div>
 			</div>
 			<div class="flash-grid" id="dynamic-flash-grid"></div>
 		</div>
-	</section>
+	</section> -->
 
 	<!-- ===================== BRANDS ===================== -->
 	<section class="brands-section section-sm">

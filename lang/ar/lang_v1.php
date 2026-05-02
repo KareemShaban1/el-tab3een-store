@@ -1503,4 +1503,15 @@ return [
 'quantity'=>'الكمية',
 'price'=>'السعر',
 'location'=>'الموقع',
+'filters'=>'الفلاتر',
+'find_products_faster_by_search_category_and_brand'=>'',
+'search'=>'البحث',
+'brand'=>'البراند',
+'category'=>'التصنيف',
+'products'=>'المنتجات',
+'product_name'=>'أسم المنتج',
+'apply'=>'تطبيق',
+'reset'=>'أعادة',
+'filter'=>'تصفية',
+'price_range'=>'رينج الأسعار'
 ];
