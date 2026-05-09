@@ -260,8 +260,8 @@
 					</h4>
 				</div>
 				<div class="modal-body">
-					<p class="text-muted tw-mb-3">
-						@lang('lang_v1.low_stock_by_location_help')</p>
+					<!-- <p class="text-muted tw-mb-3">
+						@lang('lang_v1.low_stock_by_location_help')</p> -->
 					<div id="low_stock_vld_loading" class="text-center tw-py-8 hide">
 						<i class="fa fa-sync fa-spin fa-2x"></i>
 					</div>
