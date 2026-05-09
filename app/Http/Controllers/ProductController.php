@@ -2745,7 +2745,7 @@ class ProductController extends Controller
             ->where('p.enable_stock', 1)
             ->whereNull('v.deleted_at')
             ->where('p.type', '!=', 'modifier')
-            ->where('vld.qty_available', '<', 1);
+            ->where('vld.qty_available', '<', 0);
 
         if ($permitted_locations != 'all') {
             $query->whereIn('vld.location_id', $permitted_locations);
