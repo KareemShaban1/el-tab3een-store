@@ -14,6 +14,7 @@ use App\PurchaseLine;
 use App\SellingPriceGroup;
 use App\TaxRate;
 use App\Unit;
+use App\User;
 use App\Utils\ModuleUtil;
 use App\Utils\ProductUtil;
 use App\Variation;
