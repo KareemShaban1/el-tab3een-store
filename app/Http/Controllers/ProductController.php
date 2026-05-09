@@ -198,44 +198,6 @@ class ProductController extends Controller
                 $products->where('products.repair_model_id', request()->get('repair_model_id'));
             }
 
-          //   if (config('app.debug')) {
-                $variationLogQuery = clone $products;
-                $variationLogQuery->setEagerLoads([]);
-                $variationLogQuery->getQuery()->groups = [];
-                $variationRows = $variationLogQuery
-                    ->select(
-                        'products.id as log_product_id',
-                        'products.name as log_product_name',
-                        'v.id as log_variation_id',
-                        'v.name as log_variation_name',
-                        'v.sub_sku as log_sub_sku',
-                        DB::raw('COALESCE(SUM(vld.qty_available), 0) as log_qty_available')
-                    )
-                    ->groupBy('products.id', 'products.name', 'v.id', 'v.name', 'v.sub_sku')
-                    ->get();
-
-                $payload = $variationRows->groupBy('log_product_id')->map(function ($rows, $productId) {
-                    return [
-                        'product_id' => (int) $productId,
-                        'product_name' => $rows->first()->log_product_name,
-                        'variations' => $rows->map(function ($r) {
-                            return [
-                                'variation_id' => (int) $r->log_variation_id,
-                                'name' => $r->log_variation_name,
-                                'sub_sku' => $r->log_sub_sku,
-                                'qty_available' => (float) $r->log_qty_available,
-                            ];
-                        })->values()->all(),
-                    ];
-                })->values()->all();
-
-                Log::debug('Product index: variation quantities (matches list filters)', [
-                    'business_id' => $business_id,
-                    'location_id' => $location_id,
-                    'rows' => $payload,
-                ]);
-          //   }
-
             return Datatables::of($products)
                 ->addColumn(
                     'product_locations',
