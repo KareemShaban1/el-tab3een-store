@@ -2547,13 +2547,13 @@ class ProductController extends Controller
 
         DB::beginTransaction();
         try {
-            $vld = VariationLocationDetails::where('variation_id', $variation->id)
+            $vlds = VariationLocationDetails::where('variation_id', $variation->id)
                 ->where('product_id', $product->id)
                 ->where('location_id', $validated['location_id'])
-                ->first();
+                ->orderBy('id')
+                ->get();
 
-
-            if (empty($vld)) {
+            if ($vlds->isEmpty()) {
                 $vld = VariationLocationDetails::create([
                     'product_id' => $product->id,
                     'location_id' => $validated['location_id'],
@@ -2561,11 +2561,20 @@ class ProductController extends Controller
                     'product_variation_id' => $variation->product_variation_id,
                     'qty_available' => 0,
                 ]);
-            }
+                $old_qty = 0.0;
+                $vld->qty_available = $new_qty;
+                $vld->save();
+            } else {
+                $old_qty = (float) $vlds->sum('qty_available');
+                $vld = $vlds->first();
+                $vld->qty_available = $new_qty;
+                $vld->save();
 
-            $old_qty = (float) $vld->qty_available;
-            $vld->qty_available = $new_qty;
-            $vld->save();
+                $duplicate_ids = $vlds->skip(1)->pluck('id');
+                if ($duplicate_ids->isNotEmpty()) {
+                    VariationLocationDetails::whereIn('id', $duplicate_ids)->delete();
+                }
+            }
 
             $activity = activity()
                 ->causedBy(auth()->user())
