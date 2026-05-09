@@ -319,8 +319,8 @@ class ProductController extends Controller
                 })
                 ->editColumn('current_stock', function ($row) {
                     if ($row->enable_stock) {
-                        $stock = $this->productUtil->num_f($row->current_stock, false, null, true);
-
+                    //     $stock = $this->productUtil->num_f($row->current_stock, false, null, true);
+		$stock = $row->current_stock ?? 0;
                         return '<span data-is_quantity="true" class="current_stock" data-orig-value="'.$stock.'" data-unit="'.$row->unit.'" >'.$stock.'</span> '.$row->unit;
                     } else {
                         return '--';
