@@ -2619,8 +2619,36 @@ class ProductController extends Controller
         if (request()->ajax()) {
 
             //for ajax call $id is variation id else it is product id
-            $stock_details = $this->productUtil->getVariationStockDetails($business_id, $id, request()->input('location_id'));
-            $stock_history = $this->productUtil->getVariationStockHistory($business_id, $id, request()->input('location_id'));
+            $location_id = $this->resolveStockHistoryLocationId($business_id, request()->input('location_id'));
+
+            if ($location_id === null) {
+                $stock_details = [
+                    'variation' => '—',
+                    'unit' => '',
+                    'second_unit' => null,
+                    'total_purchase' => 0,
+                    'total_purchase_return' => 0,
+                    'total_adjusted' => 0,
+                    'total_opening_stock' => 0,
+                    'total_purchase_transfer' => 0,
+                    'total_sold' => 0,
+                    'total_sell_return' => 0,
+                    'total_sell_transfer' => 0,
+                    'current_stock' => 0,
+                    'product_id' => 0,
+                    'enable_stock' => 0,
+                    'has_variation_location_row' => false,
+                    'variation_id' => (int) $id,
+                    'location_id' => 0,
+                ];
+                $stock_history = [];
+
+                return view('product.stock_history_details')
+                    ->with(compact('stock_details', 'stock_history'));
+            }
+
+            $stock_details = $this->productUtil->getVariationStockDetails($business_id, $id, $location_id);
+            $stock_history = $this->productUtil->getVariationStockHistory($business_id, $id, $location_id);
 
             // Do not overwrite qty_available from ledger reconciliation here: stored stock is the
             // source of truth (including manual corrections from stock history). Ledger rows can
@@ -2637,8 +2665,11 @@ class ProductController extends Controller
         //Get all business locations
         $business_locations = BusinessLocation::forDropdown($business_id);
 
+        $location_input = request()->input('location_id');
+        $selected_location_id = $this->resolveStockHistoryLocationId($business_id, $location_input);
+
         return view('product.stock_history')
-                ->with(compact('product', 'business_locations'));
+                ->with(compact('product', 'business_locations', 'selected_location_id'));
     }
 
     /**
@@ -2678,6 +2709,33 @@ class ProductController extends Controller
         }
 
         return $output;
+    }
+
+    /**
+     * Stock history AJAX used to pass empty location_id; Laravel then treats where(location_id, null)
+     * as IS NULL, so on-hand qty showed 0 while the product list summed real locations (e.g. -1).
+     */
+    private function resolveStockHistoryLocationId(int $business_id, $location_id_input): ?int
+    {
+        if ($location_id_input !== null && $location_id_input !== '' && $location_id_input !== 'none') {
+            $id = (int) $location_id_input;
+            if ($id > 0 && User::can_access_this_location($id, $business_id)) {
+                return $id;
+            }
+        }
+
+        $query = BusinessLocation::where('business_id', $business_id)->Active()->orderBy('name');
+        $permitted = auth()->user()->permitted_locations($business_id);
+        if ($permitted !== 'all') {
+            if (empty($permitted)) {
+                return null;
+            }
+            $query->whereIn('id', $permitted);
+        }
+
+        $loc = $query->first();
+
+        return $loc ? (int) $loc->id : null;
     }
 
     /**
