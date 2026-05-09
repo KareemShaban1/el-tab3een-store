@@ -1513,5 +1513,6 @@ return [
 'apply'=>'تطبيق',
 'reset'=>'أعادة',
 'filter'=>'تصفية',
-'price_range'=>'رينج الأسعار'
+'price_range'=>'رينج الأسعار',
+'low_stock_by_location_button'=>'مخزون منخفض بالموقع أقل من 0'
 ];
