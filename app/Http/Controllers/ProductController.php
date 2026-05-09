@@ -2724,6 +2724,154 @@ class ProductController extends Controller
     }
 
     /**
+     * JSON rows for variation_location_details where qty_available < 1 (scoped to business + permitted locations).
+     */
+    public function getLowStockLocationRows()
+    {
+        if (! auth()->user()->can('product.update')) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        $business_id = (int) request()->session()->get('user.business_id');
+        $permitted_locations = auth()->user()->permitted_locations();
+
+        $query = DB::table('variation_location_details as vld')
+            ->join('variations as v', 'v.id', '=', 'vld.variation_id')
+            ->join('products as p', 'p.id', '=', 'v.product_id')
+            ->join('business_locations as bl', 'bl.id', '=', 'vld.location_id')
+            ->leftJoin('product_variations as pv', 'pv.id', '=', 'v.product_variation_id')
+            ->where('p.business_id', $business_id)
+            ->where('bl.business_id', $business_id)
+            ->where('p.enable_stock', 1)
+            ->whereNull('v.deleted_at')
+            ->where('p.type', '!=', 'modifier')
+            ->where('vld.qty_available', '<', 1);
+
+        if ($permitted_locations != 'all') {
+            $query->whereIn('vld.location_id', $permitted_locations);
+        }
+
+        $rows = $query
+            ->orderBy('p.name')
+            ->orderBy('bl.name')
+            ->orderBy('v.sub_sku')
+            ->select(
+                'vld.id',
+                'vld.qty_available',
+                'vld.variation_id',
+                'vld.location_id',
+                'p.name as product_name',
+                'p.type as product_type',
+                'p.sku as product_sku',
+                'v.sub_sku',
+                'v.name as variation_name',
+                'pv.name as product_variation_name',
+                'bl.name as location_name'
+            )
+            ->get();
+
+        $out = $rows->map(function ($row) {
+            $variation_label = $row->product_type === 'variable'
+                ? trim(($row->product_variation_name ? $row->product_variation_name.' — ' : '').($row->variation_name ?? ''))
+                : '—';
+
+            return [
+                'id' => (int) $row->id,
+                'variation_id' => (int) $row->variation_id,
+                'location_id' => (int) $row->location_id,
+                'product_name' => $row->product_name,
+                'variation_label' => $variation_label ?: '—',
+                'location_name' => $row->location_name,
+                'sub_sku' => $row->sub_sku ?? '',
+                'qty_available' => (float) $row->qty_available,
+                'qty_display' => $this->productUtil->num_f((float) $row->qty_available, false, null, true),
+            ];
+        })->values()->all();
+
+        return response()->json([
+            'success' => true,
+            'rows' => $out,
+        ]);
+    }
+
+    /**
+     * Bulk update qty_available for variation_location_details rows (same business + location access checks).
+     */
+    public function bulkUpdateVldQuantities(Request $request)
+    {
+        if (! auth()->user()->can('product.update')) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        $validated = $request->validate([
+            'items' => 'required|array',
+            'items.*.id' => 'required|integer',
+            'items.*.qty_available' => 'required|numeric|min:0',
+        ]);
+
+        $business_id = (int) $request->session()->get('user.business_id');
+
+        DB::beginTransaction();
+        try {
+            foreach ($validated['items'] as $item) {
+                $vld = VariationLocationDetails::find($item['id']);
+                if (empty($vld)) {
+                    DB::rollBack();
+
+                    return response()->json([
+                        'success' => false,
+                        'msg' => __('messages.something_went_wrong'),
+                    ]);
+                }
+
+                $variation = Variation::where('id', $vld->variation_id)
+                    ->whereNull('deleted_at')
+                    ->whereHas('product', function ($q) use ($business_id) {
+                        $q->where('business_id', $business_id);
+                    })
+                    ->first();
+
+                if (empty($variation)) {
+                    DB::rollBack();
+
+                    return response()->json([
+                        'success' => false,
+                        'msg' => __('messages.something_went_wrong'),
+                    ]);
+                }
+
+                if (! User::can_access_this_location((int) $vld->location_id, $business_id)) {
+                    DB::rollBack();
+
+                    return response()->json([
+                        'success' => false,
+                        'msg' => __('messages.something_went_wrong'),
+                    ]);
+                }
+
+                $qty = $this->productUtil->num_uf((string) $item['qty_available']);
+                $vld->qty_available = $qty;
+                $vld->save();
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'msg' => __('lang_v1.updated_success'),
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            \Log::emergency('File:'.$e->getFile().'Line:'.$e->getLine().'Message:'.$e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'msg' => __('messages.something_went_wrong'),
+            ]);
+        }
+    }
+
+    /**
      * Function to download all products in xlsx format
      */
     public function downloadExcel()

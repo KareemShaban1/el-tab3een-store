@@ -207,6 +207,8 @@ Route::middleware(['setData', 'auth', 'SetSessionData', 'language', 'timezone', 
 
     Route::get('/products/stock-history/{id}', [ProductController::class, 'productStockHistory']);
     Route::post('/products/stock-history/update-current-stock', [ProductController::class, 'updateStockHistoryCurrentStock']);
+    Route::get('/products/low-stock-location-rows', [ProductController::class, 'getLowStockLocationRows']);
+    Route::post('/products/bulk-update-vld-quantities', [ProductController::class, 'bulkUpdateVldQuantities']);
     Route::get('/delete-media/{media_id}', [ProductController::class, 'deleteMedia']);
     Route::post('/products/mass-deactivate', [ProductController::class, 'massDeactivate']);
     Route::get('/products/activate/{id}', [ProductController::class, 'activate']);
