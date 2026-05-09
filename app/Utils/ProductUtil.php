@@ -75,7 +75,7 @@ class ProductUtil extends Util
      * @param $input_variations
      * @return bool
      */
-    public function createVariableProductVariations($product, $input_variations, $sku_type, $business_id = null)
+    public function createVariableProductVariations($product, $input_variations, $sku_type, $business_id = null, )
     {
         if (! is_object($product)) {
             $product = Product::find($product);
@@ -1926,10 +1926,6 @@ class ProductUtil extends Util
 
     public function getVariationStockDetails($business_id, $variation_id, $location_id)
     {
-        // Caller should pass a concrete location_id (see ProductController::resolveStockHistoryLocationId).
-        // Cast only — null/'' used to mean IS NULL in SQL and showed 0 stock vs the product list total.
-        $location_id = (int) $location_id;
-
         $purchase_details = Variation::join('products as p', 'p.id', '=', 'variations.product_id')
                     ->join('units', 'p.unit_id', '=', 'units.id')
                     ->leftjoin('units as u', 'p.secondary_unit_id', '=', 'u.id')
@@ -1974,21 +1970,10 @@ class ProductUtil extends Util
                     )
                   ->get()->first();
 
-        // Sum duplicate VLD rows; tie to business via product so stray rows cannot skew totals.
-        $current_stock_sum = (float) DB::table('variation_location_details as vld')
-            ->join('variations as v', 'v.id', '=', 'vld.variation_id')
-            ->join('products as p', 'p.id', '=', 'v.product_id')
-            ->where('p.business_id', $business_id)
-            ->where('vld.variation_id', $variation_id)
-            ->where('vld.location_id', $location_id)
-            ->sum('vld.qty_available');
-        $has_variation_location_row = DB::table('variation_location_details as vld')
-            ->join('variations as v', 'v.id', '=', 'vld.variation_id')
-            ->join('products as p', 'p.id', '=', 'v.product_id')
-            ->where('p.business_id', $business_id)
-            ->where('vld.variation_id', $variation_id)
-            ->where('vld.location_id', $location_id)
-            ->exists();
+        $current_stock = VariationLocationDetails::where('variation_id',
+                                            $variation_id)
+                                        ->where('location_id', $location_id)
+                                        ->first();
 
         if ($purchase_details->type == 'variable') {
             $product_name = $purchase_details->product.' - '.$purchase_details->product_variation.' - '.$purchase_details->variation_name.' ('.$purchase_details->sub_sku.')';
@@ -2008,10 +1993,10 @@ class ProductUtil extends Util
             'total_sold' => $sell_details->total_sold,
             'total_sell_return' => $sell_details->total_sell_return,
             'total_sell_transfer' => $sell_details->total_sell_transfer,
-            'current_stock' => $current_stock_sum,
+            'current_stock' => $current_stock->qty_available ?? 0,
             'product_id' => $purchase_details->product_id,
             'enable_stock' => (int) ($purchase_details->enable_stock ?? 0),
-            'has_variation_location_row' => $has_variation_location_row,
+            'has_variation_location_row' => $current_stock !== null,
             'variation_id' => (int) $variation_id,
             'location_id' => (int) $location_id,
         ];

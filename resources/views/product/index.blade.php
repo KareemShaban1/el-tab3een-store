@@ -297,8 +297,7 @@
                             name: 'max_price',
                             searchable: false
                         },
-                    @endcan 
-		{
+                    @endcan {
                         data: 'current_stock',
                         searchable: false
                     },
