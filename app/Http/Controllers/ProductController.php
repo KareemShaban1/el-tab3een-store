@@ -82,10 +82,15 @@ class ProductController extends Controller
                 ->leftJoin('categories as c2', 'products.sub_category_id', '=', 'c2.id')
                 ->leftJoin('tax_rates', 'products.tax', '=', 'tax_rates.id')
                 ->join('variations as v', 'v.product_id', '=', 'products.id')
-                ->leftJoin('variation_location_details as vld', function ($join) use ($permitted_locations) {
+                ->leftJoin('variation_location_details as vld', function ($join) use ($permitted_locations, $location_id) {
                     $join->on('vld.variation_id', '=', 'v.id');
                     if ($permitted_locations != 'all') {
                         $join->whereIn('vld.location_id', $permitted_locations);
+                    }
+                    // Align stock with the list filter: otherwise the column sums all permitted
+                    // locations while the user narrowed the grid to one business location.
+                    if (! empty($location_id) && $location_id != 'none') {
+                        $join->where('vld.location_id', '=', $location_id);
                     }
                 })
                 ->whereNull('v.deleted_at')
@@ -132,7 +137,7 @@ class ProductController extends Controller
                 'products.product_custom_field16', 'products.product_custom_field17', 'products.product_custom_field18', 
                 'products.product_custom_field19', 'products.product_custom_field20',
                 'products.alert_quantity',
-                DB::raw('SUM(vld.qty_available) as current_stock'),
+                DB::raw('COALESCE(SUM(vld.qty_available), 0) as current_stock'),
                 DB::raw('MAX(v.sell_price_inc_tax) as max_price'),
                 DB::raw('MIN(v.sell_price_inc_tax) as min_price'),
                 DB::raw('MAX(v.dpp_inc_tax) as max_purchase_price'),
