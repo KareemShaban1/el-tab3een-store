@@ -201,8 +201,8 @@ class ProductController extends Controller
             return Datatables::of($products)
                 ->addColumn(
                     'product_locations',
-                    function ($row) {
-                        return $row->product_locations->implode('name', ', ');
+                    function ($row) use ($permitted_locations, $location_id) {
+                        return $this->formatProductLocationsWithStock($row, $permitted_locations, $location_id);
                     }
                 )
                 ->editColumn('category', '{{$category}} @if(!empty($sub_category))<br/> -- {{$sub_category}}@endif')
@@ -321,7 +321,6 @@ class ProductController extends Controller
                 ->editColumn('current_stock', function ($row) {
                     if ($row->enable_stock) {
                         $stock = $this->productUtil->num_f($row->current_stock, false, null, true);
-		// $stock = $row->current_stock ?? 0;
                         return '<span data-is_quantity="true" class="current_stock" data-orig-value="'.$stock.'" data-unit="'.$row->unit.'" >'.$stock.'</span> '.$row->unit;
                     } else {
                         return '--';
@@ -349,7 +348,7 @@ class ProductController extends Controller
                             return '';
                         }
                     }, ])
-                ->rawColumns(['action', 'image', 'mass_delete', 'product', 'selling_price', 'purchase_price', 'category', 'current_stock', 'is_inactive', 'active_in_app'])
+                ->rawColumns(['action', 'image', 'mass_delete', 'product', 'selling_price', 'purchase_price', 'category', 'current_stock', 'product_locations', 'is_inactive', 'active_in_app'])
                 ->make(true);
         }
 
@@ -2670,6 +2669,49 @@ class ProductController extends Controller
         }
 
         return $output;
+    }
+
+    /**
+     * Product list column: each location with total stock (sum of all variations), matching list location scope.
+     */
+    private function formatProductLocationsWithStock($row, $permitted_locations, $location_id): string
+    {
+        if (empty($row->enable_stock)) {
+            $row->loadMissing('product_locations');
+
+            return $row->product_locations->isNotEmpty()
+                ? e($row->product_locations->implode('name', ', '))
+                : '—';
+        }
+
+        $q = DB::table('variation_location_details as vld')
+            ->join('variations as v', 'v.id', '=', 'vld.variation_id')
+            ->join('business_locations as bl', 'bl.id', '=', 'vld.location_id')
+            ->where('v.product_id', $row->id)
+            ->whereNull('v.deleted_at')
+            ->select('bl.id', 'bl.name', DB::raw('SUM(vld.qty_available) as qty'))
+            ->groupBy('bl.id', 'bl.name')
+            ->orderBy('bl.name');
+
+        if ($permitted_locations != 'all') {
+            $q->whereIn('vld.location_id', $permitted_locations);
+        }
+
+        if (! empty($location_id) && $location_id != 'none') {
+            $q->where('vld.location_id', '=', $location_id);
+        }
+
+        $rows = $q->get();
+
+        if ($rows->isEmpty()) {
+            return '—';
+        }
+
+        return $rows->map(function ($r) {
+            $qty = $this->productUtil->num_f((float) $r->qty, false, null, true);
+
+            return e($r->name).': '.$qty;
+        })->implode('<br>');
     }
 
     /**
