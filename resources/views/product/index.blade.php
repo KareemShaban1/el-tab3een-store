@@ -613,8 +613,7 @@ $(document).ready(function() {
 			});
 		} else {
 			$('input#selected_rows').val('');
-			swal('@lang('
-				lang_v1.no_row_selected ')');
+			swal('@lang('lang_v1.no_row_selected ')');
 		}
 	});
 
@@ -677,8 +676,7 @@ $(document).ready(function() {
 			});
 		} else {
 			$('input#selected_products').val('');
-			swal('@lang('
-				lang_v1.no_row_selected ')');
+			swal('@lang('lang_v1.no_row_selected ')');
 		}
 	})
 
@@ -692,8 +690,7 @@ $(document).ready(function() {
 			$('form#bulk_edit_form').submit();
 		} else {
 			$('input#selected_products').val('');
-			swal('@lang('
-				lang_v1.no_row_selected ')');
+			swal('@lang('lang_v1.no_row_selected ')');
 		}
 	})
 
@@ -780,9 +777,7 @@ $(document).ready(function() {
 				$cb.prop('checked',
 					previousChecked
 				);
-				toastr.error(@json(__(
-					'messages.something_went_wrong'
-				)));
+				toastr.error(@json(('messages.something_went_wrong')));
 			}
 		});
 	});
@@ -823,8 +818,7 @@ $(document).ready(function() {
 				selected_rows);
 		} else {
 			$('input#selected_products').val('');
-			swal('@lang('
-				lang_v1.no_row_selected ')');
+			swal('@lang('lang_v1.no_row_selected ')');
 		}
 	});
 
@@ -1307,8 +1301,7 @@ $(document).on('click', '.update_product_location', function(e) {
 		modal.find('#products_to_update_location').val(selected_rows);
 	} else {
 		$('input#selected_products').val('');
-		swal('@lang('
-			lang_v1.no_row_selected ')');
+		swal('@lang('lang_v1.no_row_selected ')');
 	}
 });
 
@@ -1346,7 +1339,6 @@ $(document).on('submit', 'form#edit_product_location_form', function(e) {
 	});
 });
 
-@can('product.update')
 
 function loadLowStockVldModal() {
 	$('#low_stock_vld_loading').removeClass('hide');
@@ -1473,24 +1465,17 @@ $(document).on('click', '#low_stock_vld_save', function() {
 						);
 				}
 			} else {
-				toastr.error(res.msg || @json(__(
-					'messages.something_went_wrong'
-				)));
+				toastr.error(res.msg || @json(('messages.something_went_wrong')));
 			}
 		},
 		error: function(xhr) {
 			btn.prop('disabled', false);
 			var msg = (xhr.responseJSON && xhr
 					.responseJSON.msg) ?
-				xhr.responseJSON.msg : @json(
-					__(
-						'messages.something_went_wrong'
-					)
-				);
+				xhr.responseJSON.msg : @json(__('messages.something_went_wrong'));
 			toastr.error(msg);
 		}
 	});
 });
-@endcan
 </script>
 @endsection
