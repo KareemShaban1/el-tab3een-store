@@ -2806,7 +2806,7 @@ class ProductController extends Controller
         $validated = $request->validate([
             'items' => 'required|array',
             'items.*.id' => 'required|integer',
-            'items.*.qty_available' => 'required|numeric|min:0',
+            'items.*.qty_available' => 'required|numeric',
         ]);
 
         $business_id = (int) $request->session()->get('user.business_id');
