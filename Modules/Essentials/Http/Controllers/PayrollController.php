@@ -132,7 +132,7 @@ class PayrollController extends Controller
                         // $html .= '<li><a href="' . action('TransactionPaymentController@show', [$row->id]) . '" class="view_payment_modal"><i class="fa fa-money"></i> ' . __("purchase.view_payments") . '</a></li>';
         
                         if (empty($row->payroll_group_id) && $row->payment_status != "paid" && $is_admin) {
-                            $html .= '<li><a href="' . action('TransactionPaymentController@addPayment', [$row->id]) . '" class="add_payment_modal"><i class="fa fa-money"></i> ' . __("purchase.add_payment") . '</a></li>';
+                            $html .= '<li><a href="' . action([\App\Http\Controllers\TransactionPaymentController::class, 'addPayment'], [$row->id]) . '" class="add_payment_modal"><i class="fa fa-money"></i> ' . __("purchase.add_payment") . '</a></li>';
                         }
 
 
@@ -151,10 +151,12 @@ class PayrollController extends Controller
                 })
                 ->editColumn(
                     'payment_status',
-                    '<a href="{{ action("TransactionPaymentController@show", [$id])}}" class="view_payment_modal payment-status-label no-print" data-orig-value="{{$payment_status}}" data-status-name="{{__(\'lang_v1.\' . $payment_status)}}"><span class="label @payment_status($payment_status)">{{__(\'lang_v1.\' . $payment_status)}}
-                        </span></a>
-                        <span class="print_section">{{__(\'lang_v1.\' . $payment_status)}}</span>
-                        '
+                    function ($row) {
+                        return (string) view('sell.partials.payment_status', [
+                            'payment_status' => $row->payment_status,
+                            'id' => $row->id,
+                        ]);
+                    }
                 )
                 ->removeColumn('id')
                 ->rawColumns(['action', 'final_total', 'payment_status'])
