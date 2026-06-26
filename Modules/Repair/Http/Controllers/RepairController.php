@@ -391,8 +391,8 @@ class RepairController extends Controller
                  })
                  ->editColumn('job_sheet_no', function($row) {
                     $html = $row->job_sheet_no;
-                    if (auth()->user()->can("job_sheet.view_assigned") || auth()->user()->can("job_sheet.view_all") || auth()->user()->can("job_sheet.create")) {
-                            $html = '<a href="' . action('\Modules\Repair\Http\Controllers\JobSheetController@show', ['id' => $row->job_sheet_id]) . '" class="cursor-pointer" target="_blank">
+                    if (! empty($row->job_sheet_id) && (auth()->user()->can("job_sheet.view_assigned") || auth()->user()->can("job_sheet.view_all") || auth()->user()->can("job_sheet.create"))) {
+                            $html = '<a href="' . action([\Modules\Repair\Http\Controllers\JobSheetController::class, 'show'], ['job_sheet' => $row->job_sheet_id]) . '" class="cursor-pointer" target="_blank">
                                     '.$row->job_sheet_no.'
                                 </a>';
                     }
