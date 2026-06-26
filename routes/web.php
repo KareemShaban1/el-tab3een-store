@@ -179,8 +179,6 @@ Route::middleware(['setData', 'auth', 'SetSessionData', 'language', 'timezone', 
 
     Route::resource('ledger-discount', LedgerDiscountController::class)->only('edit', 'destroy', 'store', 'update');
 
-    Route::resource('contacts', ContactController::class);
-
     Route::post('check-mobile', [ContactController::class, 'checkMobile']);
     Route::get('/get-contact-due/{contact_id}', [ContactController::class, 'getContactDue']);
     Route::get('/contacts/payments/{contact_id}', [ContactController::class, 'getContactPayments']);
@@ -192,10 +190,10 @@ Route::middleware(['setData', 'auth', 'SetSessionData', 'language', 'timezone', 
     Route::get('/contacts/import', [ContactController::class, 'getImportContacts'])->name('contacts.import');
     Route::post('/contacts/import', [ContactController::class, 'postImportContacts']);
     Route::post('/contacts/check-contacts-id', [ContactController::class, 'checkContactId']);
-
     Route::post('/contacts/check-tax-number', [ContactController::class, 'checkTaxNumber']);
-
     Route::get('/contacts/customers', [ContactController::class, 'getCustomers']);
+
+    Route::resource('contacts', ContactController::class);
 
     Route::get('taxonomies-ajax-index-page', [TaxonomyController::class, 'getTaxonomyIndexPage']);
     Route::resource('taxonomies', TaxonomyController::class);
