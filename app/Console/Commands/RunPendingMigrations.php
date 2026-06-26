@@ -40,12 +40,15 @@ class RunPendingMigrations extends Command
         $missing = [];
 
         foreach ($lines as $line) {
-            $filename = str_ends_with($line, '.php') ? $line : $line.'.php';
-            $migration = pathinfo($filename, PATHINFO_FILENAME);
-            $path = database_path('migrations/'.$filename);
+            $entry = str_ends_with($line, '.php') ? $line : $line.'.php';
+            $migration = pathinfo($entry, PATHINFO_FILENAME);
+            $relativePath = str_contains($entry, '/')
+                ? $entry
+                : 'database/migrations/'.$entry;
+            $absolutePath = base_path($relativePath);
 
-            if (! File::exists($path)) {
-                $missing[] = $filename;
+            if (! File::exists($absolutePath)) {
+                $missing[] = $entry;
                 continue;
             }
 
@@ -54,7 +57,7 @@ class RunPendingMigrations extends Command
             } else {
                 $pending[] = [
                     'migration' => $migration,
-                    'path' => 'database/migrations/'.$filename,
+                    'path' => $relativePath,
                 ];
             }
         }
