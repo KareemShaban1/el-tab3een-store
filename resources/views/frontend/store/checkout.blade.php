@@ -263,7 +263,22 @@
 
         function readCart() {
             try {
-                return JSON.parse(localStorage.getItem(CART_STORAGE_KEY) || '[]');
+                const parsed = JSON.parse(localStorage.getItem(CART_STORAGE_KEY) || '[]');
+                if (!Array.isArray(parsed)) {
+                    return [];
+                }
+
+                return parsed
+                    .filter((item) => Number(item?.variation_id) > 0 && Number(item?.qty) > 0)
+                    .map((item) => ({
+                        id: Number(item.id || 0),
+                        variation_id: Number(item.variation_id || 0),
+                        name: String(item.name || ''),
+                        price: Number(item.price || 0),
+                        qty: Math.max(1, Number(item.qty || 1)),
+                        img: String(item.img || ''),
+                        source: item.source ? String(item.source) : null,
+                    }));
             } catch (e) {
                 return [];
             }
@@ -289,6 +304,8 @@
             inputsWrap.innerHTML = cart.map((item, idx) => `
                 <input type="hidden" name="products[${idx}][variation_id]" value="${Number(item.variation_id || 0)}">
                 <input type="hidden" name="products[${idx}][quantity]" value="${Math.max(1, Number(item.qty || 1))}">
+                <input type="hidden" name="products[${idx}][product_id]" value="${Number(item.id || 0)}">
+                ${item.source === 'servo' ? `<input type="hidden" name="products[${idx}][source]" value="servo">` : ''}
             `).join('');
         }
 
@@ -303,7 +320,9 @@
 
         form?.addEventListener('submit', function (e) {
             hideClientError();
-            if (!cart.length) {
+            const latestCart = readCart();
+            renderProductInputs(latestCart);
+            if (!latestCart.length) {
                 e.preventDefault();
                 const msg = (form && form.dataset && form.dataset.emptyCartMsg) ? form.dataset.emptyCartMsg : '';
                 showClientError(msg);

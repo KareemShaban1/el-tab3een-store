@@ -1,99 +1,244 @@
 @extends('frontend.store.theme_layout')
 
 @section('content')
-	<!-- ===================== HERO ===================== -->
-	<section class="hero">
-		<div class="container">
-			<div class="hero-inner">
+<!-- ===================== HERO ===================== -->
+<section class="hero">
+	<div class="container">
+		<div class="hero-inner">
 
-				<div class="hero-content">
-					<div class="hero-badge">🔥 أحدث تقنيات 2025</div>
-					<h1 class="hero-title">اكتشف <span>عالم التقنية</span><br>بأفضل
-						الأسعار</h1>
-					<p class="hero-desc">تشكيلة ضخمة من أحدث الأجهزة الإلكترونية من أفضل
-						الماركات العالمية. جودة عالية، ضمان أصلي، وتوصيل سريع لباب
-						بيتك.</p>
-					<div class="hero-actions">
-						<a href="#" class="btn btn-primary btn-lg">🛒 تسوق الآن</a>
-						<a href="#" class="btn btn-outline-light btn-lg">🔥 عروض
-							اليوم</a>
+			<div class="hero-content">
+				<div class="hero-badge">🔥 أحدث تقنيات 2025</div>
+				<h1 class="hero-title">اكتشف <span>عالم التقنية</span><br>بأفضل
+					الأسعار</h1>
+				<p class="hero-desc">تشكيلة ضخمة من أحدث الأجهزة الإلكترونية من أفضل
+					الماركات العالمية. جودة عالية، ضمان أصلي، وتوصيل سريع لباب
+					بيتك.</p>
+				<div class="hero-actions">
+					<a href="#" class="btn btn-primary btn-lg">🛒 تسوق الآن</a>
+					<a href="#" class="btn btn-outline-light btn-lg">🔥 عروض
+						اليوم</a>
+				</div>
+				<div class="hero-stats">
+					<div>
+						<div class="h-stat-num">+50K</div>
+						<div class="h-stat-lbl">منتج متوفر</div>
 					</div>
-					<div class="hero-stats">
-						<div>
-							<div class="h-stat-num">+50K</div>
-							<div class="h-stat-lbl">منتج متوفر</div>
-						</div>
-						<div>
-							<div class="h-stat-num">+200K</div>
-							<div class="h-stat-lbl">عميل سعيد</div>
-						</div>
-						<div>
-							<div class="h-stat-num">+500</div>
-							<div class="h-stat-lbl">ماركة عالمية</div>
-						</div>
+					<div>
+						<div class="h-stat-num">+200K</div>
+						<div class="h-stat-lbl">عميل سعيد</div>
 					</div>
-					<div class="hero-dots" style="margin-top:28px;">
-						<button class="hero-dot active" data-dot="0"></button>
-						<button class="hero-dot" data-dot="1"></button>
-						<button class="hero-dot" data-dot="2"></button>
+					<div>
+						<div class="h-stat-num">+500</div>
+						<div class="h-stat-lbl">ماركة عالمية</div>
 					</div>
 				</div>
-
-				<div class="hero-visual">
-					<div class="hero-glow"></div>
-					<img class="hero-img"
-						src="https://placehold.co/460x400/3d3868/ffffff?text=iPhone+15+Pro+Max"
-						alt="iPhone 15 Pro Max">
-					<div class="float-badge fb1">
-						<div class="fb-icon" style="background:#fff3e0;">⭐</div>
-						<div>
-							<strong class="fb-strong">تقييم 4.9 / 5</strong>
-							<span class="fb-small">من +50,000 تقييم</span>
-						</div>
-					</div>
-					<div class="float-badge fb2">
-						<div class="fb-icon" style="background:#e8f5e9;">🚚</div>
-						<div>
-							<strong class="fb-strong">توصيل مجاني</strong>
-							<span class="fb-small">على الطلبات +500 ج.م</span>
-						</div>
-					</div>
+				<div class="hero-dots" style="margin-top:28px;">
+					<button class="hero-dot active" data-dot="0"></button>
+					<button class="hero-dot" data-dot="1"></button>
+					<button class="hero-dot" data-dot="2"></button>
 				</div>
-
 			</div>
-		</div>
-	</section>
 
-	<!-- ===================== CATEGORIES ===================== -->
-	<section class="cats-section section-sm">
-		<div class="container">
-			<div class="sec-head-row">
+			<div class="hero-visual">
+				<div class="hero-glow"></div>
+				<img class="hero-img"
+					src="https://placehold.co/460x400/3d3868/ffffff?text=iPhone+15+Pro+Max"
+					alt="iPhone 15 Pro Max">
+				<div class="float-badge fb1">
+					<div class="fb-icon" style="background:#fff3e0;">⭐</div>
+					<div>
+						<strong class="fb-strong">تقييم 4.9 / 5</strong>
+						<span class="fb-small">من +50,000 تقييم</span>
+					</div>
+				</div>
+				<div class="float-badge fb2">
+					<div class="fb-icon" style="background:#e8f5e9;">🚚</div>
+					<div>
+						<strong class="fb-strong">توصيل مجاني</strong>
+						<span class="fb-small">على الطلبات +500 ج.م</span>
+					</div>
+				</div>
+			</div>
+
+		</div>
+	</div>
+</section>
+
+<!-- ===================== CATEGORIES ===================== -->
+<section class="cats-section section-sm">
+	<div class="container">
+		<div class="sec-head-row">
+			<div>
+				<h2 class="sec-title">تسوق حسب <span>الفئة</span></h2>
+				<p class="sec-sub">اكتشف تشكيلتنا من أفضل الفئات الإلكترونية</p>
+			</div>
+			<a href="#" class="view-all">عرض الكل ←</a>
+		</div>
+		<div class="cats-grid" id="dynamic-categories-grid"></div>
+	</div>
+</section>
+
+<!-- ===================== FEATURED PRODUCTS ===================== -->
+<section class="section">
+	<div class="container">
+		<div class="sec-head-row">
+			<div>
+				<h2 class="sec-title">منتجات <span>مميزة</span></h2>
+				<p class="sec-sub">اختيارنا من أفضل المنتجات لهذا الأسبوع</p>
+			</div>
+			<a href="{{route('store.products.index')}}" class="view-all">عرض الكل ←</a>
+		</div>
+		<div class="products-grid" id="dynamic-products-grid"></div>
+	</div>
+</section>
+
+@php
+$tab3eenProductsSeed = collect($tab3eenCatalog ?? [])->flatMap(function ($category) {
+return collect($category['products'] ?? [])->mapWithKeys(function ($item) use ($category) {
+$id = (int) ($item['id'] ?? 0);
+$vars = collect($item['variations'] ?? [])->map(function ($v) {
+return [
+'variation_id' => (int) ($v['variation_id'] ?? 0),
+'name' => (string) ($v['name'] ?? 'Default'),
+'sku' => (string) ($v['sku'] ?? ''),
+'price_inc_tax' => (float) ($v['price'] ?? 0),
+'qty_available' => (float) ($v['qty_available'] ?? 0),
+];
+})->values()->all();
+$def = $vars[0] ?? null;
+$price = (float) ($item['default_price'] ?? ($def['price_inc_tax'] ?? 0));
+$vid = (int) ($item['default_variation_id'] ?? ($def['variation_id'] ?? $id));
+
+return [
+$id => [
+'name' => (string) ($item['name'] ?? ''),
+'brand' => (string) ($category['name'] ?? ''),
+'category' => (string) ($category['name'] ?? ''),
+'unit' => '',
+'price' => $price,
+'old' => null,
+'img' => (string) ($item['image_url'] ?? ''),
+'reviews' => 'متوفر',
+'variation_id' => $vid,
+'variations' => $vars,
+],
+];
+});
+})->all();
+@endphp
+@if (!empty($tab3eenCatalog))
+<style>
+.tab3een-cat-head {
+	display: flex;
+	align-items: center;
+	gap: 16px;
+}
+
+.tab3een-cat-img {
+	width: 56px;
+	height: 56px;
+	object-fit: contain;
+	border-radius: 12px;
+	background: var(--bg-soft);
+	padding: 6px;
+}
+
+.tab3een-catalog-section+.tab3een-catalog-section {
+	border-top: 1px solid var(--border);
+	padding-top: 8px;
+}
+</style>
+<script>
+window.__SSR_STORE_PRODUCTS__ = Object.assign(window.__SSR_STORE_PRODUCTS__ || {}, @json($tab3eenProductsSeed));
+</script>
+@foreach ($tab3eenCatalog as $category)
+<section class="section tab3een-catalog-section">
+	<div class="container">
+		<div class="sec-head-row">
+			<div class="tab3een-cat-head">
+				@if (!empty($category['image']))
+				<img src="{{ $category['image'] }}" alt="{{ $category['name'] }}"
+					class="tab3een-cat-img">
+				@endif
 				<div>
-					<h2 class="sec-title">تسوق حسب <span>الفئة</span></h2>
-					<p class="sec-sub">اكتشف تشكيلتنا من أفضل الفئات الإلكترونية</p>
+					<h2 class="sec-title">{{ $category['name'] }}</h2>
+					<p class="sec-sub">منتجات متاحة من كتالوج التابعين</p>
 				</div>
-				<a href="#" class="view-all">عرض الكل ←</a>
 			</div>
-			<div class="cats-grid" id="dynamic-categories-grid"></div>
+			<!-- <a href="{{ route('store.products.index', ['category_id' => $category['id']]) }}" class="view-all">عرض الكل ←</a> -->
 		</div>
-	</section>
-
-	<!-- ===================== FEATURED PRODUCTS ===================== -->
-	<section class="section">
-		<div class="container">
-			<div class="sec-head-row">
-				<div>
-					<h2 class="sec-title">منتجات <span>مميزة</span></h2>
-					<p class="sec-sub">اختيارنا من أفضل المنتجات لهذا الأسبوع</p>
+		<div class="products-grid">
+			@foreach ($category['products'] as $product)
+			@php
+			$variations = collect($product['variations'] ?? []);
+			$defaultPrice = (float) ($product['default_price'] ?? 0);
+			$defaultVariationId = (int) ($product['default_variation_id'] ?? $product['id']);
+			@endphp
+			<div class="prod-card">
+				<div class="prod-img-wrap">
+					<img class="prod-img"
+						src="{{ $product['image_url'] ?: 'https://placehold.co/400x400/F8F9FC/2D294E?text=Product' }}"
+						alt="{{ $product['name'] }}">
+					<div class="prod-actions">
+						<button type="button" class="pa-cart"
+							data-id="{{ $product['id'] }}"
+							data-name="{{ $product['name'] }}"
+							data-price="{{ $defaultPrice }}"
+							data-variation-id="{{ $defaultVariationId }}"
+							data-source="servo">
+							<svg width="14" height="14" fill="none"
+								stroke="currentColor" stroke-width="2.5"
+								viewBox="0 0 24 24">
+								<path
+									d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
+								<line x1="3" y1="6" x2="21" y2="6" />
+							</svg>
+							أضف للسلة
+						</button>
+						<button type="button" class="pa-icon pa-wish"
+							data-wish="{{ $product['id'] }}">🤍</button>
+						<button type="button" class="pa-icon"
+							data-quickview="{{ $product['id'] }}">👁</button>
+					</div>
 				</div>
-				<a href="{{route('store.products.index')}}" class="view-all">عرض الكل ←</a>
+				<div class="prod-info">
+					<div class="prod-brand">{{ $category['name'] }}</div>
+					<div class="prod-name">
+						<a href="{{ route('store.products.show', ['id' => $product['id']]) }}"
+							title="عرض تفاصيل المنتج">{{ $product['name'] }}</a>
+					</div>
+					@if ($variations->count() > 1)
+					<div class="prod-variant-wrap">
+						<select class="prod-variant" data-id="{{ $product['id'] }}">
+							@foreach ($variations as $variation)
+							<option value="{{ (int) $variation['variation_id'] }}"
+								data-price="{{ (float) $variation['price'] }}"
+								@selected((int)
+								$variation['variation_id']===$defaultVariationId)>
+								{{ $variation['name'] ?: 'Default' }} —
+								{{ number_format((float) $variation['price'], 2) }}
+								ج.م
+							</option>
+							@endforeach
+						</select>
+					</div>
+					@endif
+					<div class="price-row">
+						<span class="price-now"
+							id="prod-price-{{ $product['id'] }}">{{ number_format($defaultPrice, 2) }}
+							ج.م</span>
+					</div>
+				</div>
 			</div>
-			<div class="products-grid" id="dynamic-products-grid"></div>
+			@endforeach
 		</div>
-	</section>
+	</div>
+</section>
+@endforeach
+@endif
 
-	<!-- ===================== FLASH DEALS ===================== -->
-	<!-- <section class="flash-section section">
+<!-- ===================== FLASH DEALS ===================== -->
+<!-- <section class="flash-section section">
 		<div class="container">
 			<div class="flash-head">
 				<div class="flash-title">
@@ -122,57 +267,57 @@
 		</div>
 	</section> -->
 
-	<!-- ===================== BRANDS ===================== -->
-	<section class="brands-section section-sm">
-		<div class="container">
-			<h2 class="sec-title" style="text-align:center;margin-bottom:28px;">أفضل
-				<span>الماركات</span> العالمية
-			</h2>
-			<div class="brands-track" id="brands-track">
-				<div class="brand-tile">Apple</div>
-				<div class="brand-tile">Samsung</div>
-				<div class="brand-tile">Sony</div>
-				<div class="brand-tile">Xiaomi</div>
-				<div class="brand-tile">Huawei</div>
-				<div class="brand-tile">LG</div>
-				<div class="brand-tile">Dell</div>
-				<div class="brand-tile">HP</div>
-				<div class="brand-tile">Lenovo</div>
-				<div class="brand-tile">ASUS</div>
-				<div class="brand-tile">JBL</div>
-				<div class="brand-tile">Anker</div>
-				<div class="brand-tile">Apple</div>
-				<div class="brand-tile">Samsung</div>
-			</div>
+<!-- ===================== BRANDS ===================== -->
+<section class="brands-section section-sm">
+	<div class="container">
+		<h2 class="sec-title" style="text-align:center;margin-bottom:28px;">أفضل
+			<span>الماركات</span> العالمية
+		</h2>
+		<div class="brands-track" id="brands-track">
+			<div class="brand-tile">Apple</div>
+			<div class="brand-tile">Samsung</div>
+			<div class="brand-tile">Sony</div>
+			<div class="brand-tile">Xiaomi</div>
+			<div class="brand-tile">Huawei</div>
+			<div class="brand-tile">LG</div>
+			<div class="brand-tile">Dell</div>
+			<div class="brand-tile">HP</div>
+			<div class="brand-tile">Lenovo</div>
+			<div class="brand-tile">ASUS</div>
+			<div class="brand-tile">JBL</div>
+			<div class="brand-tile">Anker</div>
+			<div class="brand-tile">Apple</div>
+			<div class="brand-tile">Samsung</div>
 		</div>
-	</section>
+	</div>
+</section>
 
-	<!-- ===================== OFFER BANNER ===================== -->
-	<section class="section">
-		<div class="container">
-			<div class="offer-banner">
-				<div class="offer-content">
-					<div class="offer-tag">⚡ عرض محدود — ينتهي قريباً!</div>
-					<h2 class="offer-title">احصل على آيباد برو M4<br>بخصم 25% حصري</h2>
-					<p class="offer-desc">اغتنم هذا العرض الاستثنائي على أقوى تابلت من
-						آبل. شاشة OLED Ultra Retina XDR رائعة وأداء M4 لا يُضاهى.
-					</p>
-					<div class="offer-btns">
-						<a href="#" class="btn btn-dark btn-lg">🛒 اشتري الآن</a>
-						<a href="#" class="btn btn-white-outline btn-lg">تعرف
-							أكثر</a>
-					</div>
-				</div>
-				<div class="offer-visual">
-					<img src="https://placehold.co/300x220/ff7640/ffffff?text=iPad+Pro+M4"
-						alt="آيباد برو M4">
+<!-- ===================== OFFER BANNER ===================== -->
+<section class="section">
+	<div class="container">
+		<div class="offer-banner">
+			<div class="offer-content">
+				<div class="offer-tag">⚡ عرض محدود — ينتهي قريباً!</div>
+				<h2 class="offer-title">احصل على آيباد برو M4<br>بخصم 25% حصري</h2>
+				<p class="offer-desc">اغتنم هذا العرض الاستثنائي على أقوى تابلت من
+					آبل. شاشة OLED Ultra Retina XDR رائعة وأداء M4 لا يُضاهى.
+				</p>
+				<div class="offer-btns">
+					<a href="#" class="btn btn-dark btn-lg">🛒 اشتري الآن</a>
+					<a href="#" class="btn btn-white-outline btn-lg">تعرف
+						أكثر</a>
 				</div>
 			</div>
+			<div class="offer-visual">
+				<img src="https://placehold.co/300x220/ff7640/ffffff?text=iPad+Pro+M4"
+					alt="آيباد برو M4">
+			</div>
 		</div>
-	</section>
+	</div>
+</section>
 
-	<!-- ===================== TESTIMONIALS ===================== -->
-	<!-- <section class="testi-section section">
+<!-- ===================== TESTIMONIALS ===================== -->
+<!-- <section class="testi-section section">
 		<div class="container">
 			<div class="sec-head" style="text-align:center;">
 				<h2 class="sec-title">ماذا يقول <span>عملاؤنا</span></h2>
@@ -225,8 +370,8 @@
 		</div>
 	</section> -->
 
-	<!-- ===================== NEWSLETTER ===================== -->
-	<!-- <section class="news-section">
+<!-- ===================== NEWSLETTER ===================== -->
+<!-- <section class="news-section">
 		<div class="container">
 			<h2 class="news-title">📧 اشترك في نشرتنا البريدية</h2>
 			<p class="news-sub">احصل على أحدث العروض والخصومات مباشرة في بريدك الإلكتروني</p>
@@ -238,4 +383,4 @@
 		</div>
 	</section> -->
 
-	@endsection
+@endsection

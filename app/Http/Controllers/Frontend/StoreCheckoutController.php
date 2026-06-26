@@ -6,10 +6,12 @@ use App\Business;
 use App\Contact;
 use App\Events\StockTransferCreatedOrModified;
 use App\Transaction;
+use App\ServoOrderLog;
 use App\Utils\NotificationUtil;
 use App\Utils\ProductUtil;
 use App\Utils\TransactionUtil;
 use App\Variation;
+use App\Services\Tab3eenOrderService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -22,7 +24,8 @@ class StoreCheckoutController extends Controller
     public function __construct(
         private TransactionUtil $transactionUtil,
         private ProductUtil $productUtil,
-        private NotificationUtil $notificationUtil
+        private NotificationUtil $notificationUtil,
+        private Tab3eenOrderService $tab3eenOrderService
     ) {}
 
     public function show(Request $request)
@@ -63,6 +66,8 @@ class StoreCheckoutController extends Controller
             'products' => 'required|array|min:1',
             'products.*.variation_id' => 'required|integer',
             'products.*.quantity' => 'required|numeric|min:0.0001',
+            'products.*.product_id' => 'nullable|integer',
+            'products.*.source' => 'nullable|in:servo',
             'addresses' => 'nullable|array',
             'shipping_address_option' => 'nullable|in:existing,new',
             'addresses.shipping_address.shipping_name' => 'nullable|string|max:191',
@@ -78,7 +83,73 @@ class StoreCheckoutController extends Controller
 
         $customer_contact = Contact::findOrFail($customer->id);
         $resolved_addresses = $this->resolveShippingAddress($validated, $customer_contact, $request);
+        [$servo_products, $local_products] = $this->splitCheckoutProducts($validated['products'], $business_id);
+        $servo_client_name = trim((string) ($resolved_addresses['shipping_address']['shipping_name'] ?? $customer_contact->name ?? ''));
 
+        if (empty($local_products) && ! empty($servo_products) && ! empty($validated['idempotency_key'])) {
+            $existing_servo_log = ServoOrderLog::where('business_id', $business_id)
+                ->where('contact_id', $customer->id)
+                ->where('idempotency_key', $validated['idempotency_key'])
+                ->first();
+
+            if ($existing_servo_log) {
+                return $this->checkoutSuccessResponse(
+                    $request,
+                    null,
+                    __('Order placed successfully.')
+                );
+            }
+        }
+
+        $transaction = null;
+
+        if (! empty($local_products)) {
+            $validated['products'] = $local_products;
+            $transaction = $this->processLocalStoreCheckout(
+                $request,
+                $validated,
+                $customer,
+                $customer_contact,
+                $business_id,
+                $location_id,
+                $resolved_addresses
+            );
+
+            if ($transaction instanceof \Illuminate\Http\Response || $transaction instanceof \Illuminate\Http\RedirectResponse || $transaction instanceof \Illuminate\Http\JsonResponse) {
+                return $transaction;
+            }
+        }
+
+        if (! empty($servo_products)) {
+            $this->recordServoOrderAttempt(
+                $servo_products,
+                $customer_contact,
+                $business_id,
+                $servo_client_name,
+                $transaction?->id,
+                $validated['idempotency_key'] ?? null
+            );
+        }
+
+        return $this->checkoutSuccessResponse(
+            $request,
+            $transaction,
+            __('Order placed successfully.')
+        );
+    }
+
+    /**
+     * @return Transaction|\Illuminate\Http\Response|\Illuminate\Http\RedirectResponse|\Illuminate\Http\JsonResponse
+     */
+    private function processLocalStoreCheckout(
+        Request $request,
+        array $validated,
+        Contact $customer,
+        Contact $customer_contact,
+        int $business_id,
+        int $location_id,
+        array $resolved_addresses
+    ) {
         if (! empty($validated['idempotency_key'])) {
             $existing = Transaction::where('business_id', $business_id)
                 ->where('contact_id', $customer->id)
@@ -274,21 +345,183 @@ class StoreCheckoutController extends Controller
             return $this->respondWentWrong($e);
         }
 
+        return $transaction;
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $servo_products
+     */
+    private function recordServoOrderAttempt(
+        array $servo_products,
+        Contact $customer_contact,
+        int $business_id,
+        string $client_name,
+        ?int $transaction_id,
+        ?string $idempotency_key
+    ): void {
+        if ($transaction_id !== null) {
+            if (ServoOrderLog::where('transaction_id', $transaction_id)->exists()) {
+                return;
+            }
+        } elseif (! empty($idempotency_key)) {
+            if (ServoOrderLog::where('business_id', $business_id)
+                ->where('contact_id', $customer_contact->id)
+                ->where('idempotency_key', $idempotency_key)
+                ->exists()) {
+                return;
+            }
+        }
+
+        try {
+            $items = $this->normalizeServoOrderItems($servo_products);
+        } catch (ValidationException $e) {
+            $error_message = collect($e->errors())->flatten()->first() ?: __('This product is no longer available for purchase.');
+
+            ServoOrderLog::create([
+                'business_id' => $business_id,
+                'contact_id' => $customer_contact->id,
+                'transaction_id' => $transaction_id,
+                'idempotency_key' => $idempotency_key,
+                'client_name' => $client_name,
+                'items' => $servo_products,
+                'status' => 'failed',
+                'error_message' => $error_message,
+            ]);
+
+            Log::warning('Servo order payload validation failed and was logged internally.', [
+                'transaction_id' => $transaction_id,
+                'contact_id' => $customer_contact->id,
+                'error_message' => $error_message,
+            ]);
+
+            return;
+        }
+
+        $log = ServoOrderLog::create([
+            'business_id' => $business_id,
+            'contact_id' => $customer_contact->id,
+            'transaction_id' => $transaction_id,
+            'idempotency_key' => $idempotency_key,
+            'client_name' => $client_name,
+            'items' => $items,
+            'status' => 'pending',
+        ]);
+
+        $result = $this->tab3eenOrderService->submitOrder($items, $client_name);
+
+        $log->update([
+            'status' => $result['success'] ? 'success' : 'failed',
+            'request_payload' => $result['request_payload'],
+            'response_payload' => $result['response_payload'],
+            'error_message' => $result['error_message'],
+            'http_status' => $result['http_status'],
+            'servo_reference' => $result['servo_reference'],
+        ]);
+
+        if (! $result['success']) {
+            Log::warning('Servo order failed internally after checkout success.', [
+                'servo_order_log_id' => $log->id,
+                'transaction_id' => $transaction_id,
+                'contact_id' => $customer_contact->id,
+                'error_message' => $result['error_message'],
+            ]);
+        }
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $products
+     * @return array{0: array<int, array<string, mixed>>, 1: array<int, array<string, mixed>>}
+     */
+    private function splitCheckoutProducts(array $products, int $business_id): array
+    {
+        $variation_ids = collect($products)
+            ->pluck('variation_id')
+            ->map(fn ($id) => (int) $id)
+            ->filter(fn ($id) => $id > 0)
+            ->unique()
+            ->values()
+            ->all();
+
+        $local_variation_ids = empty($variation_ids)
+            ? []
+            : Variation::whereIn('id', $variation_ids)
+                ->whereHas('product', function ($query) use ($business_id) {
+                    $query->where('business_id', $business_id);
+                })
+                ->pluck('id')
+                ->map(fn ($id) => (int) $id)
+                ->flip()
+                ->all();
+
+        $servo_products = [];
+        $local_products = [];
+
+        foreach ($products as $product) {
+            $variation_id = (int) ($product['variation_id'] ?? 0);
+            $is_servo = ($product['source'] ?? null) === 'servo'
+                || ! isset($local_variation_ids[$variation_id]);
+
+            if ($is_servo) {
+                $servo_products[] = array_merge($product, ['source' => 'servo']);
+            } else {
+                $local_products[] = $product;
+            }
+        }
+
+        return [$servo_products, $local_products];
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $products
+     * @return array<int, array{product_id: int, variation_id: int, quantity: float}>
+     */
+    private function normalizeServoOrderItems(array $products): array
+    {
+        return collect($products)->map(function ($product) {
+            $product_id = (int) ($product['product_id'] ?? $product['id'] ?? 0);
+            $variation_id = (int) ($product['variation_id'] ?? 0);
+            $quantity = (float) ($product['quantity'] ?? 0);
+
+            if ($product_id <= 0 || $variation_id <= 0 || $quantity <= 0) {
+                throw ValidationException::withMessages([
+                    'products' => __('This product is no longer available for purchase.'),
+                ]);
+            }
+
+            return [
+                'product_id' => $product_id,
+                'variation_id' => $variation_id,
+                'quantity' => $quantity,
+            ];
+        })->values()->all();
+    }
+
+    /**
+     * @param  array<string, mixed>  $extra
+     */
+    private function checkoutSuccessResponse(Request $request, ?Transaction $transaction, string $msg, array $extra = [])
+    {
         if (! $request->expectsJson()) {
-            return redirect()->route('store.account.orders.show', $transaction->id)
-                ->with('status', ['success' => true, 'msg' => 'Order placed successfully.'])
+            if ($transaction) {
+                return redirect()->route('store.account.orders.show', $transaction->id)
+                    ->with('status', ['success' => true, 'msg' => $msg])
+                    ->with('clear_store_cart', true);
+            }
+
+            return redirect()->route('welcome')
+                ->with('status', ['success' => true, 'msg' => $msg])
                 ->with('clear_store_cart', true);
         }
 
-        return $this->respond([
+        return $this->respond(array_merge([
             'success' => true,
-            'msg' => 'Order placed successfully.',
+            'msg' => $msg,
             'clear_cart' => true,
-            'transaction_id' => $transaction->id,
-            'invoice_no' => $transaction->invoice_no,
-            'payment_status' => $transaction->payment_status,
-            'shipping_status' => $transaction->shipping_status,
-        ]);
+            'transaction_id' => $transaction?->id,
+            'invoice_no' => $transaction?->invoice_no,
+            'payment_status' => $transaction?->payment_status,
+            'shipping_status' => $transaction?->shipping_status,
+        ], $extra));
     }
 
     private function getVariationsDetails(int $business_id, int $location_id, array $variation_ids)

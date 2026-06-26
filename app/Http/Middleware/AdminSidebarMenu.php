@@ -323,6 +323,11 @@ $is_superadmin = auth()->user()->can('superadmin');
                                 'E-commerce Orders',
                                 ['icon' => '', 'active' => request()->segment(1) == 'sells' && request()->segment(2) == 'ecommerce' && request()->segment(3) == 'orders']
                             );
+                            $sub->url(
+                                action([\App\Http\Controllers\ServoOrderController::class, 'index']),
+                                __('lang_v1.servo_orders'),
+                                ['icon' => '', 'active' => request()->segment(1) == 'servo-orders']
+                            );
                         }
                         if (in_array('add_sale', $enabled_modules) && auth()->user()->can('direct_sell.access')) {
                             $sub->url(
@@ -435,6 +440,11 @@ $is_superadmin = auth()->user()->can('superadmin');
                             action([\App\Http\Controllers\SellController::class, 'ecommerceOrders']),
                             'E-commerce Orders',
                             ['icon' => '', 'active' => request()->segment(1) == 'sells' && request()->segment(2) == 'ecommerce' && request()->segment(3) == 'orders']
+                        );
+                        $sub->url(
+                            action([\App\Http\Controllers\ServoOrderController::class, 'index']),
+                            __('lang_v1.servo_orders'),
+                            ['icon' => '', 'active' => request()->segment(1) == 'servo-orders']
                         );
                     },
                     ['icon' => '<svg aria-hidden="true" class="tw-size-5 tw-shrink-0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">

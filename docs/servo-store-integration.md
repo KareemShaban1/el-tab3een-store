@@ -271,3 +271,10 @@ When Servo is the source of truth, either sync into those fields or replace stor
 ---
 
 *This file is a planning artifact; update it as Servo capabilities and business rules are confirmed.*
+
+
+
+steps: 
+- In Servo:
+1- create a new customer account for the store "tab3een store"
+2- add new field to categories and products to mark them as visible on the tab3een storefront "visible_on_tab3een"

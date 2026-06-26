@@ -2,26 +2,26 @@
 
 namespace Modules\Repair\Http\Controllers;
 
-use App\Models\Barcode;
+use App\Barcode;
 use App\Brands;
 use App\Business;
 use App\BusinessLocation;
 use App\Contact;
 use App\CustomerGroup;
-use App\Models\Media;
-use App\Models\NotificationTemplate;
-use App\Models\SellingPriceGroup;
-use App\Models\TaxRate;
+use App\Media;
+use App\NotificationTemplate;
+use App\SellingPriceGroup;
+use App\TaxRate;
 use App\Transaction;
-use App\Models\TransactionSellLine;
-use App\Models\User;
+use App\TransactionSellLine;
+use App\User;
 use App\Utils\BusinessUtil;
 use App\Utils\ContactUtil;
 use App\Utils\ModuleUtil;
 use App\Utils\ProductUtil;
 use App\Utils\TransactionUtil;
 use App\Utils\Util;
-use App\Models\Warranty;
+use App\Warranty;
 use DB;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;

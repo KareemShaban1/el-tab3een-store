@@ -443,7 +443,10 @@
 					name: String(i.name || ''),
 					price: Number(i.price || 0),
 					qty: Math.max(1, Number(i.qty || 1)),
-					img: String(i.img || '')
+					img: String(i.img || ''),
+					...(i.source ? {
+						source: String(i.source)
+					} : {})
 				}));
 		} catch (e) {
 			cart = [];
@@ -486,17 +489,24 @@
 		$('cart-drawer').classList.remove('open');
 	}
 
-	function addToCart(id, name, price, img, variationId = null) {
+	function addToCart(id, name, price, img, variationId = null, source = null) {
 		const ex = cart.find(i => i.id === id);
-		if (ex) ex.qty++;
-		else cart.push({
+		if (ex) {
+			ex.qty++;
+			if (source) {
+				ex.source = source;
+			}
+		} else cart.push({
 			id,
 			variation_id: variationId || id,
 			name,
 			price,
 			qty: 1,
 			img: img ||
-				`https://placehold.co/80x80/F8F9FC/2D294E?text=${encodeURIComponent(name.charAt(0))}`
+				`https://placehold.co/80x80/F8F9FC/2D294E?text=${encodeURIComponent(name.charAt(0))}`,
+			...(source ? {
+				source
+			} : {})
 		});
 		saveCartToStorage();
 		updateBadges();
@@ -624,8 +634,9 @@
 				const name = btn.dataset.name;
 				const price = +btn.dataset.price;
 				const variationId = +(btn.dataset.variationId || id);
+				const source = btn.dataset.source || null;
 				const img = PRODUCTS[id]?.img;
-				addToCart(id, name, price, img, variationId);
+				addToCart(id, name, price, img, variationId, source);
 				toast(`تم إضافة "${name}" للسلة 🛒`);
 				animBtn(btn);
 			};

@@ -247,7 +247,7 @@ class SellingPriceGroupController extends Controller
                             ->join('product_variations as pv', 'variations.product_variation_id', '=', 'pv.id')
                             ->where('p.business_id', $business_id)
                             ->whereIn('p.type', ['single', 'variable'])
-                            ->select('sub_sku', 'p.name as product_name', 'variations.name as variation_name', 'p.type', 'variations.id', 'pv.name as product_variation_name', 'sell_price_inc_tax')
+                            ->select('sub_sku', 'p.name as product_name', 'p.product_description', 'p.warranties', 'variations.name as variation_name', 'p.type', 'variations.id', 'pv.name as product_variation_name', 'sell_price_inc_tax')
                             ->with(['group_prices'])
                             ->get();
         $export_data = [];
@@ -255,6 +255,8 @@ class SellingPriceGroupController extends Controller
             $temp = [];
             $temp['product'] = $variation->type == 'single' ? $variation->product_name : $variation->product_name.' - '.$variation->product_variation_name.' - '.$variation->variation_name;
             $temp['sku'] = $variation->sub_sku;
+            $temp['Product Description'] = $variation->product_description;
+            $temp['Warranties'] = $variation->warranties;
             $temp['Selling Price Including Tax'] = $variation->sell_price_inc_tax;
 
             foreach ($price_groups as $price_group) {
@@ -303,6 +305,8 @@ class SellingPriceGroupController extends Controller
                 'updated_base_prices' => 0,
                 'updated_group_prices' => 0,
                 'updated_product_names' => 0,
+                'updated_product_descriptions' => 0,
+                'updated_warranties' => 0,
             ];
 
             if ($request->hasFile('product_group_prices')) {
@@ -318,10 +322,23 @@ class SellingPriceGroupController extends Controller
                 $business_id = $request->session()->get('user.business_id');
                 $price_groups = SellingPriceGroup::where('business_id', $business_id)->active()->get();
 
-                //Get price group names from headers
+                $header_map = [];
+                foreach ($headers as $key => $value) {
+                    if (! empty($value)) {
+                        $header_map[strtolower(trim($value))] = $key;
+                    }
+                }
+
+                $product_col = $header_map['product'] ?? 0;
+                $sku_col = $header_map['sku'] ?? 1;
+                $product_description_col = $header_map['product description'] ?? null;
+                $warranties_col = $header_map['warranties'] ?? null;
+                $base_price_col = $header_map['selling price including tax'] ?? 2;
+
+                $known_headers = ['product', 'sku', 'product description', 'warranties', 'selling price including tax'];
                 $imported_pgs = [];
                 foreach ($headers as $key => $value) {
-                    if (! empty($value) && $key > 2) {
+                    if (! empty($value) && ! in_array(strtolower(trim($value)), $known_headers)) {
                         $imported_pgs[$key] = $value;
                     }
                 }
@@ -331,23 +348,26 @@ class SellingPriceGroupController extends Controller
 
                 foreach ($imported_data as $key => $value) {
                     $import_summary['total_rows']++;
-                    $variation = Variation::where('sub_sku', $value[1])
+                    $sku = $value[$sku_col] ?? null;
+                    $variation = Variation::where('sub_sku', $sku)
                                         ->join('products', 'products.id', '=', 'variations.product_id')
                                         ->where('products.business_id', $business_id)
                                         ->select('variations.*')
                                         ->first();
                     if (empty($variation)) {
                         $row = $key + 1;
-                        $error_msg = __('lang_v1.product_not_found_exception', ['sku' => $value[1], 'row' => $row]);
+                        $error_msg = __('lang_v1.product_not_found_exception', ['sku' => $sku, 'row' => $row]);
 
                         throw new \Exception($error_msg);
                     }
 
+                    $product = $variation->product;
+                    $product_updated = false;
+
                     //Update product name from imported file based on matched SKU
-                    if (isset($value[0]) && ! is_null($value[0])) {
-                        $imported_product_name = trim((string) $value[0]);
+                    if (isset($value[$product_col]) && ! is_null($value[$product_col])) {
+                        $imported_product_name = trim((string) $value[$product_col]);
                         if ($imported_product_name !== '') {
-                            $product = $variation->product;
                             $product_name_to_save = $imported_product_name;
 
                             //For variable products exported with variation suffix,
@@ -361,19 +381,42 @@ class SellingPriceGroupController extends Controller
 
                             if ($product_name_to_save !== '' && $product->name !== $product_name_to_save) {
                                 $product->name = $product_name_to_save;
-                                $product->save();
+                                $product_updated = true;
                                 $import_summary['updated_product_names']++;
                             }
                         }
                     }
 
+                    if (! is_null($product_description_col) && array_key_exists($product_description_col, $value)) {
+                        $imported_product_description = trim((string) $value[$product_description_col]);
+                        if ($product->product_description !== $imported_product_description) {
+                            $product->product_description = $imported_product_description;
+                            $product_updated = true;
+                            $import_summary['updated_product_descriptions']++;
+                        }
+                    }
+
+                    if (! is_null($warranties_col) && array_key_exists($warranties_col, $value)) {
+                        $imported_warranties = trim((string) $value[$warranties_col]);
+                        if ($product->warranties !== $imported_warranties) {
+                            $product->warranties = $imported_warranties;
+                            $product_updated = true;
+                            $import_summary['updated_warranties']++;
+                        }
+                    }
+
+                    if ($product_updated) {
+                        $product->save();
+                    }
+
                     //Check if product base price is changed
-                    if($variation->sell_price_inc_tax != $value[2]){
+                    $base_price = $value[$base_price_col] ?? null;
+                    if (! is_null($base_price) && $variation->sell_price_inc_tax != $base_price) {
                         //update price for base selling price, adjust default_sell_price, profit %
-                        $variation->sell_price_inc_tax = $value[2];
+                        $variation->sell_price_inc_tax = $base_price;
                         $tax = $variation->product->product_tax()->get();
                         $tax_percent = !empty($tax) && !empty($tax->first()) ? $tax->first()->amount : 0;
-                        $variation->default_sell_price = $this->commonUtil->calc_percentage_base($value[2], $tax_percent);
+                        $variation->default_sell_price = $this->commonUtil->calc_percentage_base($base_price, $tax_percent);
                         $variation->profit_percent = $this->commonUtil
                                         ->get_percent($variation->default_purchase_price, $variation->default_sell_price);
                         $variation->update();

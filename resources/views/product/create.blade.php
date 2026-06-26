@@ -155,6 +155,10 @@
                 </div>
                 {!! Form::textarea('product_description', !empty($duplicate_product->product_description) ? $duplicate_product->product_description : null, ['class' => 'form-control']); !!}
             </div>
+            <div class="form-group tw-mt-3">
+                {!! Form::label('warranties', __('lang_v1.warranties') . ':') !!}
+                {!! Form::textarea('warranties', !empty($duplicate_product->warranties) ? $duplicate_product->warranties : null, ['class' => 'form-control']); !!}
+            </div>
         </div>
         <div class="col-sm-4">
             <div class="form-group">

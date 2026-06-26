@@ -66,6 +66,7 @@ use App\Http\Controllers\WarrantyController;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\EcommerceSellController;
+use App\Http\Controllers\ServoOrderController;
 /*
 |--------------------------------------------------------------------------
 | Web Routes
@@ -80,9 +81,7 @@ use App\Http\Controllers\EcommerceSellController;
 include_once 'install_r.php';
 
 Route::middleware(['setData'])->group(function () {
-    Route::get('/', function () {
-        return view('frontend.welcome');
-    })->name('welcome');
+    Route::get('/', [StorefrontController::class, 'welcome'])->name('welcome');
 
     Auth::routes();
 
@@ -272,6 +271,8 @@ Route::middleware(['setData', 'auth', 'SetSessionData', 'language', 'timezone', 
     Route::resource('sells', SellController::class)->except(['show']);
     Route::get('/sells/ecommerce/orders', [SellController::class, 'ecommerceOrders'])->name('sells.ecommerce.orders');
     Route::get('/sells/ecommerce/orders/data', [SellController::class, 'ecommerceOrdersData'])->name('sells.ecommerce.orders.data');
+    Route::get('/servo-orders', [ServoOrderController::class, 'index'])->name('servo-orders.index');
+    Route::get('/servo-orders/{id}', [ServoOrderController::class, 'show'])->name('servo-orders.show');
     Route::get('/sells/{id}/ecommerce-status/edit', [SellController::class, 'editEcommerceStatus'])->name('sells.ecommerce.status.edit');
     Route::post('/sells/{id}/ecommerce-status', [EcommerceSellController::class, 'updateEcommerceStatus'])->name('sells.ecommerce.status');
 

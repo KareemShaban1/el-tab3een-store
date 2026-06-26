@@ -7,12 +7,20 @@ use App\Brands;
 use App\Category;
 use App\BusinessLocation;
 use App\Product;
+use App\Services\Tab3eenCatalogService;
 use App\Variation;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 
 class StorefrontController extends Controller
 {
+    public function welcome(Tab3eenCatalogService $tab3eenCatalogService)
+    {
+        return view('frontend.welcome', [
+            'tab3eenCatalog' => $tab3eenCatalogService->getCatalog(),
+        ]);
+    }
+
     public function home(Request $request)
     {
         $business_id = self::resolveBusinessId($request);

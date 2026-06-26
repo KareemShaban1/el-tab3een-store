@@ -62,6 +62,7 @@
                         <li>@lang('lang_v1.price_import_instruction_1')</li>
                         <li>@lang('lang_v1.price_import_instruction_2')</li>
                         <li>@lang('lang_v1.price_import_instruction_3')</li>
+                        <li>@lang('lang_v1.price_import_instruction_5')</li>
                         <li>@lang('lang_v1.price_import_instruction_4')</li>
                     </ol>
                     
@@ -148,6 +149,8 @@
                     $resultDetails.html(
                         '<li>Total rows processed: ' + (response.details.total_rows || 0) + '</li>' +
                         '<li>Product names updated: ' + (response.details.updated_product_names || 0) + '</li>' +
+                        '<li>Product descriptions updated: ' + (response.details.updated_product_descriptions || 0) + '</li>' +
+                        '<li>Warranties updated: ' + (response.details.updated_warranties || 0) + '</li>' +
                         '<li>Base prices updated: ' + (response.details.updated_base_prices || 0) + '</li>' +
                         '<li>Group prices updated: ' + (response.details.updated_group_prices || 0) + '</li>'
                     );

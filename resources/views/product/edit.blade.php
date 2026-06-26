@@ -155,6 +155,10 @@
                 {!! Form::label('product_description', __('lang_v1.product_description') . ':') !!}
                   {!! Form::textarea('product_description', $product->product_description, ['class' => 'form-control']); !!}
               </div>
+              <div class="form-group tw-mt-3">
+                {!! Form::label('warranties', __('lang_v1.warranties') . ':') !!}
+                  {!! Form::textarea('warranties', $product->warranties, ['class' => 'form-control']); !!}
+              </div>
             </div>
             <div class="col-sm-4">
               <div class="form-group">

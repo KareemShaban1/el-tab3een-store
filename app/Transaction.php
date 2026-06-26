@@ -61,6 +61,11 @@ class Transaction extends Model
         return $this->hasMany(\App\TransactionPayment::class, 'transaction_id');
     }
 
+    public function servo_order_logs()
+    {
+        return $this->hasMany(\App\ServoOrderLog::class, 'transaction_id');
+    }
+
     public function location()
     {
         return $this->belongsTo(\App\BusinessLocation::class, 'location_id');
