@@ -6,7 +6,7 @@ use App\Brands;
 use App\Category;
 use App\Transaction;
 use App\Utils\ModuleUtil;
-use App\Models\Warranty;
+use App\Warranty;
 use DB;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
