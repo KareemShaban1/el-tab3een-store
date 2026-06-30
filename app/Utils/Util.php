@@ -18,6 +18,7 @@ use DB;
 use GuzzleHttp\Client;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 use Spatie\Permission\Models\Role;
 use Illuminate\Support\Str; // Add this at the top with other imports
 
@@ -739,6 +740,8 @@ class Util
                 $extension = $file->getClientOriginalExtension();
                 $sanitized_name = Str::slug($original_name);
                 $new_file_name = time() . '_' . $sanitized_name . ($extension ? '.' . $extension : '');
+
+                Storage::disk('local')->makeDirectory($dir_name);
 
                 if ($file->storeAs($dir_name, $new_file_name)) {
                     $uploaded_file_name = $new_file_name;

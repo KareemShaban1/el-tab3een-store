@@ -17,6 +17,39 @@ $app = new Illuminate\Foundation\Application(
 
 /*
 |--------------------------------------------------------------------------
+| Public Path (split deployment: web root parent, Laravel app in src/)
+|--------------------------------------------------------------------------
+|
+| When PUBLIC_PATH is set, or uploads exist at the parent of APP_BASE_PATH,
+| bind path.public so uploads and assets resolve to the real web root.
+|
+*/
+
+$publicPath = $_ENV['PUBLIC_PATH'] ?? null;
+
+if (empty($publicPath)) {
+    $basePath = $app->basePath();
+    $parentPath = dirname($basePath);
+
+    if ($parentPath !== $basePath
+        && is_dir($parentPath.DIRECTORY_SEPARATOR.'uploads')
+        && (file_exists($parentPath.DIRECTORY_SEPARATOR.'index.php')
+            || file_exists($parentPath.DIRECTORY_SEPARATOR.'.htaccess'))
+    ) {
+        $publicPath = $parentPath;
+    }
+}
+
+if (! empty($publicPath)) {
+    $publicPath = rtrim($publicPath, '/\\');
+
+    $app->bind('path.public', function () use ($publicPath) {
+        return $publicPath;
+    });
+}
+
+/*
+|--------------------------------------------------------------------------
 | Bind Important Interfaces
 |--------------------------------------------------------------------------
 |

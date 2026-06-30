@@ -30,6 +30,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot()
     {
+        // Keep upload disk root in sync when PUBLIC_PATH / split deployment is used.
+        config(['filesystems.disks.local.root' => public_path('uploads')]);
+
         ini_set('memory_limit', '-1');
         set_time_limit(0);
 
