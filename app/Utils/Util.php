@@ -18,7 +18,6 @@ use DB;
 use GuzzleHttp\Client;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Storage;
 use Spatie\Permission\Models\Role;
 use Illuminate\Support\Str; // Add this at the top with other imports
 
@@ -741,9 +740,9 @@ class Util
                 $sanitized_name = Str::slug($original_name);
                 $new_file_name = time() . '_' . $sanitized_name . ($extension ? '.' . $extension : '');
 
-                Storage::disk('local')->makeDirectory($dir_name);
+                $upload_dir = ensure_upload_subdirectory($dir_name);
 
-                if ($file->storeAs($dir_name, $new_file_name)) {
+                if ($file->move($upload_dir, $new_file_name)) {
                     $uploaded_file_name = $new_file_name;
                 }
             }

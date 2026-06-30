@@ -69,6 +69,45 @@ if (! function_exists('humanFilesize')) {
 }
 
 /**
+ * Ensure an uploads subdirectory exists under the public web root.
+ */
+if (! function_exists('ensure_upload_subdirectory')) {
+    function ensure_upload_subdirectory(?string $subdir = null): string
+    {
+        $uploads_root = public_path('uploads');
+
+        if (! is_dir($uploads_root) && ! @mkdir($uploads_root, 0775, true) && ! is_dir($uploads_root)) {
+            throw new \RuntimeException(
+                'Unable to create uploads directory at '.$uploads_root
+                .'. Please ensure the web root is writable by the web server.'
+            );
+        }
+
+        if (! is_writable($uploads_root)) {
+            throw new \RuntimeException(
+                'Uploads directory is not writable: '.$uploads_root
+                .'. On the server run: chown -R www:www '.$uploads_root.' && chmod -R 775 '.$uploads_root
+            );
+        }
+
+        if ($subdir === null || $subdir === '') {
+            return $uploads_root;
+        }
+
+        $path = $uploads_root.'/'.trim($subdir, '/');
+
+        if (! is_dir($path) && ! @mkdir($path, 0775, true) && ! is_dir($path)) {
+            throw new \RuntimeException(
+                'Unable to create uploads directory at '.$path
+                .'. On the server run: chown -R www:www '.$uploads_root.' && chmod -R 775 '.$uploads_root
+            );
+        }
+
+        return $path;
+    }
+}
+
+/**
  * Checks if the uploaded document is an image
  */
 if (! function_exists('isFileImage')) {

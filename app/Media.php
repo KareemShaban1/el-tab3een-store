@@ -3,7 +3,6 @@
 namespace App;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\Storage;
 
 class Media extends Model
 {
@@ -93,13 +92,17 @@ class Media extends Model
             //If multiple files present
             if (is_array($files)) {
                 foreach ($files as $file) {
+                    if (empty($file) || ! $file->isValid()) {
+                        continue;
+                    }
+
                     $uploaded_file = Media::uploadFile($file);
 
                     if (! empty($uploaded_file)) {
                         $uploaded_files[] = $uploaded_file;
                     }
                 }
-            } else {
+            } elseif ($files->isValid()) {
                 $uploaded_file = Media::uploadFile($files);
                 if (! empty($uploaded_file)) {
                     $uploaded_files[] = $uploaded_file;
@@ -141,8 +144,9 @@ class Media extends Model
         $file_name = null;
         if ($file->getSize() <= config('constants.document_size_limit')) {
             $new_file_name = time().'_'.mt_rand().'_'.$file->getClientOriginalName();
-            Storage::disk('local')->makeDirectory('media');
-            if ($file->storeAs('/media', $new_file_name)) {
+            $upload_dir = ensure_upload_subdirectory('media');
+
+            if ($file->move($upload_dir, $new_file_name)) {
                 $file_name = $new_file_name;
             }
         }
@@ -154,11 +158,7 @@ class Media extends Model
     {
         $file_name = time().'_'.mt_rand().'_media.jpg';
 
-        $output_dir = public_path('uploads').'/media';
-        if (! is_dir($output_dir)) {
-            @mkdir($output_dir, 0755, true);
-        }
-
+        $output_dir = ensure_upload_subdirectory('media');
         $output_file = $output_dir.'/'.$file_name;
 
         // open the output file for writing
