@@ -29,12 +29,12 @@
                         <th>@lang('messages.action')</th>
                         <th>@lang('messages.date')</th>
                         <th>@lang('sale.customer_name')</th>
-                        <th>@lang('lang_v1.servo_client_name')</th>
+                        <!-- <th>@lang('lang_v1.servo_client_name')</th> -->
                         <th>@lang('sale.status')</th>
                         <th>@lang('lang_v1.total_items')</th>
                         <th>@lang('lang_v1.local_order')</th>
                         <th>@lang('lang_v1.servo_reference')</th>
-                        <th>HTTP</th>
+                        <!-- <th>HTTP</th> -->
                     </tr>
                 </thead>
             </table>
@@ -69,10 +69,10 @@
                         data: 'customer_name',
                         name: 'contacts.name'
                     },
-                    {
-                        data: 'client_name',
-                        name: 'servo_order_logs.client_name'
-                    },
+                    // {
+                    //     data: 'client_name',
+                    //     name: 'servo_order_logs.client_name'
+                    // },
                     {
                         data: 'status',
                         name: 'servo_order_logs.status'
@@ -93,10 +93,10 @@
                         data: 'servo_reference',
                         name: 'servo_order_logs.servo_reference'
                     },
-                    {
-                        data: 'http_status',
-                        name: 'servo_order_logs.http_status'
-                    }
+                    // {
+                    //     data: 'http_status',
+                    //     name: 'servo_order_logs.http_status'
+                    // }
                 ],
                 order: [
                     [1, 'desc']

@@ -3,10 +3,18 @@
 namespace App\Http\Controllers;
 
 use App\ServoOrderLog;
+use App\Utils\ContactUtil;
 use Yajra\DataTables\Facades\DataTables;
 
 class ServoOrderController extends Controller
 {
+    protected $contactUtil;
+
+    public function __construct(ContactUtil $contactUtil)
+    {
+        $this->contactUtil = $contactUtil;
+    }
+
     public function index()
     {
         if (! auth()->user()->can('sell.view') &&
@@ -25,6 +33,7 @@ class ServoOrderController extends Controller
                 ->leftJoin('transactions', 'transactions.id', '=', 'servo_order_logs.transaction_id')
                 ->select([
                     'servo_order_logs.id',
+                    'servo_order_logs.contact_id',
                     'servo_order_logs.created_at',
                     'servo_order_logs.client_name',
                     'servo_order_logs.status',
@@ -46,7 +55,10 @@ class ServoOrderController extends Controller
                     return optional($row->created_at)->format('Y-m-d H:i:s');
                 })
                 ->editColumn('customer_name', function ($row) {
-                    return $row->customer_name ?: '-';
+                    return $this->contactNameLink($row->customer_name, $row->contact_id);
+                })
+                ->editColumn('client_name', function ($row) {
+                    return $this->contactNameLink($row->client_name, $row->contact_id);
                 })
                 ->editColumn('status', function ($row) {
                     $labels = [
@@ -75,7 +87,7 @@ class ServoOrderController extends Controller
                 ->addColumn('action', function ($row) {
                     return '<a href="'.action([self::class, 'show'], [$row->id]).'" class="tw-dw-btn tw-dw-btn-xs tw-dw-btn-outline tw-dw-btn-primary">'.__('messages.view').'</a>';
                 })
-                ->rawColumns(['status', 'local_order', 'action'])
+                ->rawColumns(['status', 'local_order', 'action', 'customer_name', 'client_name'])
                 ->make(true);
         }
 
@@ -98,5 +110,44 @@ class ServoOrderController extends Controller
             ->findOrFail($id);
 
         return view('servo_orders.show', compact('log'));
+    }
+
+    public function clientDetails($contact_id)
+    {
+        if (! auth()->user()->can('sell.view') &&
+            ! auth()->user()->can('direct_sell.view') &&
+            ! auth()->user()->can('view_own_sell_only') &&
+            ! auth()->user()->can('view_commission_agent_sell')) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        if (! auth()->user()->can('customer.view') &&
+            ! auth()->user()->can('customer.view_own') &&
+            ! auth()->user()->can('supplier.view') &&
+            ! auth()->user()->can('supplier.view_own')) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        $business_id = request()->session()->get('user.business_id');
+        $contact = $this->contactUtil->getContactInfo($business_id, $contact_id);
+
+        if (empty($contact)) {
+            abort(404);
+        }
+
+        return view('servo_orders.client_details_modal', compact('contact'));
+    }
+
+    private function contactNameLink(?string $name, ?int $contact_id): string
+    {
+        if (empty($name)) {
+            return '-';
+        }
+
+        if (empty($contact_id)) {
+            return e($name);
+        }
+
+        return '<a href="#" class="btn-modal" data-href="'.action([self::class, 'clientDetails'], [$contact_id]).'" data-container=".view_modal">'.e($name).'</a>';
     }
 }

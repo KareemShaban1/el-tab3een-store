@@ -270,6 +270,7 @@ Route::middleware(['setData', 'auth', 'SetSessionData', 'language', 'timezone', 
     Route::get('/sells/ecommerce/orders', [SellController::class, 'ecommerceOrders'])->name('sells.ecommerce.orders');
     Route::get('/sells/ecommerce/orders/data', [SellController::class, 'ecommerceOrdersData'])->name('sells.ecommerce.orders.data');
     Route::get('/servo-orders', [ServoOrderController::class, 'index'])->name('servo-orders.index');
+    Route::get('/servo-orders/client/{contact_id}', [ServoOrderController::class, 'clientDetails'])->name('servo-orders.client');
     Route::get('/servo-orders/{id}', [ServoOrderController::class, 'show'])->name('servo-orders.show');
     Route::get('/sells/{id}/ecommerce-status/edit', [SellController::class, 'editEcommerceStatus'])->name('sells.ecommerce.status.edit');
     Route::post('/sells/{id}/ecommerce-status', [EcommerceSellController::class, 'updateEcommerceStatus'])->name('sells.ecommerce.status');
