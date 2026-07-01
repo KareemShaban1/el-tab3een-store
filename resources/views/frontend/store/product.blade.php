@@ -135,15 +135,53 @@ window.__SSR_STORE_PRODUCTS__[{{ $productIdForCart }}] = {
         background: #fff;
         border: 1px solid #e5e7eb;
         border-radius: 14px;
-        padding: 18px;
-        display: grid;
+        overflow: hidden;
+    }
+    .product-warranties-toggle {
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
         gap: 12px;
+        padding: 16px 18px;
+        border: 0;
+        background: #fff;
+        cursor: pointer;
+        text-align: right;
+        font-family: var(--font, inherit);
+    }
+    .product-warranties-toggle:hover {
+        background: #f8fafc;
     }
     .product-warranties-title {
         margin: 0;
-        font-size: 1.15rem;
+        font-size: 1.05rem;
         font-weight: 800;
         color: #111827;
+    }
+    .product-warranties-chevron {
+        flex-shrink: 0;
+        width: 22px;
+        height: 22px;
+        color: #6b7280;
+        transition: transform .25s ease;
+    }
+    .product-warranties.is-open .product-warranties-chevron {
+        transform: rotate(180deg);
+    }
+    .product-warranties-panel {
+        display: grid;
+        gap: 12px;
+        padding: 0 18px;
+        max-height: 0;
+        overflow: hidden;
+        opacity: 0;
+        transition: max-height .3s ease, opacity .25s ease, padding .3s ease;
+    }
+    .product-warranties.is-open .product-warranties-panel {
+        max-height: 1200px;
+        opacity: 1;
+        padding: 0 18px 18px;
     }
     .warranty-card {
         background: #f8fafc;
@@ -330,28 +368,51 @@ window.__SSR_STORE_PRODUCTS__[{{ $productIdForCart }}] = {
         $warrantiesHasHtml = $warrantiesText !== '' && $warrantiesText !== strip_tags($warrantiesText);
     @endphp
     @if($hasWarrantySection)
-        <section class="product-warranties">
-            <h3 class="product-warranties-title">{{ __('lang_v1.warranties') }}</h3>
+        <section class="product-warranties" id="product-warranties">
+            <button type="button"
+                class="product-warranties-toggle"
+                id="product-warranties-toggle"
+                aria-expanded="false"
+                aria-controls="product-warranties-panel">
+                <h3 class="product-warranties-title">{{ __('lang_v1.warranties') }}</h3>
+                <svg class="product-warranties-chevron" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+                </svg>
+            </button>
 
-            @if(! empty($warrantyInfo))
-                <div class="warranty-card">
-                    <p class="warranty-card-name">{{ $sfStr($warrantyInfo['display_name'] ?? $warrantyInfo['name'] ?? '') }}</p>
-                    @if($sfStr($warrantyInfo['description'] ?? '') !== '')
-                        <div class="warranty-card-desc">{{ $sfStr($warrantyInfo['description'] ?? '') }}</div>
-                    @endif
-                </div>
-            @endif
+            <div class="product-warranties-panel" id="product-warranties-panel">
+                @if(! empty($warrantyInfo))
+                    <div class="warranty-card">
+                        <p class="warranty-card-name">{{ $sfStr($warrantyInfo['display_name'] ?? $warrantyInfo['name'] ?? '') }}</p>
+                        @if($sfStr($warrantyInfo['description'] ?? '') !== '')
+                            <div class="warranty-card-desc">{{ $sfStr($warrantyInfo['description'] ?? '') }}</div>
+                        @endif
+                    </div>
+                @endif
 
-            @if($warrantiesText !== '')
-                <div class="warranty-text">
-                    @if($warrantiesHasHtml)
-                        {!! $warrantiesText !!}
-                    @else
-                        {{ $warrantiesText }}
-                    @endif
-                </div>
-            @endif
+                @if($warrantiesText !== '')
+                    <div class="warranty-text">
+                        @if($warrantiesHasHtml)
+                            {!! $warrantiesText !!}
+                        @else
+                            {{ $warrantiesText }}
+                        @endif
+                    </div>
+                @endif
+            </div>
         </section>
+        <script>
+        (function () {
+            var section = document.getElementById('product-warranties');
+            var toggle = document.getElementById('product-warranties-toggle');
+            if (!section || !toggle) return;
+
+            toggle.addEventListener('click', function () {
+                var isOpen = section.classList.toggle('is-open');
+                toggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+            });
+        })();
+        </script>
     @endif
 </div>
 
