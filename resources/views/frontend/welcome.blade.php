@@ -101,12 +101,12 @@ return [
 'variation_id' => (int) ($v['variation_id'] ?? 0),
 'name' => (string) ($v['name'] ?? 'Default'),
 'sku' => (string) ($v['sku'] ?? ''),
-'price_inc_tax' => (float) ($v['price'] ?? 0),
+'price_inc_tax' => isset($v['price']) && $v['price'] !== null ? (float) $v['price'] : null,
 'qty_available' => (float) ($v['qty_available'] ?? 0),
 ];
 })->values()->all();
 $def = $vars[0] ?? null;
-$price = (float) ($item['default_price'] ?? ($def['price_inc_tax'] ?? 0));
+$price = $def && ($def['price_inc_tax'] ?? null) !== null ? (float) $def['price_inc_tax'] : null;
 $vid = (int) ($item['default_variation_id'] ?? ($def['variation_id'] ?? $id));
 
 return [
@@ -116,6 +116,7 @@ $id => [
 'category' => (string) ($category['name'] ?? ''),
 'unit' => '',
 'price' => $price,
+'has_price' => ! empty($item['has_price']) && $price !== null,
 'old' => null,
 'img' => (string) ($item['image_url'] ?? ''),
 'reviews' => 'متوفر',
@@ -222,9 +223,11 @@ window.__SSR_STORE_PRODUCTS__ = Object.assign(window.__SSR_STORE_PRODUCTS__ || {
 				@foreach ($category['products'] as $product)
 				@php
 				$variations = collect($product['variations'] ?? []);
-				$defaultPrice = (float) ($product['default_price'] ?? 0);
 				$defaultVariationId = (int) ($product['default_variation_id'] ?? $product['id']);
-				$defaultQty = (float) ($variations->firstWhere('variation_id', $defaultVariationId)['qty_available'] ?? ($variations->first()['qty_available'] ?? 0));
+				$defaultVariation = $variations->firstWhere('variation_id', $defaultVariationId) ?? $variations->first();
+				$defaultPrice = $defaultVariation['price'] ?? null;
+				$hasPrice = ! empty($product['has_price']) && $defaultPrice !== null;
+				$defaultQty = (float) ($defaultVariation['qty_available'] ?? 0);
 				@endphp
 				<div class="prod-card">
 					<div class="prod-img-wrap">
@@ -232,10 +235,11 @@ window.__SSR_STORE_PRODUCTS__ = Object.assign(window.__SSR_STORE_PRODUCTS__ || {
 							src="{{ $product['image_url'] ?: 'https://placehold.co/400x400/F8F9FC/2D294E?text=Product' }}"
 							alt="{{ $product['name'] }}">
 						<div class="prod-actions">
+							@if ($hasPrice)
 							<button type="button" class="pa-cart"
 								data-id="{{ $product['id'] }}"
 								data-name="{{ $product['name'] }}"
-								data-price="{{ $defaultPrice }}"
+								data-price="{{ (float) $defaultPrice }}"
 								data-variation-id="{{ $defaultVariationId }}"
 								data-qty-available="{{ $defaultQty }}"
 								data-source="servo">
@@ -248,6 +252,13 @@ window.__SSR_STORE_PRODUCTS__ = Object.assign(window.__SSR_STORE_PRODUCTS__ || {
 								</svg>
 								أضف للسلة
 							</button>
+							@else
+							<button type="button" class="pa-cart" disabled
+								title="{{ __('storefront.catalog.price_unavailable') }}"
+								style="opacity:.65;cursor:not-allowed;">
+								السعر غير متاح
+							</button>
+							@endif
 							<button type="button" class="pa-icon pa-wish"
 								data-wish="{{ $product['id'] }}">🤍</button>
 							<button type="button" class="pa-icon"
@@ -264,22 +275,33 @@ window.__SSR_STORE_PRODUCTS__ = Object.assign(window.__SSR_STORE_PRODUCTS__ || {
 						<div class="prod-variant-wrap">
 							<select class="prod-variant" data-id="{{ $product['id'] }}">
 								@foreach ($variations as $variation)
+								@php
+								$variationPrice = $variation['price'] ?? null;
+								@endphp
 								<option value="{{ (int) $variation['variation_id'] }}"
-									data-price="{{ (float) $variation['price'] }}"
+									data-price="{{ $variationPrice !== null ? (float) $variationPrice : '' }}"
+									data-has-price="{{ $variationPrice !== null ? '1' : '0' }}"
 									data-qty-available="{{ (float) $variation['qty_available'] }}"
 									@selected((int) $variation['variation_id'] === $defaultVariationId)>
 									{{ $variation['name'] ?: 'Default' }} —
-									{{ number_format((float) $variation['price'], 2) }}
-									ج.م
+									@if ($variationPrice !== null)
+									{{ number_format((float) $variationPrice, 2) }} ج.م
+									@else
+									السعر غير متاح
+									@endif
 								</option>
 								@endforeach
 							</select>
 						</div>
 						@endif
 						<div class="price-row">
-							<span class="price-now"
-								id="prod-price-{{ $product['id'] }}">{{ number_format($defaultPrice, 2) }}
-								ج.م</span>
+							<span class="price-now" id="prod-price-{{ $product['id'] }}">
+								@if ($hasPrice)
+								{{ number_format((float) $defaultPrice, 2) }} ج.م
+								@else
+								السعر غير متاح
+								@endif
+							</span>
 						</div>
 					</div>
 				</div>

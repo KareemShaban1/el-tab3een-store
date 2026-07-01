@@ -409,6 +409,7 @@
 		stock_exceeded: @json(__('storefront.catalog.stock_exceeded')),
 		out_of_stock: @json(__('storefront.catalog.out_of_stock')),
 		stock_check_failed: @json(__('storefront.catalog.stock_check_failed')),
+		price_unavailable: @json(__('storefront.catalog.price_unavailable')),
 	};
 	const STORE_PRODUCTS_INDEX_BASE = @json(rtrim(route('store.products.index'), '/'));
 	let megaMenuCategories = [];
@@ -705,8 +706,11 @@
 				const selectedOption = select.options[select
 					.selectedIndex];
 				const selectedVariationId = +(selectedOption?.value || 0);
-				const selectedPrice = +(selectedOption?.dataset.price ||
-					0);
+				const selectedPrice = selectedOption?.dataset.price !== undefined && selectedOption?.dataset.price !== ''
+					? +(selectedOption.dataset.price)
+					: null;
+				const selectedHasPrice = selectedOption?.dataset.hasPrice === '1'
+					|| (selectedPrice !== null && !Number.isNaN(selectedPrice));
 				const selectedQty = +(selectedOption?.dataset.qtyAvailable ||
 					selectedOption?.dataset.qty_available || 0);
 				const btn = document.querySelector(
@@ -715,12 +719,26 @@
 					btn.dataset.variationId = String(
 						selectedVariationId ||
 						productId);
-					btn.dataset.price = String(selectedPrice || 0);
+					if (selectedHasPrice && selectedPrice !== null) {
+						btn.dataset.price = String(selectedPrice);
+						btn.disabled = false;
+						btn.style.opacity = '';
+						btn.style.cursor = '';
+						btn.innerHTML = `<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/></svg> أضف للسلة`;
+					} else {
+						btn.dataset.price = '';
+						btn.disabled = true;
+						btn.style.opacity = '0.65';
+						btn.style.cursor = 'not-allowed';
+						btn.textContent = 'السعر غير متاح';
+					}
 					btn.dataset.qtyAvailable = String(selectedQty || 0);
 				}
 				const priceEl = $(`prod-price-${productId}`);
 				if (priceEl) {
-					priceEl.textContent = fmt(selectedPrice || 0);
+					priceEl.textContent = selectedHasPrice && selectedPrice !== null
+						? fmt(selectedPrice)
+						: 'السعر غير متاح';
 				}
 			};
 		});
@@ -735,6 +753,10 @@
 				const img = PRODUCTS[id]?.img;
 
 				if (source === 'servo') {
+					if (!price || price <= 0) {
+						toast(TAB3EEN_MSG.price_unavailable, 'error');
+						return;
+					}
 					const existing = cart.find(i => i.id === id);
 					const requestedQty = (existing ? existing.qty : 0) + 1;
 					btn.disabled = true;

@@ -25,6 +25,7 @@ return [
         'stock_exceeded' => 'الكمية المطلوبة (:requested) تتجاوز المتاح في المخزون (:available).',
         'out_of_stock' => 'هذا المنتج غير متوفر حالياً.',
         'stock_check_failed' => 'تعذّر التحقق من المخزون. حاول مرة أخرى.',
+        'price_unavailable' => 'السعر غير متاح لهذا المنتج حالياً.',
     ],
     'orders' => [
         'type_local' => 'طلب من المتجر',
