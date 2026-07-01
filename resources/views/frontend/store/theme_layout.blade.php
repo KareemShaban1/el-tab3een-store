@@ -216,22 +216,11 @@
 	</div>
 
 	<main class="page-wrap">
-		<!-- <div class="container"> -->
-		<!-- @if(session('status') && ! request()->routeIs('store.auth.*'))
-		<div class="alert {{ session('status.success') ? 'success' : 'error' }}">
-			{{ session('status.msg') }}
+		<div class="container" style="padding-top:16px;">
+			@include('frontend.store.partials.flash_status')
 		</div>
-		@endif
-		@if($errors->any() && ! request()->routeIs('store.auth.*'))
-		<div class="alert error">
-			@foreach($errors->all() as $error)
-			<div>{{ $error }}</div>
-			@endforeach
-		</div>
-		@endif -->
 
 		@yield('content')
-		<!-- </div> -->
 	</main>
 
 

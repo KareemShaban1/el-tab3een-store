@@ -130,6 +130,7 @@ Route::middleware(['setData'])->group(function () {
             Route::get('/account/profile', [StoreAccountController::class, 'profile'])->name('account.profile');
             Route::put('/account/profile', [StoreAccountController::class, 'updateProfile'])->name('account.profile.update');
             Route::get('/account/orders', [StoreAccountController::class, 'orders'])->name('account.orders');
+            Route::get('/account/orders/servo/{id}', [StoreAccountController::class, 'servoOrderDetails'])->name('account.orders.servo.show');
             Route::get('/account/orders/{id}', [StoreAccountController::class, 'orderDetails'])->name('account.orders.show');
 
             Route::get('/checkout', [StoreCheckoutController::class, 'show'])->name('checkout.form');

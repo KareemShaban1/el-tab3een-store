@@ -23,4 +23,7 @@ return [
     */
     'tab3een_orders_api_url' => env('TAB3EEN_ORDERS_API_URL'),
 
+    'support_phone' => env('STOREFRONT_SUPPORT_PHONE', '19900'),
+    'support_email' => env('STOREFRONT_SUPPORT_EMAIL', 'info@eltab3een.com'),
+
 ];

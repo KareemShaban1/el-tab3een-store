@@ -92,20 +92,23 @@ class StoreCheckoutController extends Controller
                 ->where('idempotency_key', $validated['idempotency_key'])
                 ->first();
 
-            if ($existing_servo_log) {
+            if ($existing_servo_log && $existing_servo_log->status === 'success') {
                 return $this->checkoutSuccessResponse(
                     $request,
                     null,
-                    __('Order placed successfully.')
+                    __('storefront.checkout.success')
                 );
             }
         }
 
-        $transaction = null;
+        $has_local = ! empty($local_products);
+        $has_servo = ! empty($servo_products);
+        $local_result = null;
+        $servo_result = null;
 
-        if (! empty($local_products)) {
+        if ($has_local) {
             $validated['products'] = $local_products;
-            $transaction = $this->processLocalStoreCheckout(
+            $local_result = $this->processLocalStoreCheckout(
                 $request,
                 $validated,
                 $customer,
@@ -114,32 +117,30 @@ class StoreCheckoutController extends Controller
                 $location_id,
                 $resolved_addresses
             );
-
-            if ($transaction instanceof \Illuminate\Http\Response || $transaction instanceof \Illuminate\Http\RedirectResponse || $transaction instanceof \Illuminate\Http\JsonResponse) {
-                return $transaction;
-            }
         }
 
-        if (! empty($servo_products)) {
-            $this->recordServoOrderAttempt(
+        if ($has_servo) {
+            $servo_result = $this->recordServoOrderAttempt(
                 $servo_products,
                 $customer_contact,
                 $business_id,
                 $servo_client_name,
-                $transaction?->id,
+                $local_result['transaction'] ?? null,
                 $validated['idempotency_key'] ?? null
             );
         }
 
-        return $this->checkoutSuccessResponse(
+        return $this->buildCheckoutOutcomeResponse(
             $request,
-            $transaction,
-            __('Order placed successfully.')
+            $has_local,
+            $has_servo,
+            $local_result,
+            $servo_result
         );
     }
 
     /**
-     * @return Transaction|\Illuminate\Http\Response|\Illuminate\Http\RedirectResponse|\Illuminate\Http\JsonResponse
+     * @return array{success: bool, transaction?: Transaction, errors?: array<int, string>, already_processed?: bool}
      */
     private function processLocalStoreCheckout(
         Request $request,
@@ -159,18 +160,11 @@ class StoreCheckoutController extends Controller
                 ->first();
 
             if ($existing) {
-                if (! $request->expectsJson()) {
-                    return redirect()->route('store.account.orders.show', $existing->id)
-                        ->with('status', ['success' => true, 'msg' => 'Order already processed.'])
-                        ->with('clear_store_cart', true);
-                }
-
-                return $this->respond([
+                return [
                     'success' => true,
-                    'msg' => 'Order already processed.',
-                    'clear_cart' => true,
                     'transaction' => $existing,
-                ]);
+                    'already_processed' => true,
+                ];
             }
         }
 
@@ -179,28 +173,20 @@ class StoreCheckoutController extends Controller
         $variations_by_id = $this->loadStorefrontVariationsById($business_id, $variation_ids);
 
         if ($variations_by_id->count() !== count($variation_ids)) {
-            if (! $request->expectsJson()) {
-                return back()->withErrors(['products' => __('This product is no longer available for purchase.')])->withInput();
-            }
-
-            return $this->respond([
+            return [
                 'success' => false,
-                'error_messages' => [__('This product is no longer available for purchase.')],
-            ]);
+                'errors' => [__('This product is no longer available for purchase.')],
+            ];
         }
 
         $stock_matrix = $this->buildVariationLocationStockMatrix($business_id, $variation_ids);
 
         $network_errors = $this->validateNetworkStockForCart($variation_map, $stock_matrix, $variations_by_id);
         if (! empty($network_errors)) {
-            if (! $request->expectsJson()) {
-                return back()->withErrors(['products' => implode(' ', $network_errors)])->withInput();
-            }
-
-            return $this->respond([
+            return [
                 'success' => false,
-                'error_messages' => $network_errors,
-            ]);
+                'errors' => $network_errors,
+            ];
         }
 
         $fulfillment_location_id = $this->resolveCheckoutLocationId($business_id, $location_id, $variation_map);
@@ -269,14 +255,10 @@ class StoreCheckoutController extends Controller
             if (! $is_valid) {
                 DB::rollBack();
 
-                if (! $request->expectsJson()) {
-                    return back()->withErrors(['products' => implode(' ', array_unique($error_messages))])->withInput();
-                }
-
-                return $this->respond([
+                return [
                     'success' => false,
-                    'error_messages' => array_values(array_unique($error_messages)),
-                ]);
+                    'errors' => array_values(array_unique($error_messages)),
+                ];
             }
 
             $order_data = [
@@ -338,18 +320,21 @@ class StoreCheckoutController extends Controller
             DB::rollBack();
             Log::emergency('File:'.$e->getFile().' Line:'.$e->getLine().' Message:'.$e->getMessage());
 
-            if (! $request->expectsJson()) {
-                return back()->withErrors(['checkout' => __('messages.something_went_wrong')])->withInput();
-            }
-
-            return $this->respondWentWrong($e);
+            return [
+                'success' => false,
+                'errors' => [__('messages.something_went_wrong')],
+            ];
         }
 
-        return $transaction;
+        return [
+            'success' => true,
+            'transaction' => $transaction,
+        ];
     }
 
     /**
      * @param  array<int, array<string, mixed>>  $servo_products
+     * @return array{success: bool, servo_reference?: string|null, error?: string}
      */
     private function recordServoOrderAttempt(
         array $servo_products,
@@ -358,18 +343,27 @@ class StoreCheckoutController extends Controller
         string $client_name,
         ?int $transaction_id,
         ?string $idempotency_key
-    ): void {
+    ): array {
         if ($transaction_id !== null) {
-            if (ServoOrderLog::where('transaction_id', $transaction_id)->exists()) {
-                return;
+            $existing = ServoOrderLog::where('transaction_id', $transaction_id)->first();
+            if ($existing) {
+                return $this->servoAttemptResultFromLog($existing);
             }
         } elseif (! empty($idempotency_key)) {
-            if (ServoOrderLog::where('business_id', $business_id)
+            $existing = ServoOrderLog::where('business_id', $business_id)
                 ->where('contact_id', $customer_contact->id)
                 ->where('idempotency_key', $idempotency_key)
-                ->exists()) {
-                return;
+                ->first();
+            if ($existing) {
+                return $this->servoAttemptResultFromLog($existing);
             }
+        }
+
+        if ($client_name === '') {
+            return [
+                'success' => false,
+                'error' => __('Customer name is required for Servo orders.'),
+            ];
         }
 
         try {
@@ -394,7 +388,10 @@ class StoreCheckoutController extends Controller
                 'error_message' => $error_message,
             ]);
 
-            return;
+            return [
+                'success' => false,
+                'error' => $this->customerFacingServoError($error_message),
+            ];
         }
 
         $log = ServoOrderLog::create([
@@ -425,7 +422,17 @@ class StoreCheckoutController extends Controller
                 'contact_id' => $customer_contact->id,
                 'error_message' => $result['error_message'],
             ]);
+
+            return [
+                'success' => false,
+                'error' => $this->customerFacingServoError($result['error_message']),
+            ];
         }
+
+        return [
+            'success' => true,
+            'servo_reference' => $result['servo_reference'],
+        ];
     }
 
     /**
@@ -497,19 +504,203 @@ class StoreCheckoutController extends Controller
     }
 
     /**
+     * @param  array<string, mixed>|null  $local_result
+     * @param  array<string, mixed>|null  $servo_result
+     * @return \Illuminate\Http\Response|\Illuminate\Http\RedirectResponse|\Illuminate\Http\JsonResponse
+     */
+    private function buildCheckoutOutcomeResponse(
+        Request $request,
+        bool $has_local,
+        bool $has_servo,
+        ?array $local_result,
+        ?array $servo_result
+    ) {
+        $local_ok = ! $has_local || ($local_result['success'] ?? false);
+        $servo_ok = ! $has_servo || ($servo_result['success'] ?? false);
+        $transaction = $local_result['transaction'] ?? null;
+
+        if ($local_ok && $servo_ok) {
+            return $this->checkoutSuccessResponse(
+                $request,
+                $transaction,
+                __('storefront.checkout.success')
+            );
+        }
+
+        if (! $local_ok && ! $servo_ok) {
+            return $this->checkoutFailureResponse($request, $local_result, $servo_result, $has_local, $has_servo);
+        }
+
+        return $this->checkoutPartialSuccessResponse(
+            $request,
+            $transaction,
+            $local_result,
+            $servo_result,
+            $has_local,
+            $has_servo,
+            $local_ok,
+            $servo_ok
+        );
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $local_result
+     * @param  array<string, mixed>|null  $servo_result
+     * @return \Illuminate\Http\Response|\Illuminate\Http\RedirectResponse|\Illuminate\Http\JsonResponse
+     */
+    private function checkoutFailureResponse(
+        Request $request,
+        ?array $local_result,
+        ?array $servo_result,
+        bool $has_local,
+        bool $has_servo
+    ) {
+        $messages = [];
+
+        if ($has_local && ! ($local_result['success'] ?? false)) {
+            $messages = array_merge($messages, $local_result['errors'] ?? [__('messages.something_went_wrong')]);
+        }
+
+        if ($has_servo && ! ($servo_result['success'] ?? false)) {
+            $messages[] = $servo_result['error'] ?? __('storefront.checkout.servo_failed_generic');
+        }
+
+        $messages = array_values(array_unique(array_filter($messages)));
+        $summary = implode(' ', $messages);
+
+        if (! $request->expectsJson()) {
+            return back()->withErrors(['checkout' => $summary])->withInput();
+        }
+
+        return $this->respond([
+            'success' => false,
+            'msg' => $summary,
+            'error_messages' => $messages,
+        ]);
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $local_result
+     * @param  array<string, mixed>|null  $servo_result
+     * @return \Illuminate\Http\Response|\Illuminate\Http\RedirectResponse|\Illuminate\Http\JsonResponse
+     */
+    private function checkoutPartialSuccessResponse(
+        Request $request,
+        ?Transaction $transaction,
+        ?array $local_result,
+        ?array $servo_result,
+        bool $has_local,
+        bool $has_servo,
+        bool $local_ok,
+        bool $servo_ok
+    ) {
+        $warnings = [];
+        $success_parts = [];
+
+        if ($local_ok && $has_local) {
+            $success_parts[] = __('storefront.checkout.partial_local_placed');
+        }
+
+        if ($servo_ok && $has_servo) {
+            $success_parts[] = __('storefront.checkout.partial_servo_placed');
+        }
+
+        if ($has_local && ! $local_ok) {
+            $local_error = implode(' ', $local_result['errors'] ?? [__('messages.something_went_wrong')]);
+            $warnings[] = __('storefront.checkout.partial_local_failed', ['error' => $local_error]);
+        }
+
+        if ($has_servo && ! $servo_ok) {
+            $warnings[] = __('storefront.checkout.partial_servo_failed', [
+                'error' => $servo_result['error'] ?? __('storefront.checkout.servo_failed_generic'),
+            ]);
+        }
+
+        $support = $this->customerSupportContactDetails();
+        $warnings[] = __('storefront.checkout.contact_customer_service', $support);
+
+        $msg = trim(implode(' ', array_filter([
+            __('storefront.checkout.partial_success_title'),
+            implode(' ', $success_parts),
+        ])));
+
+        return $this->checkoutSuccessResponse($request, $transaction, $msg, [
+            'partial' => true,
+            'warnings' => $warnings,
+            'servo_reference' => $servo_result['servo_reference'] ?? null,
+        ]);
+    }
+
+    /**
+     * @return array{success: bool, servo_reference?: string|null, error?: string}
+     */
+    private function servoAttemptResultFromLog(ServoOrderLog $log): array
+    {
+        if ($log->status === 'success') {
+            return [
+                'success' => true,
+                'servo_reference' => $log->servo_reference,
+            ];
+        }
+
+        return [
+            'success' => false,
+            'error' => $this->customerFacingServoError($log->error_message),
+        ];
+    }
+
+    private function customerFacingServoError(?string $error): string
+    {
+        $error = trim((string) $error);
+        if ($error === '') {
+            return __('storefront.checkout.servo_failed_generic');
+        }
+
+        if (preg_match('/\b(File:|Line:|SQLSTATE|stack trace|exception)\b/i', $error)) {
+            return __('storefront.checkout.servo_failed_generic');
+        }
+
+        return $error;
+    }
+
+    /**
+     * @return array{phone: string, email: string}
+     */
+    private function customerSupportContactDetails(): array
+    {
+        return [
+            'phone' => (string) config('storefront.support_phone', '19900'),
+            'email' => (string) config('storefront.support_email', 'info@eltab3een.com'),
+        ];
+    }
+
+    /**
      * @param  array<string, mixed>  $extra
      */
     private function checkoutSuccessResponse(Request $request, ?Transaction $transaction, string $msg, array $extra = [])
     {
+        $status = [
+            'success' => true,
+            'msg' => $msg,
+        ];
+
+        if (! empty($extra['partial'])) {
+            $status['partial'] = true;
+        }
+
+        if (! empty($extra['warnings'])) {
+            $status['warnings'] = $extra['warnings'];
+        }
+
         if (! $request->expectsJson()) {
             if ($transaction) {
                 return redirect()->route('store.account.orders.show', $transaction->id)
-                    ->with('status', ['success' => true, 'msg' => $msg])
+                    ->with('status', $status)
                     ->with('clear_store_cart', true);
             }
 
             return redirect()->route('welcome')
-                ->with('status', ['success' => true, 'msg' => $msg])
+                ->with('status', $status)
                 ->with('clear_store_cart', true);
         }
 

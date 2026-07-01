@@ -100,6 +100,8 @@
     <h2>إتمام الطلب</h2>
     <p class="muted">راجع المنتجات وحدد عنوان الشحن قبل تأكيد الطلب.</p>
 
+    @include('frontend.store.partials.flash_status')
+
     @if ($errors->any())
         <div class="checkout-validation-summary alert error" role="alert" aria-live="assertive">
             <div class="checkout-validation-summary__icon" aria-hidden="true">!</div>

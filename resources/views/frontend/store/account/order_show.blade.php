@@ -37,8 +37,8 @@ padding: 30px;
     .chip-new, .chip-ordered, .chip-due { background: #fef3c7; color: #92400e; }
     .chip-confirmed, .chip-partial, .chip-packed { background: #dbeafe; color: #1e40af; }
     .chip-shipped { background: #e0e7ff; color: #3730a3; }
-    .chip-delivered, .chip-paid { background: #dcfce7; color: #166534; }
-    .chip-cancelled, .chip-refunded { background: #fee2e2; color: #b91c1c; }
+    .chip-delivered, .chip-paid, .chip-success { background: #dcfce7; color: #166534; }
+    .chip-cancelled, .chip-refunded, .chip-failed { background: #fee2e2; color: #b91c1c; }
     .chip-default { background: #f3f4f6; color: #374151; }
     .order-grid {
         display: grid;
@@ -112,15 +112,21 @@ padding: 30px;
 
 @php
     $orderStatus = (string) ($order->ecommerce_order_status ?: $order->sub_status ?: 'new');
+    if (strpos($orderStatus, 'ecommerce_') === 0) {
+        $orderStatus = substr($orderStatus, 10);
+    }
     $paymentStatus = (string) ($order->payment_status ?: 'pending');
     $shippingStatus = (string) ($order->shipping_status ?: 'pending');
     $statusClass = 'chip-' . strtolower(str_replace([' ', '_'], '-', $orderStatus));
     $paymentClass = 'chip-' . strtolower(str_replace([' ', '_'], '-', $paymentStatus));
     $shippingClass = 'chip-' . strtolower(str_replace([' ', '_'], '-', $shippingStatus));
     $shippingAddress = $order->shipping_address(true);
+    $hasPartnerItems = ! empty($servoItems);
 @endphp
 
 <div class="container order-page">
+    @include('frontend.store.partials.flash_status')
+
     <div class="card">
         <div class="order-header">
             <div>
@@ -130,6 +136,9 @@ padding: 30px;
             <span class="chip {{ in_array($statusClass, ['chip-new','chip-confirmed','chip-packed','chip-shipped','chip-delivered','chip-cancelled','chip-refunded']) ? $statusClass : 'chip-default' }}">
                 {{ __('lang_v1.'.str_replace('_', ' ', strtolower($orderStatus))) }}
             </span>
+            @if ($hasPartnerItems)
+                <span class="chip chip-default">{{ __('storefront.orders.type_mixed') }}</span>
+            @endif
         </div>
     </div>
 
@@ -157,7 +166,7 @@ padding: 30px;
     </div>
 
     <div class="card">
-        <h3 class="section-title"> {{ __('lang_v1.order_items') }}</h3>
+        <h3 class="section-title">{{ __('storefront.orders.local_items') }}</h3>
         <table class="items-table" style="text-align: right;">
             <thead>
                 <tr>
@@ -193,7 +202,12 @@ padding: 30px;
                 </tr>
             </tfoot>
         </table>
-</div>
+    </div>
+
+    @include('frontend.store.account.partials.partner_items', [
+        'servoItems' => $servoItems ?? [],
+        'servoOrders' => $servoOrders ?? collect(),
+    ])
 
 <div class="card">
     	<h3 class="section-title"> {{ __('lang_v1.shipping_details') }}</h3>
