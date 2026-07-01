@@ -143,98 +143,167 @@ $id => [
 	padding: 6px;
 }
 
-.tab3een-catalog-section+.tab3een-catalog-section {
-	border-top: 1px solid var(--border);
-	padding-top: 8px;
+.tab3een-tabs {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 10px;
+	margin-bottom: 28px;
+}
+
+.tab3een-tab {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	padding: 10px 18px;
+	border: 1px solid var(--border);
+	border-radius: 999px;
+	background: var(--bg-soft);
+	color: var(--primary);
+	font-weight: 600;
+	font-size: .9rem;
+	cursor: pointer;
+	transition: .2s;
+}
+
+.tab3een-tab img {
+	width: 28px;
+	height: 28px;
+	object-fit: contain;
+	border-radius: 8px;
+}
+
+.tab3een-tab.active,
+.tab3een-tab:hover {
+	background: var(--primary);
+	color: #fff;
+	border-color: var(--primary);
+}
+
+.tab3een-panel {
+	display: none;
+}
+
+.tab3een-panel.active {
+	display: block;
 }
 </style>
 <script>
 window.__SSR_STORE_PRODUCTS__ = Object.assign(window.__SSR_STORE_PRODUCTS__ || {}, @json($tab3eenProductsSeed));
 </script>
-@foreach ($tab3eenCatalog as $category)
 <section class="section tab3een-catalog-section">
 	<div class="container">
 		<div class="sec-head-row">
-			<div class="tab3een-cat-head">
-				@if (!empty($category['image']))
-				<img src="{{ $category['image'] }}" alt="{{ $category['name'] }}"
-					class="tab3een-cat-img">
-				@endif
-				<div>
-					<h2 class="sec-title">{{ $category['name'] }}</h2>
-					<p class="sec-sub">منتجات متاحة من كتالوج التابعين</p>
-				</div>
+			<div>
+				<h2 class="sec-title">منتجات <span>التابعين</span></h2>
+				<p class="sec-sub">تصفّح المنتجات حسب الفئة</p>
 			</div>
-			<!-- <a href="{{ route('store.products.index', ['category_id' => $category['id']]) }}" class="view-all">عرض الكل ←</a> -->
 		</div>
-		<div class="products-grid">
-			@foreach ($category['products'] as $product)
-			@php
-			$variations = collect($product['variations'] ?? []);
-			$defaultPrice = (float) ($product['default_price'] ?? 0);
-			$defaultVariationId = (int) ($product['default_variation_id'] ?? $product['id']);
-			@endphp
-			<div class="prod-card">
-				<div class="prod-img-wrap">
-					<img class="prod-img"
-						src="{{ $product['image_url'] ?: 'https://placehold.co/400x400/F8F9FC/2D294E?text=Product' }}"
-						alt="{{ $product['name'] }}">
-					<div class="prod-actions">
-						<button type="button" class="pa-cart"
-							data-id="{{ $product['id'] }}"
-							data-name="{{ $product['name'] }}"
-							data-price="{{ $defaultPrice }}"
-							data-variation-id="{{ $defaultVariationId }}"
-							data-source="servo">
-							<svg width="14" height="14" fill="none"
-								stroke="currentColor" stroke-width="2.5"
-								viewBox="0 0 24 24">
-								<path
-									d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
-								<line x1="3" y1="6" x2="21" y2="6" />
-							</svg>
-							أضف للسلة
-						</button>
-						<button type="button" class="pa-icon pa-wish"
-							data-wish="{{ $product['id'] }}">🤍</button>
-						<button type="button" class="pa-icon"
-							data-quickview="{{ $product['id'] }}">👁</button>
-					</div>
-				</div>
-				<div class="prod-info">
-					<div class="prod-brand">{{ $category['name'] }}</div>
-					<div class="prod-name">
-						<a href="{{ route('store.products.show', ['id' => $product['id']]) }}"
-							title="عرض تفاصيل المنتج">{{ $product['name'] }}</a>
-					</div>
-					@if ($variations->count() > 1)
-					<div class="prod-variant-wrap">
-						<select class="prod-variant" data-id="{{ $product['id'] }}">
-							@foreach ($variations as $variation)
-							<option value="{{ (int) $variation['variation_id'] }}"
-								data-price="{{ (float) $variation['price'] }}"
-								@selected((int)
-								$variation['variation_id']===$defaultVariationId)>
-								{{ $variation['name'] ?: 'Default' }} —
-								{{ number_format((float) $variation['price'], 2) }}
-								ج.م
-							</option>
-							@endforeach
-						</select>
-					</div>
-					@endif
-					<div class="price-row">
-						<span class="price-now"
-							id="prod-price-{{ $product['id'] }}">{{ number_format($defaultPrice, 2) }}
-							ج.م</span>
-					</div>
-				</div>
-			</div>
+
+		<div class="tab3een-tabs" role="tablist">
+			@foreach ($tab3eenCatalog as $index => $category)
+			<button type="button"
+				class="tab3een-tab{{ $index === 0 ? ' active' : '' }}"
+				role="tab"
+				aria-selected="{{ $index === 0 ? 'true' : 'false' }}"
+				data-tab="tab3een-cat-{{ $category['id'] }}">
+				@if (!empty($category['image']))
+				<img src="{{ $category['image'] }}" alt="">
+				@endif
+				<span>{{ $category['name'] }}</span>
+			</button>
 			@endforeach
 		</div>
+
+		@foreach ($tab3eenCatalog as $index => $category)
+		<div class="tab3een-panel{{ $index === 0 ? ' active' : '' }}"
+			id="tab3een-cat-{{ $category['id'] }}"
+			role="tabpanel">
+			<div class="products-grid">
+				@foreach ($category['products'] as $product)
+				@php
+				$variations = collect($product['variations'] ?? []);
+				$defaultPrice = (float) ($product['default_price'] ?? 0);
+				$defaultVariationId = (int) ($product['default_variation_id'] ?? $product['id']);
+				$defaultQty = (float) ($variations->firstWhere('variation_id', $defaultVariationId)['qty_available'] ?? ($variations->first()['qty_available'] ?? 0));
+				@endphp
+				<div class="prod-card">
+					<div class="prod-img-wrap">
+						<img class="prod-img"
+							src="{{ $product['image_url'] ?: 'https://placehold.co/400x400/F8F9FC/2D294E?text=Product' }}"
+							alt="{{ $product['name'] }}">
+						<div class="prod-actions">
+							<button type="button" class="pa-cart"
+								data-id="{{ $product['id'] }}"
+								data-name="{{ $product['name'] }}"
+								data-price="{{ $defaultPrice }}"
+								data-variation-id="{{ $defaultVariationId }}"
+								data-qty-available="{{ $defaultQty }}"
+								data-source="servo">
+								<svg width="14" height="14" fill="none"
+									stroke="currentColor" stroke-width="2.5"
+									viewBox="0 0 24 24">
+									<path
+										d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
+									<line x1="3" y1="6" x2="21" y2="6" />
+								</svg>
+								أضف للسلة
+							</button>
+							<button type="button" class="pa-icon pa-wish"
+								data-wish="{{ $product['id'] }}">🤍</button>
+							<button type="button" class="pa-icon"
+								data-quickview="{{ $product['id'] }}">👁</button>
+						</div>
+					</div>
+					<div class="prod-info">
+						<div class="prod-brand">{{ $category['name'] }}</div>
+						<div class="prod-name">
+							<a href="{{ route('store.products.show', ['id' => $product['id']]) }}"
+								title="عرض تفاصيل المنتج">{{ $product['name'] }}</a>
+						</div>
+						@if ($variations->count() > 1)
+						<div class="prod-variant-wrap">
+							<select class="prod-variant" data-id="{{ $product['id'] }}">
+								@foreach ($variations as $variation)
+								<option value="{{ (int) $variation['variation_id'] }}"
+									data-price="{{ (float) $variation['price'] }}"
+									data-qty-available="{{ (float) $variation['qty_available'] }}"
+									@selected((int) $variation['variation_id'] === $defaultVariationId)>
+									{{ $variation['name'] ?: 'Default' }} —
+									{{ number_format((float) $variation['price'], 2) }}
+									ج.م
+								</option>
+								@endforeach
+							</select>
+						</div>
+						@endif
+						<div class="price-row">
+							<span class="price-now"
+								id="prod-price-{{ $product['id'] }}">{{ number_format($defaultPrice, 2) }}
+								ج.م</span>
+						</div>
+					</div>
+				</div>
+				@endforeach
+			</div>
+		</div>
+		@endforeach
 	</div>
 </section>
-@endforeach
+<script>
+document.querySelectorAll('.tab3een-tab').forEach(tab => {
+	tab.addEventListener('click', () => {
+		const targetId = tab.dataset.tab;
+		document.querySelectorAll('.tab3een-tab').forEach(t => {
+			t.classList.remove('active');
+			t.setAttribute('aria-selected', 'false');
+		});
+		document.querySelectorAll('.tab3een-panel').forEach(p => p.classList.remove('active'));
+		tab.classList.add('active');
+		tab.setAttribute('aria-selected', 'true');
+		document.getElementById(targetId)?.classList.add('active');
+	});
+});
+</script>
 @endif
 
 <!-- ===================== FLASH DEALS ===================== -->

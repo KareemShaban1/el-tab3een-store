@@ -216,7 +216,7 @@
 	</div>
 
 	<main class="page-wrap">
-		<div class="container" style="padding-top:16px;">
+		<div class="container">
 			@include('frontend.store.partials.flash_status')
 		</div>
 
@@ -403,8 +403,17 @@
 	const STORE_CATEGORIES_URL = "{{ route('store.categories.index') }}";
 	const STORE_PRODUCTS_URL = "{{ route('store.products.index') }}";
 	const STORE_FLASH_DEALS_URL = "{{ route('store.flash_deals.index') }}";
+	const STORE_TAB3EEN_CATALOG_URL = "{{ route('store.tab3een.catalog') }}";
+	const TAB3EEN_CATALOG_API_URL = @json(config('storefront.tab3een_catalog_api_url'));
+	const TAB3EEN_MSG = {
+		stock_exceeded: @json(__('storefront.catalog.stock_exceeded')),
+		out_of_stock: @json(__('storefront.catalog.out_of_stock')),
+		stock_check_failed: @json(__('storefront.catalog.stock_check_failed')),
+	};
 	const STORE_PRODUCTS_INDEX_BASE = @json(rtrim(route('store.products.index'), '/'));
 	let megaMenuCategories = [];
+	let tab3eenCatalogCache = null;
+	let tab3eenCatalogFetchedAt = 0;
 
 	function storeProductShowUrl(id) {
 		return STORE_PRODUCTS_INDEX_BASE + '/' + encodeURIComponent(String(id));
@@ -476,6 +485,102 @@
 	function closeCart() {
 		$('cart-overlay').classList.remove('open');
 		$('cart-drawer').classList.remove('open');
+	}
+
+	function formatTab3eenMessage(template, requested, available) {
+		return String(template)
+			.replace(':requested', String(requested))
+			.replace(':available', String(Math.floor(available)));
+	}
+
+	function resolveStockFromCatalog(catalog, productId, variationId) {
+		for (const category of catalog) {
+			for (const product of (category.products || [])) {
+				if (Number(product.id) !== Number(productId)) {
+					continue;
+				}
+				for (const variation of (product.variations || [])) {
+					const vid = Number(variation.variation_id ?? variation.id ?? 0);
+					if (vid === Number(variationId)) {
+						return Number(variation.qty_available ?? variation.total_qty_available ?? 0);
+					}
+				}
+			}
+		}
+
+		return null;
+	}
+
+	async function fetchTab3eenCatalog(force = false) {
+		const now = Date.now();
+		if (!force && tab3eenCatalogCache && (now - tab3eenCatalogFetchedAt) < 30000) {
+			return tab3eenCatalogCache;
+		}
+
+		try {
+			const res = await fetch(TAB3EEN_CATALOG_API_URL, {
+				headers: {
+					Accept: 'application/json',
+				},
+			});
+			if (!res.ok) {
+				throw new Error('catalog request failed');
+			}
+			const body = await res.json();
+			if (body.status !== 'success' || !Array.isArray(body.data)) {
+				throw new Error('invalid catalog response');
+			}
+			tab3eenCatalogCache = body.data;
+		} catch (e) {
+			const res = await fetch(STORE_TAB3EEN_CATALOG_URL, {
+				headers: {
+					Accept: 'application/json',
+				},
+				credentials: 'same-origin',
+			});
+			const body = await res.json();
+			tab3eenCatalogCache = Array.isArray(body.data) ? body.data : [];
+		}
+
+		tab3eenCatalogFetchedAt = Date.now();
+		return tab3eenCatalogCache;
+	}
+
+	async function validateServoStock(productId, variationId, requestedQty) {
+		try {
+			const catalog = await fetchTab3eenCatalog(true);
+			const available = resolveStockFromCatalog(catalog, productId, variationId);
+			if (available === null) {
+				return {
+					ok: false,
+					message: TAB3EEN_MSG.stock_check_failed,
+				};
+			}
+			if (available < 1) {
+				return {
+					ok: false,
+					message: TAB3EEN_MSG.out_of_stock,
+					available,
+				};
+			}
+			if (requestedQty > available) {
+				return {
+					ok: false,
+					message: formatTab3eenMessage(TAB3EEN_MSG.stock_exceeded, requestedQty, available),
+					available,
+				};
+			}
+
+			return {
+				ok: true,
+				available,
+			};
+		} catch (e) {
+			return {
+				ok: false,
+				message: TAB3EEN_MSG.stock_check_failed,
+			};
+		}
 	}
 
 	function addToCart(id, name, price, img, variationId = null, source = null) {
@@ -602,6 +707,8 @@
 				const selectedVariationId = +(selectedOption?.value || 0);
 				const selectedPrice = +(selectedOption?.dataset.price ||
 					0);
+				const selectedQty = +(selectedOption?.dataset.qtyAvailable ||
+					selectedOption?.dataset.qty_available || 0);
 				const btn = document.querySelector(
 					`.pa-cart[data-id="${productId}"]`);
 				if (btn) {
@@ -609,6 +716,7 @@
 						selectedVariationId ||
 						productId);
 					btn.dataset.price = String(selectedPrice || 0);
+					btn.dataset.qtyAvailable = String(selectedQty || 0);
 				}
 				const priceEl = $(`prod-price-${productId}`);
 				if (priceEl) {
@@ -618,13 +726,26 @@
 		});
 
 		$$('.pa-cart').forEach(btn => {
-			btn.onclick = () => {
+			btn.onclick = async () => {
 				const id = +btn.dataset.id;
 				const name = btn.dataset.name;
 				const price = +btn.dataset.price;
 				const variationId = +(btn.dataset.variationId || id);
 				const source = btn.dataset.source || null;
 				const img = PRODUCTS[id]?.img;
+
+				if (source === 'servo') {
+					const existing = cart.find(i => i.id === id);
+					const requestedQty = (existing ? existing.qty : 0) + 1;
+					btn.disabled = true;
+					const check = await validateServoStock(id, variationId, requestedQty);
+					btn.disabled = false;
+					if (!check.ok) {
+						toast(check.message, 'error');
+						return;
+					}
+				}
+
 				addToCart(id, name, price, img, variationId, source);
 				toast(`تم إضافة "${name}" للسلة 🛒`);
 				animBtn(btn);
@@ -890,11 +1011,27 @@
 
 	function updateQty(id, d) {
 		const i = cart.find(i => i.id === id);
-		if (i) {
-			i.qty = Math.max(1, i.qty + d);
-			saveCartToStorage();
-			renderCart();
+		if (!i) {
+			return;
 		}
+
+		const newQty = Math.max(1, i.qty + d);
+		if (d > 0 && i.source === 'servo') {
+			validateServoStock(i.id, i.variation_id, newQty).then(check => {
+				if (!check.ok) {
+					toast(check.message, 'error');
+					return;
+				}
+				i.qty = newQty;
+				saveCartToStorage();
+				renderCart();
+			});
+			return;
+		}
+
+		i.qty = newQty;
+		saveCartToStorage();
+		renderCart();
 	}
 
 	function updateBadges() {

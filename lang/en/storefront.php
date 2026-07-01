@@ -21,6 +21,11 @@ return [
         'partial_servo_failed' => 'We could not submit the external catalog items: :error',
         'contact_customer_service' => 'Please contact customer service at :phone or :email so we can complete the remaining items.',
     ],
+    'catalog' => [
+        'stock_exceeded' => 'Requested quantity (:requested) exceeds available stock (:available).',
+        'out_of_stock' => 'This product is currently out of stock.',
+        'stock_check_failed' => 'Could not verify stock. Please try again.',
+    ],
     'orders' => [
         'type_local' => 'Store order',
         'type_partner' => 'Partner order',

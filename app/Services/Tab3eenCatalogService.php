@@ -69,7 +69,9 @@ class Tab3eenCatalogService
                                     'qty_available' => (float) ($variation['total_qty_available'] ?? 0),
                                 ];
                             })
-                            ->filter(fn ($variation) => $variation['variation_id'] > 0 && $variation['price'] !== null)
+                            ->filter(fn ($variation) => $variation['variation_id'] > 0
+                                && $variation['price'] !== null
+                                && $variation['qty_available'] >= 1)
                             ->values()
                             ->all();
 

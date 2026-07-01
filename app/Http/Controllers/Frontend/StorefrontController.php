@@ -21,6 +21,14 @@ class StorefrontController extends Controller
         ]);
     }
 
+    public function tab3eenCatalog(Tab3eenCatalogService $tab3eenCatalogService)
+    {
+        return response()->json([
+            'success' => true,
+            'data' => $tab3eenCatalogService->getCatalog(),
+        ]);
+    }
+
     public function home(Request $request)
     {
         $business_id = self::resolveBusinessId($request);

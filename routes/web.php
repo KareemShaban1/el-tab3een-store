@@ -111,6 +111,9 @@ Route::middleware(['setData'])->group(function () {
         Route::get('/products/{id}', [StorefrontController::class, 'product'])->name('products.show');
         Route::get('/categories', [StorefrontController::class, 'categories'])->name('categories.index');
         Route::get('/flash-deals', [StorefrontController::class, 'flashDeals'])->name('flash_deals.index');
+        Route::get('/tab3een/catalog', [StorefrontController::class, 'tab3eenCatalog'])
+            ->middleware('throttle:60,1')
+            ->name('tab3een.catalog');
         Route::get('/search/suggest', [StorefrontController::class, 'searchSuggest'])
             ->middleware('throttle:90,1')
             ->name('search.suggest');
