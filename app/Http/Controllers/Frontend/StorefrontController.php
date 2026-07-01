@@ -286,7 +286,7 @@ class StorefrontController extends Controller
             ->productForSales()
             ->activeInApp()
             ->inStockByBusiness($business_id)
-            ->with(['brand:id,name', 'category:id,name', 'unit:id,actual_name,short_name'])
+            ->with(['brand:id,name', 'category:id,name', 'unit:id,actual_name,short_name', 'warranty'])
             ->findOrFail($id);
 
         $location_records = BusinessLocation::where('business_id', $business_id)
@@ -371,6 +371,7 @@ class StorefrontController extends Controller
         $brandName = optional($product->brand)->name;
         $categoryName = optional($product->category)->name;
         $unitShort = optional($product->unit)->short_name;
+        $warranty = $product->warranty;
 
         $payload = [
             'success' => true,
@@ -380,6 +381,14 @@ class StorefrontController extends Controller
                 'id' => $product->id,
                 'name' => is_scalar($product->name) ? (string) $product->name : '',
                 'description' => is_scalar($product->product_description) ? (string) $product->product_description : '',
+                'warranties' => is_scalar($product->warranties ?? null) ? trim((string) $product->warranties) : '',
+                'warranty' => $warranty ? [
+                    'name' => is_scalar($warranty->name) ? (string) $warranty->name : '',
+                    'description' => is_scalar($warranty->description ?? null) ? (string) $warranty->description : '',
+                    'duration' => (int) $warranty->duration,
+                    'duration_type' => is_scalar($warranty->duration_type) ? (string) $warranty->duration_type : '',
+                    'display_name' => $warranty->display_name,
+                ] : null,
                 'image_url' => $product->image_url,
                 'brand' => is_scalar($brandName) ? (string) $brandName : null,
                 'category' => is_scalar($categoryName) ? (string) $categoryName : null,

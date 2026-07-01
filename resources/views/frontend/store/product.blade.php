@@ -131,6 +131,41 @@ window.__SSR_STORE_PRODUCTS__[{{ $productIdForCart }}] = {
     .empty-variations {
         text-align: center; color: #6b7280; padding: 20px; border: 1px dashed #d1d5db; border-radius: 12px; background: #fafafa;
     }
+    .product-warranties {
+        background: #fff;
+        border: 1px solid #e5e7eb;
+        border-radius: 14px;
+        padding: 18px;
+        display: grid;
+        gap: 12px;
+    }
+    .product-warranties-title {
+        margin: 0;
+        font-size: 1.15rem;
+        font-weight: 800;
+        color: #111827;
+    }
+    .warranty-card {
+        background: #f8fafc;
+        border: 1px solid #e5e7eb;
+        border-radius: 12px;
+        padding: 14px;
+        display: grid;
+        gap: 8px;
+    }
+    .warranty-card-name {
+        margin: 0;
+        font-size: 1rem;
+        font-weight: 800;
+        color: #111827;
+    }
+    .warranty-card-desc,
+    .warranty-text {
+        color: #374151;
+        font-size: 14px;
+        line-height: 1.7;
+        white-space: pre-wrap;
+    }
     @media (max-width: 900px) {
         .product-hero { grid-template-columns: 1fr; }
         .product-media { position: static; }
@@ -287,6 +322,37 @@ window.__SSR_STORE_PRODUCTS__[{{ $productIdForCart }}] = {
             @endif
         </div>
     </div>
+
+    @php
+        $warrantiesText = trim($sfStr($product['warranties'] ?? ''));
+        $warrantyInfo = $product['warranty'] ?? null;
+        $hasWarrantySection = $warrantiesText !== '' || ! empty($warrantyInfo);
+        $warrantiesHasHtml = $warrantiesText !== '' && $warrantiesText !== strip_tags($warrantiesText);
+    @endphp
+    @if($hasWarrantySection)
+        <section class="product-warranties">
+            <h3 class="product-warranties-title">{{ __('lang_v1.warranties') }}</h3>
+
+            @if(! empty($warrantyInfo))
+                <div class="warranty-card">
+                    <p class="warranty-card-name">{{ $sfStr($warrantyInfo['display_name'] ?? $warrantyInfo['name'] ?? '') }}</p>
+                    @if($sfStr($warrantyInfo['description'] ?? '') !== '')
+                        <div class="warranty-card-desc">{{ $sfStr($warrantyInfo['description'] ?? '') }}</div>
+                    @endif
+                </div>
+            @endif
+
+            @if($warrantiesText !== '')
+                <div class="warranty-text">
+                    @if($warrantiesHasHtml)
+                        {!! $warrantiesText !!}
+                    @else
+                        {{ $warrantiesText }}
+                    @endif
+                </div>
+            @endif
+        </section>
+    @endif
 </div>
 
 @if(! empty($variations))

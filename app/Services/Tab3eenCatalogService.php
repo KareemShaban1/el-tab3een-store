@@ -248,6 +248,8 @@ class Tab3eenCatalogService
             'id' => (int) ($product['id'] ?? 0),
             'name' => (string) ($product['name'] ?? ''),
             'description' => (string) ($product['description'] ?? ''),
+            'warranties' => trim((string) ($product['warranties'] ?? '')),
+            'warranty' => null,
             'image_url' => (string) ($product['image_url'] ?? ''),
             'brand' => is_array($brand) ? (string) ($brand['name'] ?? '') : (string) ($brand ?? ''),
             'category' => is_array($category) ? (string) ($category['name'] ?? '') : (string) ($category ?? ''),
