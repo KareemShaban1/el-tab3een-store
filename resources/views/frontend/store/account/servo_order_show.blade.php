@@ -51,12 +51,6 @@
         </div>
     @endif
 
-    @if (! empty($servoOrder->error_message) && $servoOrder->status === 'failed')
-        <div class="card" style="background:#fef2f2;border:1px solid #fecaca;">
-            <p style="margin:0;"><strong>{{ __('storefront.orders.error_message') }}:</strong> {{ $servoOrder->error_message }}</p>
-        </div>
-    @endif
-
     @include('frontend.store.account.partials.partner_items', [
         'servoItems' => $servoItems ?? [],
         'servoOrders' => collect([$servoOrder]),

@@ -24,6 +24,12 @@
     .chip-default, .chip-type { background: #f3f4f6; color: #374151; }
     .order-actions { margin-top: 10px; display: flex; justify-content: flex-end; }
     .empty-state { text-align: center; padding: 20px; color: #6b7280; }
+    .order-items-preview { margin-top: 10px; padding-top: 10px; border-top: 1px solid #f1f5f9; }
+    .order-items-preview__title { margin: 0 0 8px; font-size: 11px; color: #6b7280; text-transform: uppercase; font-weight: 700; }
+    .order-items-preview__list { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; }
+    .order-items-preview__row { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; }
+    .order-items-preview__name { font-weight: 600; color: #111827; }
+    .order-items-preview__meta { color: #6b7280; white-space: nowrap; }
     @media (max-width: 900px) { .meta-grid { grid-template-columns: 1fr; } }
 </style>
 
@@ -103,6 +109,30 @@
                 </div>
             @endif
         </div>
+
+        @if (! empty($entry->partner_items))
+            <div class="order-items-preview">
+                <p class="order-items-preview__title">{{ __('storefront.orders.partner_items') }}</p>
+                <ul class="order-items-preview__list">
+                    @foreach ($entry->partner_items as $item)
+                        <li class="order-items-preview__row">
+                            <div class="order-items-preview__name">
+                                {{ $item['product_name'] }}
+                                @if (! empty($item['variation_name']) && $item['variation_name'] !== 'Default')
+                                    <span class="order-items-preview__meta"> — {{ $item['variation_name'] }}</span>
+                                @endif
+                            </div>
+                            <div class="order-items-preview__meta">
+                                × {{ rtrim(rtrim(number_format((float) $item['quantity'], 2, '.', ''), '0'), '.') }}
+                                @if ($item['line_total'] !== null)
+                                    · {{ number_format((float) $item['line_total'], 2) }}
+                                @endif
+                            </div>
+                        </li>
+                    @endforeach
+                </ul>
+            </div>
+        @endif
 
         <div class="order-actions">
             <a class="btn" href="{{ $entry->detail_url }}">{{ __('lang_v1.view_details') }}</a>

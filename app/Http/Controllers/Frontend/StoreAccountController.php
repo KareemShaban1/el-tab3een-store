@@ -13,6 +13,9 @@ use Illuminate\Support\Collection;
 
 class StoreAccountController extends Controller
 {
+    /** @var array<string, array{product_name: string, variation_name: string, price: float|null}>|null */
+    private ?array $catalogVariationMapCache = null;
+
     public function __construct(
         private Tab3eenCatalogService $catalogService
     ) {}
@@ -106,15 +109,12 @@ class StoreAccountController extends Controller
             ->with(['sell_lines.product', 'sell_lines.variations'])
             ->findOrFail($id);
 
-        $servoOrders = ServoOrderLog::where('business_id', $customer->business_id)
-            ->where('contact_id', $customer->id)
+        $servoOrders = $this->successfulServoLogsQuery($customer->business_id, $customer->id)
             ->where('transaction_id', $order->id)
             ->orderByDesc('id')
             ->get();
 
-        $servoItems = $this->formatServoItems(
-            $servoOrders->flatMap(fn (ServoOrderLog $log) => $log->items ?? [])->values()->all()
-        );
+        $servoItems = $this->formatServoItems($this->collectServoRawItems($servoOrders));
 
         if (! $request->expectsJson()) {
             return view('frontend.store.account.order_show', compact('order', 'servoOrders', 'servoItems'));
@@ -136,8 +136,7 @@ class StoreAccountController extends Controller
         /** @var \App\Contact $customer */
         $customer = auth('customer')->user();
 
-        $servoOrder = ServoOrderLog::where('business_id', $customer->business_id)
-            ->where('contact_id', $customer->id)
+        $servoOrder = $this->successfulServoLogsQuery($customer->business_id, $customer->id)
             ->whereNull('transaction_id')
             ->findOrFail($id);
 
@@ -173,14 +172,12 @@ class StoreAccountController extends Controller
 
         $localIds = $localOrders->pluck('id')->all();
 
-        $servoByTransaction = ServoOrderLog::where('business_id', $business_id)
-            ->where('contact_id', $contact_id)
+        $servoByTransaction = $this->successfulServoLogsQuery($business_id, $contact_id)
             ->whereIn('transaction_id', $localIds)
             ->get()
             ->groupBy('transaction_id');
 
-        $standaloneServoOrders = ServoOrderLog::where('business_id', $business_id)
-            ->where('contact_id', $contact_id)
+        $standaloneServoOrders = $this->successfulServoLogsQuery($business_id, $contact_id)
             ->whereNull('transaction_id')
             ->orderByDesc('id')
             ->get();
@@ -206,9 +203,10 @@ class StoreAccountController extends Controller
     {
         $orderStatus = $this->normalizeOrderStatus((string) ($order->ecommerce_order_status ?: $order->sub_status ?: 'new'));
         $localItemsCount = (int) ($order->sell_lines_count ?? 0);
-
-        $servoItemsCount = (int) $linkedServo->sum(fn (ServoOrderLog $log) => count($log->items ?? []));
-        $hasServo = $linkedServo->isNotEmpty();
+        $partnerItems = $this->formatServoItems($this->collectServoRawItems($linkedServo));
+        $servoItemsCount = count($partnerItems);
+        $hasServo = $servoItemsCount > 0;
+        $partnerTotal = collect($partnerItems)->sum(fn (array $item) => (float) ($item['line_total'] ?? 0));
 
         return (object) [
             'entry_type' => $hasServo ? 'mixed' : 'local',
@@ -218,43 +216,69 @@ class StoreAccountController extends Controller
             'status' => $orderStatus,
             'status_label' => $this->servoStatusLabel($orderStatus),
             'date' => $order->transaction_date,
-            'total' => (float) $order->final_total,
+            'total' => (float) $order->final_total + ($partnerTotal > 0 ? $partnerTotal : 0),
             'items_count' => $localItemsCount + $servoItemsCount,
             'local_items_count' => $localItemsCount,
             'partner_items_count' => $servoItemsCount,
+            'partner_items' => $partnerItems,
             'payment_status' => (string) ($order->payment_status ?: 'pending'),
             'shipping_status' => (string) ($order->shipping_status ?: 'pending'),
             'type_label' => $hasServo
                 ? __('storefront.orders.type_mixed')
                 : __('storefront.orders.type_local'),
             'servo_reference' => $linkedServo->first()?->servo_reference,
-            'partner_status' => $hasServo ? (string) ($linkedServo->first()?->status ?? 'pending') : null,
+            'partner_status' => $hasServo ? 'success' : null,
         ];
     }
 
     private function mapServoOrderEntry(ServoOrderLog $servoOrder): object
     {
         $items = is_array($servoOrder->items) ? $servoOrder->items : [];
-        $status = (string) ($servoOrder->status ?? 'pending');
+        $partnerItems = $this->formatServoItems($items);
+        $partnerTotal = collect($partnerItems)->sum(fn (array $item) => (float) ($item['line_total'] ?? 0));
 
         return (object) [
             'entry_type' => 'servo',
             'sort_at' => $servoOrder->created_at,
             'display_id' => $servoOrder->servo_reference ?: ('#P-'.$servoOrder->id),
             'detail_url' => route('store.account.orders.servo.show', $servoOrder->id),
-            'status' => $status,
-            'status_label' => $this->servoStatusLabel($status),
+            'status' => 'success',
+            'status_label' => __('storefront.orders.status_success'),
             'date' => $servoOrder->created_at,
-            'total' => null,
-            'items_count' => count($items),
+            'total' => $partnerTotal > 0 ? $partnerTotal : null,
+            'items_count' => count($partnerItems),
             'local_items_count' => 0,
-            'partner_items_count' => count($items),
+            'partner_items_count' => count($partnerItems),
+            'partner_items' => $partnerItems,
             'payment_status' => null,
             'shipping_status' => null,
             'type_label' => __('storefront.orders.type_partner'),
             'servo_reference' => $servoOrder->servo_reference,
-            'partner_status' => $status,
+            'partner_status' => 'success',
         ];
+    }
+
+    /**
+     * @return \Illuminate\Database\Eloquent\Builder<ServoOrderLog>
+     */
+    private function successfulServoLogsQuery(int $business_id, int $contact_id)
+    {
+        return ServoOrderLog::query()
+            ->where('business_id', $business_id)
+            ->where('contact_id', $contact_id)
+            ->where('status', 'success');
+    }
+
+    /**
+     * @param  Collection<int, ServoOrderLog>  $servoLogs
+     * @return array<int, array<string, mixed>>
+     */
+    private function collectServoRawItems(Collection $servoLogs): array
+    {
+        return $servoLogs
+            ->flatMap(fn (ServoOrderLog $log) => is_array($log->items) ? $log->items : [])
+            ->values()
+            ->all();
     }
 
     /**
@@ -340,6 +364,10 @@ class StoreAccountController extends Controller
      */
     private function buildCatalogVariationMap(): array
     {
+        if ($this->catalogVariationMapCache !== null) {
+            return $this->catalogVariationMapCache;
+        }
+
         $map = [];
 
         foreach ($this->catalogService->getCatalog() as $category) {
@@ -360,7 +388,7 @@ class StoreAccountController extends Controller
             }
         }
 
-        return $map;
+        return $this->catalogVariationMapCache = $map;
     }
 
     private function normalizeOrderStatus(string $status): string
@@ -397,6 +425,7 @@ class StoreAccountController extends Controller
             'type_label' => $entry->type_label,
             'servo_reference' => $entry->servo_reference,
             'partner_status' => $entry->partner_status,
+            'partner_items' => $entry->partner_items ?? [],
         ];
     }
 }

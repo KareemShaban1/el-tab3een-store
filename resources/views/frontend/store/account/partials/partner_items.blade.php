@@ -40,14 +40,5 @@
             </tbody>
         </table>
 
-        @if (! empty($servoOrders) && $servoOrders->isNotEmpty())
-            @foreach ($servoOrders as $servoOrder)
-                @if (! empty($servoOrder->error_message) && $servoOrder->status === 'failed')
-                    <p class="muted" style="margin:12px 0 0;color:#6b7280;font-size:12px;">
-                        <strong>{{ __('storefront.orders.error_message') }}:</strong> {{ $servoOrder->error_message }}
-                    </p>
-                @endif
-            @endforeach
-        @endif
     </div>
 @endif
