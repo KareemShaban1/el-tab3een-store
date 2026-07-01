@@ -115,7 +115,8 @@ class Tab3eenCatalogService
                                 ];
                             })
                             ->filter(fn ($variation) => $variation['variation_id'] > 0
-                                && $variation['qty_available'] >= 1)
+                                && $variation['qty_available'] >= 1
+                                && $variation['price'] !== null)
                             ->values()
                             ->all();
 
@@ -132,7 +133,9 @@ class Tab3eenCatalogService
                             'variations' => $variations,
                         ];
                     })
-                    ->filter(fn ($product) => $product['id'] > 0 && ! empty($product['variations']))
+                    ->filter(fn ($product) => $product['id'] > 0
+                        && $product['default_price'] !== null
+                        && ! empty($product['variations']))
                     ->values()
                     ->all();
 
@@ -150,5 +153,108 @@ class Tab3eenCatalogService
             ->all();
 
         return $normalized;
+    }
+
+    /**
+     * @return array<string, mixed>|null Normalized product payload for storefront views.
+     */
+    public function getProduct(int $productId): ?array
+    {
+        $url = $this->productApiUrl($productId);
+
+        if ($url === '') {
+            return null;
+        }
+
+        try {
+            $response = Http::timeout(15)
+                ->acceptJson()
+                ->get($url);
+
+            if (! $response->successful()) {
+                Log::warning('Tab3een product API request failed.', [
+                    'url' => $url,
+                    'status' => $response->status(),
+                    'product_id' => $productId,
+                ]);
+
+                return null;
+            }
+
+            $body = $response->json();
+            if (($body['status'] ?? null) !== 'success' || ! is_array($body['data'] ?? null)) {
+                return null;
+            }
+
+            return $this->normalizeProduct($body['data']);
+        } catch (\Throwable $e) {
+            Log::warning('Tab3een product API exception: '.$e->getMessage(), [
+                'url' => $url,
+                'product_id' => $productId,
+            ]);
+
+            return null;
+        }
+    }
+
+    private function catalogBaseUrl(): string
+    {
+        return rtrim(trim((string) config('storefront.tab3een_catalog_api_url', '')), '/');
+    }
+
+    private function productApiUrl(int $productId): string
+    {
+        $base = $this->catalogBaseUrl();
+
+        if ($base === '' || $productId <= 0) {
+            return '';
+        }
+
+        return $base.'/products/'.$productId;
+    }
+
+    /**
+     * @param  array<string, mixed>  $product
+     * @return array<string, mixed>|null
+     */
+    private function normalizeProduct(array $product): ?array
+    {
+        $variations = collect($product['variations'] ?? [])
+            ->map(function ($variation) {
+                $price = $variation['price'] ?? null;
+
+                return [
+                    'variation_id' => (int) ($variation['id'] ?? 0),
+                    'sku' => (string) ($variation['sku'] ?? ''),
+                    'name' => (string) ($variation['name'] ?? 'Default'),
+                    'price_inc_tax' => $price !== null ? (float) $price : null,
+                    'qty_available' => (float) ($variation['total_qty_available'] ?? 0),
+                    'locations' => [],
+                ];
+            })
+            ->filter(fn ($variation) => $variation['variation_id'] > 0
+                && $variation['qty_available'] >= 1)
+            ->values()
+            ->all();
+
+        if (empty($variations)) {
+            return null;
+        }
+
+        $brand = $product['brand'] ?? null;
+        $category = $product['category'] ?? null;
+
+        return [
+            'id' => (int) ($product['id'] ?? 0),
+            'name' => (string) ($product['name'] ?? ''),
+            'description' => (string) ($product['description'] ?? ''),
+            'image_url' => (string) ($product['image_url'] ?? ''),
+            'brand' => is_array($brand) ? (string) ($brand['name'] ?? '') : (string) ($brand ?? ''),
+            'category' => is_array($category) ? (string) ($category['name'] ?? '') : (string) ($category ?? ''),
+            'unit' => null,
+            'source' => 'servo',
+            'has_price' => collect($variations)->contains(fn ($variation) => $variation['price_inc_tax'] !== null),
+            'variations' => $variations,
+        ];
     }
 }

@@ -26,6 +26,9 @@ return [
         'out_of_stock' => 'This product is currently out of stock.',
         'stock_check_failed' => 'Could not verify stock. Please try again.',
         'price_unavailable' => 'Price is not available for this product.',
+        'back_to_home' => 'Back to home',
+        'brand' => 'Brand',
+        'category' => 'Category',
     ],
     'orders' => [
         'type_local' => 'Store order',

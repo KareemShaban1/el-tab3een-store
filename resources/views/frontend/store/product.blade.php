@@ -1,8 +1,10 @@
 @extends('frontend.store.theme_layout')
 
 @php
+    $isServoProduct = ! empty($isServoProduct);
     $product = $payload['data'];
     $variations = $product['variations'] ?? [];
+    $isServoProduct = ! empty($isServoProduct) || (($product['source'] ?? null) === 'servo');
 
     $sfStr = static function ($value): string {
         if ($value === null) {
@@ -42,20 +44,26 @@
     $productIdForCart = (int) ($product['id'] ?? 0);
     $firstVarForCart = $variations[0] ?? [];
     $initialVariationIdForCart = (int) ($firstVarForCart['variation_id'] ?? $productIdForCart);
-    $initialPriceForCart = (float) ($firstVarForCart['price_inc_tax'] ?? 0);
+    $initialPriceForCart = isset($firstVarForCart['price_inc_tax']) && $firstVarForCart['price_inc_tax'] !== null
+        ? (float) $firstVarForCart['price_inc_tax']
+        : null;
+    $initialHasPrice = $initialPriceForCart !== null;
+    $hasInitialPrice = $initialHasPrice;
 @endphp
 <script>
 window.__SSR_STORE_PRODUCTS__ = window.__SSR_STORE_PRODUCTS__ || {};
 window.__SSR_STORE_PRODUCTS__[{{ $productIdForCart }}] = {
     name: @json($sfStr($product['name'] ?? '')),
     brand: @json($sfStr($product['brand'] ?? '')),
-    category: '',
+    category: @json($sfStr($product['category'] ?? '')),
     unit: '',
-    price: {{ $initialPriceForCart }},
+    price: {{ $initialPriceForCart ?? 'null' }},
+    has_price: @json($initialHasPrice),
     old: null,
     img: @json($sfStr($product['image_url'] ?? '')),
     reviews: 'متوفر',
     variation_id: {{ $initialVariationIdForCart }},
+    source: @json($isServoProduct ? 'servo' : null),
     variations: @json($variations),
 };
 </script>
@@ -137,7 +145,11 @@ window.__SSR_STORE_PRODUCTS__[{{ $productIdForCart }}] = {
         </div>
         <div class="product-summary">
             <div>
-                <a href="{{ route('store.products.index') }}" class="back-link">← {{ __('lang_v1.back_to_products') }}</a>
+                @if($isServoProduct)
+                    <a href="{{ route('welcome') }}" class="back-link">← {{ __('storefront.catalog.back_to_home') }}</a>
+                @else
+                    <a href="{{ route('store.products.index') }}" class="back-link">← {{ __('lang_v1.back_to_products') }}</a>
+                @endif
             </div>
             <h2 class="product-name">{{ $sfStr($product['name'] ?? '') }}</h2>
             <!-- product description -->
@@ -164,6 +176,23 @@ window.__SSR_STORE_PRODUCTS__[{{ $productIdForCart }}] = {
                 </div>
             </div> -->
 
+            @if($isServoProduct && ($sfStr($product['brand'] ?? '') || $sfStr($product['category'] ?? '')))
+                <div class="meta-grid">
+                    @if($sfStr($product['brand'] ?? ''))
+                        <div class="meta-box">
+                            <p class="meta-label">{{ __('storefront.catalog.brand') }}</p>
+                            <p class="meta-value">{{ $sfStr($product['brand'] ?? '') }}</p>
+                        </div>
+                    @endif
+                    @if($sfStr($product['category'] ?? ''))
+                        <div class="meta-box">
+                            <p class="meta-label">{{ __('storefront.catalog.category') }}</p>
+                            <p class="meta-value">{{ $sfStr($product['category'] ?? '') }}</p>
+                        </div>
+                    @endif
+                </div>
+            @endif
+
             @if(! empty($variations))
                 <div class="purchase-block" id="product-purchase">
                     <div style="display: flex; gap: 10px;">
@@ -174,7 +203,13 @@ window.__SSR_STORE_PRODUCTS__[{{ $productIdForCart }}] = {
 				@php
 				$qty = (float) ($v['qty_available'] ?? 0);
 				$vName = $sfStr($v['name'] ?? '');
-				$label = ($vName ?: $tx('Default')) . ' — ' . number_format((float) ($v['price_inc_tax'] ?? 0), 2);
+				$vPrice = $v['price_inc_tax'] ?? null;
+				$label = $vName ?: $tx('Default');
+				if ($vPrice !== null) {
+					$label .= ' — ' . number_format((float) $vPrice, 2);
+				} else {
+					$label .= ' — ' . __('storefront.catalog.price_unavailable');
+				}
 				if ($qty <= 5 && $qty > 0) {
 					$label .= ' (' . __('lang_v1.low_stock') . ')';
 				}
@@ -182,7 +217,8 @@ window.__SSR_STORE_PRODUCTS__[{{ $productIdForCart }}] = {
 				<option value="{{ $sfStr($v['variation_id'] ?? '') }}"
 				data-sku="{{ e($sfStr($v['sku'] ?? '')) }}"
 				data-qty="{{ $qty }}"
-				data-price="{{ (float) ($v['price_inc_tax'] ?? 0) }}"
+				data-price="{{ $vPrice !== null ? (float) $vPrice : '' }}"
+				data-has-price="{{ $vPrice !== null ? '1' : '0' }}"
 				@selected($index === 0)
 				>{{ $label }}</option>
 			@endforeach
@@ -227,17 +263,19 @@ window.__SSR_STORE_PRODUCTS__[{{ $productIdForCart }}] = {
 
                     <div class="cta-row">
                         @auth('customer')
-                            <button type="button" id="product-buy-btn" class="btn pa-cart"
+                            <button type="button" id="product-buy-btn" class="btn pa-cart{{ ! $hasInitialPrice ? ' is-disabled' : '' }}"
                                 data-id="{{ $productIdForCart }}"
                                 data-name="{{ e($sfStr($product['name'] ?? '')) }}"
-                                data-price="{{ $initialPriceForCart }}"
+                                data-price="{{ $hasInitialPrice ? $initialPriceForCart : '' }}"
                                 data-variation-id="{{ $initialVariationIdForCart }}"
-                                data-img="{{ e($sfStr($product['image_url'] ?? '')) }}">
+                                data-img="{{ e($sfStr($product['image_url'] ?? '')) }}"
+                                @if($isServoProduct) data-source="servo" @endif
+                                @if(! $hasInitialPrice) disabled aria-disabled="true" @endif>
                                 <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
                                     <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
                                     <line x1="3" y1="6" x2="21" y2="6" />
                                 </svg>
-                                أضف للسلة
+                                {{ $hasInitialPrice ? 'أضف للسلة' : __('storefront.catalog.price_unavailable') }}
                             </button>
                         @else
                             <a class="btn secondary" href="{{ route('store.auth.login.form') }}">{{ __('lang_v1.login_to_purchase') }}</a>
@@ -281,6 +319,8 @@ window.__SSR_STORE_PRODUCTS__[{{ $productIdForCart }}] = {
 
     var checkoutBase = root.getAttribute('data-checkout-base') || '';
     var isCustomer = root.getAttribute('data-is-customer') === '1';
+    var isServoProduct = @json($isServoProduct);
+    var priceUnavailableText = @json(__('storefront.catalog.price_unavailable'));
 
     function getSelectedOption() {
         return select.options[select.selectedIndex];
@@ -290,13 +330,22 @@ window.__SSR_STORE_PRODUCTS__[{{ $productIdForCart }}] = {
         return Number(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     }
 
+    function selectedHasPrice(opt) {
+        if (!opt) return false;
+        var rawPrice = opt.getAttribute('data-price');
+        return opt.getAttribute('data-has-price') === '1'
+            && rawPrice !== null
+            && rawPrice !== '';
+    }
+
     function syncDetails() {
         var opt = getSelectedOption();
         if (!opt) return;
 
         var sku = opt.getAttribute('data-sku') || '';
         var qtyAvail = parseFloat(opt.getAttribute('data-qty') || '0') || 0;
-        var price = parseFloat(opt.getAttribute('data-price') || '0') || 0;
+        var hasPrice = selectedHasPrice(opt);
+        var price = hasPrice ? (parseFloat(opt.getAttribute('data-price') || '0') || 0) : null;
         var vid = select.value;
         var locs = locMap[vid];
         if (!Array.isArray(locs)) {
@@ -305,7 +354,24 @@ window.__SSR_STORE_PRODUCTS__[{{ $productIdForCart }}] = {
 
         skuEl.textContent = sku || '—';
         qtyTextEl.textContent = formatNum(qtyAvail);
-        priceEl.textContent = formatNum(price);
+        priceEl.textContent = hasPrice ? formatNum(price) : priceUnavailableText;
+
+        if (buyBtn) {
+            buyBtn.dataset.variationId = String(vid);
+            if (hasPrice) {
+                buyBtn.dataset.price = String(price);
+                buyBtn.disabled = false;
+                buyBtn.classList.remove('is-disabled');
+                buyBtn.removeAttribute('aria-disabled');
+                buyBtn.innerHTML = '<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/></svg> أضف للسلة';
+            } else {
+                buyBtn.dataset.price = '';
+                buyBtn.disabled = true;
+                buyBtn.classList.add('is-disabled');
+                buyBtn.setAttribute('aria-disabled', 'true');
+                buyBtn.textContent = priceUnavailableText;
+            }
+        }
 
         if (locListEl) {
             locListEl.innerHTML = '';
@@ -427,7 +493,7 @@ window.__SSR_STORE_PRODUCTS__[{{ $productIdForCart }}] = {
             var btn = document.getElementById('product-buy-btn');
             if (!btn || typeof window.addToCart !== 'function') return;
 
-            btn.onclick = function () {
+            btn.onclick = async function () {
                 if (btn.disabled || btn.classList.contains('is-disabled')) return;
 
                 var id = +btn.dataset.id;
@@ -435,12 +501,38 @@ window.__SSR_STORE_PRODUCTS__[{{ $productIdForCart }}] = {
                 var price = +btn.dataset.price;
                 var variationId = +(btn.dataset.variationId || id);
                 var img = btn.dataset.img || '';
+                var source = btn.dataset.source || null;
                 var n = parseInt(qtyInput.value, 10) || 1;
                 if (n < 1) n = 1;
 
+                if (source === 'servo') {
+                    if (!price || price <= 0) {
+                        if (typeof window.toast === 'function') {
+                            window.toast(typeof TAB3EEN_MSG !== 'undefined' ? TAB3EEN_MSG.price_unavailable : priceUnavailableText, 'error');
+                        }
+                        return;
+                    }
+
+                    if (typeof window.validateServoStock === 'function') {
+                        btn.disabled = true;
+                        var existingQty = typeof window.getCartProductQty === 'function'
+                            ? window.getCartProductQty(id)
+                            : 0;
+                        var requestedQty = existingQty + n;
+                        var check = await window.validateServoStock(id, variationId, requestedQty);
+                        btn.disabled = false;
+                        if (!check.ok) {
+                            if (typeof window.toast === 'function') {
+                                window.toast(check.message, 'error');
+                            }
+                            return;
+                        }
+                    }
+                }
+
                 var i;
                 for (i = 0; i < n; i++) {
-                    window.addToCart(id, name, price, img, variationId);
+                    window.addToCart(id, name, price, img, variationId, source);
                 }
 
                 if (typeof window.toast === 'function') {

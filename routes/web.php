@@ -114,6 +114,9 @@ Route::middleware(['setData'])->group(function () {
         Route::get('/tab3een/catalog', [StorefrontController::class, 'tab3eenCatalog'])
             ->middleware('throttle:60,1')
             ->name('tab3een.catalog');
+        Route::get('/tab3een/products/{id}', [StorefrontController::class, 'tab3eenProduct'])
+            ->whereNumber('id')
+            ->name('tab3een.products.show');
         Route::get('/search/suggest', [StorefrontController::class, 'searchSuggest'])
             ->middleware('throttle:90,1')
             ->name('search.suggest');

@@ -268,7 +268,7 @@ window.__SSR_STORE_PRODUCTS__ = Object.assign(window.__SSR_STORE_PRODUCTS__ || {
 					<div class="prod-info">
 						<div class="prod-brand">{{ $category['name'] }}</div>
 						<div class="prod-name">
-							<a href="{{ route('store.products.show', ['id' => $product['id']]) }}"
+							<a href="{{ route('store.tab3een.products.show', ['id' => $product['id']]) }}"
 								title="عرض تفاصيل المنتج">{{ $product['name'] }}</a>
 						</div>
 						@if ($variations->count() > 1)

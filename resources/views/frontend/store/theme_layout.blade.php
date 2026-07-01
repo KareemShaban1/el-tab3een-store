@@ -1560,6 +1560,11 @@
 	window.updateQty = updateQty;
 	window.removeFromCart = removeFromCart;
 	window.addToCart = addToCart;
+	window.validateServoStock = validateServoStock;
+	window.getCartProductQty = function(id) {
+		const item = cart.find(i => Number(i.id) === Number(id));
+		return item ? Number(item.qty) : 0;
+	};
 	window.closeModal = closeModal;
 	window.openModal = openModal;
 	window.toast = toast;
