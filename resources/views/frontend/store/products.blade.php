@@ -9,11 +9,14 @@
     $activeBrandId = request('brand_id');
     $activePriceMin = request('price_min');
     $activePriceMax = request('price_max');
+    $isServoCatalog = request('source') === 'servo';
+    $servoCategoryName = (string) ($servoCategoryName ?? '');
 
     // Links should keep pagination off (remove `page`) while keeping any other filter params.
     $queryWithoutPage = request()->except(['page']);
     $queryWithoutQ = request()->except(['page', 'q']);
-    $queryWithoutCategory = request()->except(['page', 'category_id']);
+    $queryWithoutCategory = request()->except(['page', 'category_id', 'source']);
+    $queryWithoutServoCategory = request()->except(['page', 'category_id']);
     $queryWithoutBrand = request()->except(['page', 'brand_id']);
     $queryWithoutPrice = request()->except(['page', 'price_min', 'price_max']);
 
@@ -60,6 +63,7 @@
                 'reviews' => 'متوفر',
                 'variation_id' => $vid,
                 'variations' => $item['variations'] ?? [],
+                'source' => ($item['source'] ?? null) === 'servo' ? 'servo' : null,
             ],
         ];
     })->all();
@@ -442,14 +446,15 @@ window.__SSR_STORE_PRODUCTS__ = @json($productsSeed);
 
             @if(! empty($activeCategoryId))
                 @php
-                    $activeCategoryName = '';
-                    if (isset($categories)) {
+                    $activeCategoryName = $isServoCatalog ? $servoCategoryName : '';
+                    if (! $isServoCatalog && isset($categories)) {
                         $activeCategory = $categories->firstWhere('id', (int) $activeCategoryId);
                         $activeCategoryName = $activeCategory ? (string) $activeCategory->name : '';
                     }
+                    $categoryClearQuery = $isServoCatalog ? $queryWithoutServoCategory : $queryWithoutCategory;
                 @endphp
                 @if($activeCategoryName !== '')
-                    <a class="filter-pill js-store-ajax-nav" href="{{ route('store.products.index', $queryWithoutCategory) }}" title="Remove category filter">
+                    <a class="filter-pill js-store-ajax-nav" href="{{ route('store.products.index', $categoryClearQuery) }}" title="Remove category filter">
                         <span class="pill-label">{{ __('lang_v1.category') }}</span>
                         <span>{{ $activeCategoryName }}</span>
                         <span class="pill-x">✕</span>
@@ -457,7 +462,7 @@ window.__SSR_STORE_PRODUCTS__ = @json($productsSeed);
                 @endif
             @endif
 
-            @if(! empty($activeBrandId))
+            @if(! $isServoCatalog && ! empty($activeBrandId))
                 @php
                     $activeBrandName = '';
                     if (isset($brands)) {
@@ -492,6 +497,9 @@ window.__SSR_STORE_PRODUCTS__ = @json($productsSeed);
         </div>
 
         <form method="GET" action="{{ route('store.products.index') }}" class="js-store-filter-form" id="store-products-filters-desktop" novalidate>
+            @if($isServoCatalog)
+                <input type="hidden" name="source" value="servo">
+            @endif
             <div class="filter-group">
                 <label for="filter-q-desktop">{{ __('lang_v1.search') }}</label>
                 <div class="search-wrap">
@@ -501,6 +509,7 @@ window.__SSR_STORE_PRODUCTS__ = @json($productsSeed);
                     @endif
                 </div>
             </div>
+            @unless($isServoCatalog)
             <div class="filter-group">
                 <label for="filter-category-desktop">{{ __('lang_v1.category') }}</label>
                 <select id="filter-category-desktop" name="category_id">
@@ -519,6 +528,7 @@ window.__SSR_STORE_PRODUCTS__ = @json($productsSeed);
                     @endforeach
                 </select>
             </div>
+            @endunless
             <div class="filter-group filter-group--price-slider">
                 <label>{{ __('lang_v1.price_range') }}</label>
                 <div class="price-dual-range">
@@ -559,6 +569,10 @@ window.__SSR_STORE_PRODUCTS__ = @json($productsSeed);
                         $defVar = $vars->first();
                         $defaultPrice = $defVar ? (float) ($defVar['price_inc_tax'] ?? 0) : (float) ($item['min_price'] ?? 0);
                         $defVid = $defVar ? (int) ($defVar['variation_id'] ?? 0) : (int) ($item['variation_id'] ?? $item['id']);
+                        $isServoItem = ($item['source'] ?? null) === 'servo';
+                        $productShowUrl = $isServoItem
+                            ? route('store.tab3een.products.show', $item['id'])
+                            : route('store.products.show', $item['id']);
                     @endphp
                     <div class="prod-card">
                         <div class="prod-img-wrap">
@@ -573,7 +587,8 @@ window.__SSR_STORE_PRODUCTS__ = @json($productsSeed);
                                     data-id="{{ (int) $item['id'] }}"
                                     data-name="{{ $item['name'] }}"
                                     data-price="{{ $defaultPrice }}"
-                                    data-variation-id="{{ $defVid }}">
+                                    data-variation-id="{{ $defVid }}"
+                                    @if($isServoItem) data-source="servo" @endif>
                                     <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
                                         <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
                                         <line x1="3" y1="6" x2="21" y2="6" />
@@ -586,7 +601,7 @@ window.__SSR_STORE_PRODUCTS__ = @json($productsSeed);
                         <div class="prod-info">
                             <div class="prod-brand">{{ $item['brand'] ?: 'Brand' }}</div>
                             <div class="prod-name">
-                                <a href="{{ route('store.products.show', $item['id']) }}" title="عرض تفاصيل المنتج">{{ $item['name'] }}</a>
+                                <a href="{{ $productShowUrl }}" title="عرض تفاصيل المنتج">{{ $item['name'] }}</a>
                             </div>
                             <!-- <div class="stars-row"><span class="stars">⭐⭐⭐⭐⭐</span><span class="rev-count">(متوفر)</span></div> -->
                             @if($vars->isNotEmpty())
@@ -641,14 +656,15 @@ window.__SSR_STORE_PRODUCTS__ = @json($productsSeed);
 
         @if(! empty($activeCategoryId))
             @php
-                $activeCategoryName = '';
-                if (isset($categories)) {
+                $activeCategoryName = $isServoCatalog ? $servoCategoryName : '';
+                if (! $isServoCatalog && isset($categories)) {
                     $activeCategory = $categories->firstWhere('id', (int) $activeCategoryId);
                     $activeCategoryName = $activeCategory ? (string) $activeCategory->name : '';
                 }
+                $categoryClearQuery = $isServoCatalog ? $queryWithoutServoCategory : $queryWithoutCategory;
             @endphp
             @if($activeCategoryName !== '')
-                <a class="filter-pill js-store-ajax-nav" href="{{ route('store.products.index', $queryWithoutCategory) }}" title="Remove category filter">
+                <a class="filter-pill js-store-ajax-nav" href="{{ route('store.products.index', $categoryClearQuery) }}" title="Remove category filter">
                     <span class="pill-label">Category</span>
                     <span>{{ $activeCategoryName }}</span>
                     <span class="pill-x">✕</span>
@@ -656,7 +672,7 @@ window.__SSR_STORE_PRODUCTS__ = @json($productsSeed);
             @endif
         @endif
 
-        @if(! empty($activeBrandId))
+        @if(! $isServoCatalog && ! empty($activeBrandId))
             @php
                 $activeBrandName = '';
                 if (isset($brands)) {
@@ -691,6 +707,9 @@ window.__SSR_STORE_PRODUCTS__ = @json($productsSeed);
     </div>
 
     <form method="GET" action="{{ route('store.products.index') }}" class="js-store-filter-form" id="store-products-filters-mobile" novalidate>
+        @if($isServoCatalog)
+            <input type="hidden" name="source" value="servo">
+        @endif
         <div class="filter-group">
             <label for="filter-q-mobile">{{ __('lang_v1.search') }}</label>
             <div class="search-wrap">
@@ -700,6 +719,7 @@ window.__SSR_STORE_PRODUCTS__ = @json($productsSeed);
                 @endif
             </div>
         </div>
+        @unless($isServoCatalog)
         <div class="filter-group">
             <label for="filter-category-mobile">{{ __('lang_v1.category') }}</label>
             <select id="filter-category-mobile" name="category_id">
@@ -718,6 +738,7 @@ window.__SSR_STORE_PRODUCTS__ = @json($productsSeed);
                 @endforeach
             </select>
         </div>
+        @endunless
         <div class="filter-group filter-group--price-slider">
             <label>{{ __('lang_v1.price_range') }}</label>
             <div class="price-dual-range">
@@ -775,14 +796,18 @@ window.__SSR_STORE_PRODUCTS__ = @json($productsSeed);
         const STORE_PRODUCTS_URL = @json(route('store.products.index'));
         const STORE_CATEGORY_NAMES = @json(isset($categories) ? $categories->pluck('name', 'id')->all() : []);
         const STORE_BRAND_NAMES = @json(isset($brands) ? $brands->pluck('name', 'id')->all() : []);
+        const STORE_SERVO_CATEGORY_NAME = @json($servoCategoryName ?? '');
+        const STORE_IS_SERVO_CATALOG = @json($isServoCatalog ?? false);
 
         const grid = main.querySelector('.products-grid');
         const pagWrap = main.querySelector('.store-products-pagination');
         const metaTotal = main.querySelector('.products-meta');
         const productShowTpl = @json(route('store.products.show', ['id' => '__ID__']));
+        const servoProductShowTpl = @json(route('store.tab3een.products.show', ['id' => '__ID__']));
 
-        function productUrl(id) {
-            return productShowTpl.replace('__ID__', String(id));
+        function productUrl(id, source) {
+            const tpl = source === 'servo' ? servoProductShowTpl : productShowTpl;
+            return tpl.replace('__ID__', String(id));
         }
 
         function fmtMoney(n) {
@@ -1059,6 +1084,7 @@ window.__SSR_STORE_PRODUCTS__ = @json($productsSeed);
         function filtersObjectFromMeta(f) {
             const o = {};
             if (!f) return o;
+            if (f.source) o.source = f.source;
             if (f.q) o.q = f.q;
             if (f.category_id) o.category_id = f.category_id;
             if (f.brand_id) o.brand_id = f.brand_id;
@@ -1087,12 +1113,15 @@ window.__SSR_STORE_PRODUCTS__ = @json($productsSeed);
                 parts.push(`<a class="filter-pill js-store-ajax-nav" href="${urlWithoutFilterKey(f, 'q')}"><span class="pill-label">Search</span><span>“${String(f.q).replace(/</g, '&lt;')}</span><span class="pill-x">✕</span></a>`);
             }
             if (f.category_id) {
-                const name = STORE_CATEGORY_NAMES[f.category_id] || STORE_CATEGORY_NAMES[String(f.category_id)] || '';
+                let name = STORE_CATEGORY_NAMES[f.category_id] || STORE_CATEGORY_NAMES[String(f.category_id)] || '';
+                if (!name && f.source === 'servo') {
+                    name = STORE_SERVO_CATEGORY_NAME || '';
+                }
                 if (name) {
                     parts.push(`<a class="filter-pill js-store-ajax-nav" href="${urlWithoutFilterKey(f, 'category_id')}"><span class="pill-label">Category</span><span>${String(name).replace(/</g, '&lt;')}</span><span class="pill-x">✕</span></a>`);
                 }
             }
-            if (f.brand_id) {
+            if (f.brand_id && f.source !== 'servo') {
                 const name = STORE_BRAND_NAMES[f.brand_id] || STORE_BRAND_NAMES[String(f.brand_id)] || '';
                 if (name) {
                     parts.push(`<a class="filter-pill js-store-ajax-nav" href="${urlWithoutFilterKey(f, 'brand_id')}"><span class="pill-label">Brand</span><span>${String(name).replace(/</g, '&lt;')}</span><span class="pill-x">✕</span></a>`);
@@ -1158,6 +1187,7 @@ window.__SSR_STORE_PRODUCTS__ = @json($productsSeed);
                     reviews: 'متوفر',
                     variation_id: defaultVariant ? Number(defaultVariant.variation_id) : Number(p.variation_id || p.id),
                     variations,
+                    ...(p.source === 'servo' ? { source: 'servo' } : {}),
                 };
             });
         }
@@ -1176,6 +1206,8 @@ window.__SSR_STORE_PRODUCTS__ = @json($productsSeed);
                 const src = String(p.image_url || '').replace(/"/g, '');
                 const brand = escHtml(p.brand || 'Brand');
                 const pid = Number(p.id);
+                const isServo = p.source === 'servo';
+                const servoAttr = isServo ? ' data-source="servo"' : '';
                 const variantsOptions = variations.map((v) => {
                     const vid = Number(v.variation_id);
                     const pr = Number(v.price_inc_tax);
@@ -1191,7 +1223,7 @@ window.__SSR_STORE_PRODUCTS__ = @json($productsSeed);
                         <img class="prod-img" src="${src}" alt="${nm}">
                         <div class="prod-badges">${idx < 2 ? '<span class="badge-new">جديد</span>' : ''}</div>
                         <div class="prod-actions">
-                            <button type="button" class="pa-cart" data-id="${pid}" data-name="${attrEsc(p.name || '')}" data-price="${defaultPrice}" data-variation-id="${defVid}">
+                            <button type="button" class="pa-cart" data-id="${pid}" data-name="${attrEsc(p.name || '')}" data-price="${defaultPrice}" data-variation-id="${defVid}"${servoAttr}>
                                 <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
                                     <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
                                     <line x1="3" y1="6" x2="21" y2="6" />
@@ -1203,7 +1235,7 @@ window.__SSR_STORE_PRODUCTS__ = @json($productsSeed);
                     </div>
                     <div class="prod-info">
                         <div class="prod-brand">${brand}</div>
-                        <div class="prod-name"><a href="${productUrl(pid)}" title="عرض تفاصيل المنتج">${nm}</a></div>
+                        <div class="prod-name"><a href="${productUrl(pid, p.source || null)}" title="عرض تفاصيل المنتج">${nm}</a></div>
 					    <!-- <div class="stars-row"><span class="stars">⭐⭐⭐⭐⭐</span><span class="rev-count">(متوفر)</span></div> -->
                         ${variantBlock}
                         <div class="price-row"><span class="price-now" id="prod-price-${pid}">${fmtStorePrice(defaultPrice)}</span></div>

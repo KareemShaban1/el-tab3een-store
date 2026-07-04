@@ -12,6 +12,7 @@ use App\Services\Tab3eenCatalogService;
 use App\Variation;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
+use Illuminate\Pagination\LengthAwarePaginator;
 
 class StorefrontController extends Controller
 {
@@ -48,11 +49,13 @@ class StorefrontController extends Controller
         ]);
     }
 
-    public function tab3eenCatalog(Tab3eenCatalogService $tab3eenCatalogService)
+    public function tab3eenCatalog(Request $request, Tab3eenCatalogService $tab3eenCatalogService)
     {
+        $categoryId = $request->filled('category_id') ? $request->integer('category_id') : null;
+
         return response()->json([
             'success' => true,
-            'data' => $tab3eenCatalogService->getCatalog(),
+            'data' => $tab3eenCatalogService->getCatalog($categoryId),
         ]);
     }
 
@@ -136,8 +139,12 @@ class StorefrontController extends Controller
         ]);
     }
 
-    public function products(Request $request)
+    public function products(Request $request, Tab3eenCatalogService $tab3eenCatalogService)
     {
+        if ($request->input('source') === 'servo') {
+            return $this->productsServoCatalog($request, $tab3eenCatalogService);
+        }
+
         $business_id = self::resolveBusinessId($request);
         $location_id = $this->resolveLocationId($business_id, $request);
         $business_location_ids = BusinessLocation::where('business_id', $business_id)->where('is_active', 1)->pluck('id');
@@ -524,6 +531,183 @@ class StorefrontController extends Controller
             'location_id' => $location_id,
             'data' => $deals,
         ]);
+    }
+
+    private function productsServoCatalog(Request $request, Tab3eenCatalogService $tab3eenCatalogService)
+    {
+        $business_id = self::resolveBusinessId($request);
+        $location_id = $this->resolveLocationId($business_id, $request);
+        $categoryId = $request->filled('category_id') ? $request->integer('category_id') : null;
+        $catalog = $tab3eenCatalogService->getCatalog($categoryId);
+
+        $servoCategoryName = '';
+        if ($categoryId !== null) {
+            $matchedCategory = collect($catalog)->first(
+                fn ($category) => (int) ($category['id'] ?? 0) === $categoryId
+            );
+            $servoCategoryName = $matchedCategory ? (string) ($matchedCategory['name'] ?? '') : '';
+        }
+
+        $items = collect($catalog)
+            ->flatMap(function ($category) {
+                return collect($category['products'] ?? [])
+                    ->map(fn ($product) => $this->mapServoCatalogProductForStorefront($product, $category));
+            })
+            ->values();
+
+        if ($request->filled('q')) {
+            $needle = mb_strtolower(trim((string) $request->input('q')));
+            $items = $items->filter(function ($item) use ($needle) {
+                return str_contains(mb_strtolower((string) ($item['name'] ?? '')), $needle)
+                    || str_contains(mb_strtolower((string) ($item['brand'] ?? '')), $needle);
+            })->values();
+        }
+
+        $priceMin = $request->filled('price_min') ? (float) $request->input('price_min') : null;
+        $priceMax = $request->filled('price_max') ? (float) $request->input('price_max') : null;
+        if ($priceMin !== null && $priceMax !== null && $priceMin > $priceMax) {
+            [$priceMin, $priceMax] = [$priceMax, $priceMin];
+        }
+        if ($priceMin !== null || $priceMax !== null) {
+            $items = $items->filter(function ($item) use ($priceMin, $priceMax) {
+                $price = (float) ($item['min_price'] ?? 0);
+                if ($priceMin !== null && $price < $priceMin) {
+                    return false;
+                }
+                if ($priceMax !== null && $price > $priceMax) {
+                    return false;
+                }
+
+                return true;
+            })->values();
+        }
+
+        $page = max(1, (int) $request->input('page', 1));
+        $perPage = 20;
+        $total = $items->count();
+        $pageItems = $items->slice(($page - 1) * $perPage, $perPage)->values();
+
+        $products = new LengthAwarePaginator(
+            $pageItems,
+            $total,
+            $perPage,
+            $page,
+            ['path' => $request->url(), 'query' => $request->query()]
+        );
+
+        $filterQuery = array_filter([
+            'source' => 'servo',
+            'q' => $request->filled('q') ? (string) $request->input('q') : null,
+            'category_id' => $request->filled('category_id') ? (string) $request->input('category_id') : null,
+            'price_min' => $request->filled('price_min') ? (string) $request->input('price_min') : null,
+            'price_max' => $request->filled('price_max') ? (string) $request->input('price_max') : null,
+        ], fn ($value) => $value !== null && $value !== '');
+        $filterQueryForJson = empty($filterQuery) ? new \stdClass : $filterQuery;
+
+        $payload = [
+            'success' => true,
+            'business_id' => $business_id,
+            'location_id' => $location_id,
+            'data' => $pageItems->all(),
+            'meta' => [
+                'current_page' => $products->currentPage(),
+                'last_page' => $products->lastPage(),
+                'per_page' => $products->perPage(),
+                'total' => $products->total(),
+                'filters' => $filterQueryForJson,
+                'prev_page_url' => $products->previousPageUrl(),
+                'next_page_url' => $products->nextPageUrl(),
+            ],
+        ];
+
+        if (! $request->expectsJson()) {
+            $categories = Category::where('business_id', $business_id)
+                ->where('category_type', 'product')
+                ->where('parent_id', 0)
+                ->activeInApp()
+                ->storefrontSortOrder()
+                ->select('id', 'name')
+                ->get();
+            $brands = Brands::where('business_id', $business_id)->select('id', 'name')->orderBy('name')->get();
+            $priceSlider = $this->getServoCatalogPriceSliderSpec($items);
+
+            return view('frontend.store.products')->with([
+                'products' => $products,
+                'categories' => $categories,
+                'brands' => $brands,
+                'store_price_slider_min' => $priceSlider['min'],
+                'store_price_slider_max' => $priceSlider['max'],
+                'store_price_slider_step' => $priceSlider['step'],
+                'payload' => $payload,
+                'isServoCatalog' => true,
+                'servoCategoryName' => $servoCategoryName,
+            ]);
+        }
+
+        $payload['pagination_html'] = (string) $products->links();
+
+        return response()->json($payload);
+    }
+
+    /**
+     * @param  array<string, mixed>  $product
+     * @param  array<string, mixed>  $category
+     * @return array<string, mixed>
+     */
+    private function mapServoCatalogProductForStorefront(array $product, array $category): array
+    {
+        $variations = collect($product['variations'] ?? [])
+            ->map(function ($variation) {
+                return [
+                    'variation_id' => (int) ($variation['variation_id'] ?? 0),
+                    'name' => (string) ($variation['name'] ?? 'Default'),
+                    'sku' => (string) ($variation['sku'] ?? ''),
+                    'price_inc_tax' => (float) ($variation['price'] ?? 0),
+                    'qty_available' => (float) ($variation['qty_available'] ?? 0),
+                ];
+            })
+            ->values()
+            ->all();
+
+        $defaultVariation = $variations[0] ?? null;
+
+        return [
+            'id' => (int) ($product['id'] ?? 0),
+            'name' => (string) ($product['name'] ?? ''),
+            'image_url' => (string) ($product['image_url'] ?? ''),
+            'brand' => (string) ($category['name'] ?? ''),
+            'category' => (string) ($category['name'] ?? ''),
+            'source' => 'servo',
+            'in_stock_qty' => collect($variations)->sum('qty_available'),
+            'variation_id' => $defaultVariation ? (int) $defaultVariation['variation_id'] : 0,
+            'min_price' => $defaultVariation ? (float) $defaultVariation['price_inc_tax'] : null,
+            'max_price' => collect($variations)->max('price_inc_tax'),
+            'variations' => $variations,
+        ];
+    }
+
+    /**
+     * @param  \Illuminate\Support\Collection<int, array<string, mixed>>  $items
+     * @return array{min: float, max: float, step: float}
+     */
+    private function getServoCatalogPriceSliderSpec($items): array
+    {
+        $prices = $items
+            ->flatMap(fn ($item) => collect($item['variations'] ?? [])->pluck('price_inc_tax'))
+            ->filter(fn ($price) => $price !== null && (float) $price > 0)
+            ->map(fn ($price) => (float) $price);
+
+        if ($prices->isEmpty()) {
+            return ['min' => 0.0, 'max' => 100000.0, 'step' => 1.0];
+        }
+
+        $min = floor($prices->min());
+        $max = ceil($prices->max());
+        if ($max <= $min) {
+            $max = $min + 1;
+        }
+
+        return ['min' => $min, 'max' => $max, 'step' => 1.0];
     }
 
     /**

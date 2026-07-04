@@ -10,7 +10,7 @@ class Tab3eenCatalogService
     /**
      * @return array<int, array<string, mixed>>
      */
-    public function getCatalog(): array
+    public function getCatalog(?int $categoryId = null): array
     {
         $url = trim((string) config('storefront.tab3een_catalog_api_url', ''));
 
@@ -19,32 +19,85 @@ class Tab3eenCatalogService
         }
 
         try {
-            $response = Http::timeout(15)
-                ->acceptJson()
-                ->get($url);
+            $rawData = $this->fetchCatalogPayload($url, $categoryId);
 
-            if (! $response->successful()) {
-                Log::warning('Tab3een catalog API request failed.', [
-                    'url' => $url,
-                    'status' => $response->status(),
-                ]);
-
+            if ($rawData === null) {
                 return [];
             }
 
-            $body = $response->json();
-            if (($body['status'] ?? null) !== 'success' || ! is_array($body['data'] ?? null)) {
-                return [];
+            $categories = $this->normalizeCategories($rawData);
+
+            if ($categoryId !== null && $categoryId > 0) {
+                $categories = collect($categories)
+                    ->filter(fn ($category) => (int) ($category['id'] ?? 0) === $categoryId)
+                    ->values()
+                    ->all();
             }
 
-            return $this->normalizeCategories($body['data']);
+            return $categories;
         } catch (\Throwable $e) {
             Log::warning('Tab3een catalog API exception: '.$e->getMessage(), [
                 'url' => $url,
+                'category_id' => $categoryId,
             ]);
 
             return [];
         }
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>|null
+     */
+    private function fetchCatalogPayload(string $url, ?int $categoryId): ?array
+    {
+        if ($categoryId !== null && $categoryId > 0) {
+            $postResponse = Http::timeout(15)
+                ->acceptJson()
+                ->post($url, [
+                    'category_id' => $categoryId,
+                ]);
+
+            if ($postResponse->successful()) {
+                $body = $postResponse->json();
+                if (($body['status'] ?? null) === 'success' && is_array($body['data'] ?? null)) {
+                    return $body['data'];
+                }
+            }
+
+            $getFiltered = Http::timeout(15)
+                ->acceptJson()
+                ->get($url, [
+                    'category_id' => $categoryId,
+                ]);
+
+            if ($getFiltered->successful()) {
+                $body = $getFiltered->json();
+                if (($body['status'] ?? null) === 'success' && is_array($body['data'] ?? null)) {
+                    return $body['data'];
+                }
+            }
+        }
+
+        $response = Http::timeout(15)
+            ->acceptJson()
+            ->get($url);
+
+        if (! $response->successful()) {
+            Log::warning('Tab3een catalog API request failed.', [
+                'url' => $url,
+                'status' => $response->status(),
+                'category_id' => $categoryId,
+            ]);
+
+            return null;
+        }
+
+        $body = $response->json();
+        if (($body['status'] ?? null) !== 'success' || ! is_array($body['data'] ?? null)) {
+            return null;
+        }
+
+        return $body['data'];
     }
 
     /**

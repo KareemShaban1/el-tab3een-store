@@ -207,15 +207,15 @@
 			<span style="font-weight:700;font-size:.95rem;">القائمة الرئيسية</span>
 			<button class="mm-close" id="mob-menu-close">✕</button>
 		</div>
-		<a href="#" class="mm-item">🏠 الرئيسية <span>›</span></a>
-		<a href="#" class="mm-item">📱 هواتف <span>›</span></a>
-		<a href="#" class="mm-item">💻 لابتوب <span>›</span></a>
-		<a href="#" class="mm-item">🎮 جيمنج <span>›</span></a>
-		<a href="#" class="mm-item">📺 تليفزيون <span>›</span></a>
-		<a href="#" class="mm-item">🏠 المنزل الذكي <span>›</span></a>
-		<a href="#" class="mm-item">🔌 إكسسوارات <span>›</span></a>
-		<a href="#" class="mm-item" style="color:var(--accent);font-weight:700;">🔥 العروض
-			<span>›</span></a>
+		<a href="{{ route('welcome') }}" class="mm-item">🏠 الرئيسية <span>›</span></a>
+		<div id="mob-menu-categories">
+			<div class="mm-item" style="pointer-events:none;color:var(--muted);">جاري تحميل الأقسام…
+			</div>
+		</div>
+		<a href="{{ route('store.products.index') }}" class="mm-item">📦 كل المنتجات <span>›</span></a>
+		<!-- <a href="{{ route('store.flash_deals.index') }}" class="mm-item"
+			style="color:var(--accent);font-weight:700;">🔥 العروض
+			<span>›</span></a> -->
 	</div>
 
 	<main class="page-wrap">
@@ -407,6 +407,7 @@
 	const STORE_CHECKOUT_FORM_URL = "{{ route('store.checkout.form') }}";
 	const STORE_CATEGORIES_URL = "{{ route('store.categories.index') }}";
 	const STORE_PRODUCTS_URL = "{{ route('store.products.index') }}";
+	const STORE_WELCOME_URL = "{{ route('welcome') }}";
 	const STORE_FLASH_DEALS_URL = "{{ route('store.flash_deals.index') }}";
 	const STORE_TAB3EEN_CATALOG_URL = "{{ route('store.tab3een.catalog') }}";
 	const TAB3EEN_CATALOG_API_URL = @json(config('storefront.tab3een_catalog_api_url'));
@@ -838,6 +839,47 @@
 		}
 	}
 
+	function normalizeServoCategoriesForGrid(catalog) {
+		return (catalog || [])
+			.map((c) => ({
+				id: Number(c.id),
+				name: String(c.name || ''),
+				count: Array.isArray(c.products) ? c.products.length : Number(c.count || 0),
+				image_url: String(c.image_url || c.image || ''),
+				source: 'servo',
+			}))
+			.filter((c) => c.id > 0 && c.name && c.count > 0);
+	}
+
+	async function fetchServoCategoriesList() {
+		if (Array.isArray(window.__SSR_SERVO_CATEGORIES__)) {
+			return normalizeServoCategoriesForGrid(window.__SSR_SERVO_CATEGORIES__);
+		}
+		try {
+			const catalog = await fetchTab3eenCatalog();
+			return normalizeServoCategoriesForGrid(catalog);
+		} catch (e) {
+			return [];
+		}
+	}
+
+	function mergeStoreAndServoCategories(localCategories, servoCategories) {
+		const local = (localCategories || []).map((c) => ({
+			...c,
+			source: 'local',
+		}));
+		return local.concat(servoCategories || []);
+	}
+
+	function categoryCardHref(c) {
+		const u = new URL(STORE_PRODUCTS_URL, window.location.origin);
+		u.searchParams.set('category_id', String(c.id));
+		if (c.source === 'servo') {
+			u.searchParams.set('source', 'servo');
+		}
+		return u.pathname + '?' + u.searchParams.toString();
+	}
+
 	function renderDynamicCategories(categories) {
 		const grid = $('dynamic-categories-grid');
 		if (!grid) return;
@@ -847,15 +889,13 @@
 			return;
 		}
 
-		const base = new URL(STORE_PRODUCTS_URL, window.location.origin);
 		grid.innerHTML = categories.map((c, idx) => {
-			const u = new URL(base.href);
-			u.searchParams.set('category_id', String(c.id));
+			const href = categoryCardHref(c);
 			const iconHtml = c.image_url ?
 				`<img src="${megaEsc(c.image_url)}" alt="${megaEsc(c.name || '')}" class="cat-icon-img">` :
 				categoryIconByIndex(idx);
 			return `
-			<a href="${u.pathname + '?' + u.searchParams.toString()}" class="cat-card">
+			<a href="${href}" class="cat-card">
 				<div class="cat-icon${c.image_url ? ' cat-icon--image' : ''}" style="background:#f8f9fc;">${iconHtml}</div>
 				<div class="cat-name">${megaEsc(c.name || '')}</div>
 				<div class="cat-count">+${Number(c.count || 0).toLocaleString('ar-EG')} منتج</div>
@@ -949,6 +989,25 @@
 		loadMegaCategoryProducts('', 'كل المنتجات');
 	}
 
+	function renderMobMenuCategories(categories) {
+		const wrap = $('mob-menu-categories');
+		if (!wrap) return;
+
+		const base = new URL(STORE_PRODUCTS_URL, window.location.origin);
+		if (!categories.length) {
+			wrap.innerHTML =
+				`<div class="mm-item" style="pointer-events:none;color:var(--muted);">لا توجد أقسام متاحة</div>`;
+			return;
+		}
+
+		wrap.innerHTML = categories.map((c, idx) => {
+			const u = new URL(base.href);
+			u.searchParams.set('category_id', String(c.id));
+			const icon = categoryIconByIndex(idx);
+			return `<a href="${u.pathname + '?' + u.searchParams.toString()}" class="mm-item">${icon} ${megaEsc(c.name || '')} <span>›</span></a>`;
+		}).join('');
+	}
+
 	function syncMegaProductsIntoCatalog(items) {
 		(items || []).forEach((p) => {
 			const variations = Array.isArray(p.variations) ? p.variations : [];
@@ -1034,9 +1093,14 @@
 	}
 
 	async function loadDynamicCategories() {
-		const categories = await fetchStoreCategoriesList();
+		const [localCategories, servoCategories] = await Promise.all([
+			fetchStoreCategoriesList(),
+			fetchServoCategoriesList(),
+		]);
+		const categories = mergeStoreAndServoCategories(localCategories, servoCategories);
 		renderDynamicCategories(categories);
-		renderMegaMenuCategories(categories);
+		renderMegaMenuCategories(localCategories);
+		renderMobMenuCategories(localCategories);
 	}
 
 	function renderDynamicFlashDeals(deals) {
@@ -1488,6 +1552,9 @@
 		tog?.addEventListener('click', openMenu);
 		cls?.addEventListener('click', closeMenu);
 		overlay?.addEventListener('click', closeMenu);
+		menu?.addEventListener('click', (e) => {
+			if (e.target.closest('a.mm-item')) closeMenu();
+		});
 
 		// Hard reset on load so menu never appears opened by default.
 		closeMenu();
@@ -1669,9 +1736,10 @@
 				try {
 					const res = await fetch(
 						url + (url.includes(
-								'?') ?
+								'?'
+								) ?
 							'&' : '?'
-							) +
+						) +
 						'q=' +
 						encodeURIComponent(
 							q), {

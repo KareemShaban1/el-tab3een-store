@@ -125,7 +125,7 @@ class StoreCheckoutController extends Controller
                 $customer_contact,
                 $business_id,
                 $servo_client_name,
-                $local_result['transaction'] ?? null,
+                isset($local_result['transaction']) ? $local_result['transaction']->id : null,
                 $validated['idempotency_key'] ?? null
             );
         }

@@ -2,219 +2,308 @@
 
 @section('content')
 <style>
-    .order-page {
-        display: grid;
-        gap: 16px;
-padding: 30px;
-    }
-    .order-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 12px;
-        flex-wrap: wrap;
-    }
-    .order-id {
-        margin: 0;
-        font-size: 24px;
-    }
-    .order-sub {
-        margin: 6px 0 0;
-        color: #6b7280;
-        font-size: 14px;
-    }
-    .chip {
-        display: inline-flex;
-        align-items: center;
-        border-radius: 999px;
-        padding: 6px 10px;
-        font-size: 12px;
-        font-weight: 700;
-        line-height: 1;
-        text-transform: capitalize;
-        white-space: nowrap;
-    }
-    .chip-new, .chip-ordered, .chip-due { background: #fef3c7; color: #92400e; }
-    .chip-confirmed, .chip-partial, .chip-packed { background: #dbeafe; color: #1e40af; }
-    .chip-shipped { background: #e0e7ff; color: #3730a3; }
-    .chip-delivered, .chip-paid, .chip-success { background: #dcfce7; color: #166534; }
-    .chip-cancelled, .chip-refunded, .chip-failed { background: #fee2e2; color: #b91c1c; }
-    .chip-default { background: #f3f4f6; color: #374151; }
-    .order-grid {
-        display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 12px;
-    }
-    .metric-card {
-        border: 1px solid #e5e7eb;
-        border-radius: 12px;
-        padding: 12px;
-        background: #fff;
-    }
-    .metric-label {
-        margin: 0;
-        font-size: 12px;
-        color: #6b7280;
-    }
-    .metric-value {
-        margin: 8px 0 0;
-        font-size: 18px;
-        font-weight: 800;
-    }
-    .section-title {
-        margin: 0 0 10px;
-        font-size: 18px;
-    }
-    .items-table {
-        width: 100%;
-        border-collapse: collapse;
-    }
-    .items-table th, .items-table td {
-        padding: 10px 8px;
-        border-bottom: 1px solid #f1f5f9;
-        text-align: left;
-        vertical-align: top;
-    }
-    .items-table th {
-        color: #64748b;
-        font-size: 12px;
-        text-transform: uppercase;
-        letter-spacing: .03em;
-    }
-    .txt-right {
-        text-align: right !important;
-    }
-    .muted {
-        color: #6b7280;
-        font-size: 12px;
-    }
-    .card-actions {
-        display: flex;
-        gap: 10px;
-        flex-wrap: wrap;
-    }
-    .btn-soft {
-        border: 1px solid #e5e7eb;
-        border-radius: 10px;
-        padding: 8px 12px;
-        color: #111827;
-        text-decoration: none;
-        font-weight: 600;
-        background: #fff;
-    }
-    .btn-soft:hover { background: #f8fafc; }
-    @media (max-width: 900px) {
-        .order-grid {
-            grid-template-columns: 1fr;
-        }
-    }
+.order-page {
+	display: grid;
+	gap: 16px;
+	padding: 30px;
+}
+
+.order-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	flex-wrap: wrap;
+}
+
+.order-id {
+	margin: 0;
+	font-size: 24px;
+}
+
+.order-sub {
+	margin: 6px 0 0;
+	color: #6b7280;
+	font-size: 14px;
+}
+
+.chip {
+	display: inline-flex;
+	align-items: center;
+	border-radius: 999px;
+	padding: 6px 10px;
+	font-size: 12px;
+	font-weight: 700;
+	line-height: 1;
+	text-transform: capitalize;
+	white-space: nowrap;
+}
+
+.chip-new,
+.chip-ordered,
+.chip-due {
+	background: #fef3c7;
+	color: #92400e;
+}
+
+.chip-confirmed,
+.chip-partial,
+.chip-packed {
+	background: #dbeafe;
+	color: #1e40af;
+}
+
+.chip-shipped {
+	background: #e0e7ff;
+	color: #3730a3;
+}
+
+.chip-delivered,
+.chip-paid,
+.chip-success {
+	background: #dcfce7;
+	color: #166534;
+}
+
+.chip-cancelled,
+.chip-refunded,
+.chip-failed {
+	background: #fee2e2;
+	color: #b91c1c;
+}
+
+.chip-default {
+	background: #f3f4f6;
+	color: #374151;
+}
+
+.order-grid {
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	gap: 12px;
+}
+
+.metric-card {
+	border: 1px solid #e5e7eb;
+	border-radius: 12px;
+	padding: 12px;
+	background: #fff;
+}
+
+.metric-label {
+	margin: 0;
+	font-size: 12px;
+	color: #6b7280;
+}
+
+.metric-value {
+	margin: 8px 0 0;
+	font-size: 18px;
+	font-weight: 800;
+}
+
+.section-title {
+	margin: 0 0 10px;
+	font-size: 18px;
+}
+
+.items-table {
+	width: 100%;
+	border-collapse: collapse;
+}
+
+.items-table th,
+.items-table td {
+	padding: 10px 8px;
+	border-bottom: 1px solid #f1f5f9;
+	text-align: left;
+	vertical-align: top;
+}
+
+.items-table th {
+	color: #64748b;
+	font-size: 12px;
+	text-transform: uppercase;
+	letter-spacing: .03em;
+}
+
+.txt-right {
+	text-align: right !important;
+}
+
+.muted {
+	color: #6b7280;
+	font-size: 12px;
+}
+
+.card-actions {
+	display: flex;
+	gap: 10px;
+	flex-wrap: wrap;
+}
+
+.btn-soft {
+	border: 1px solid #e5e7eb;
+	border-radius: 10px;
+	padding: 8px 12px;
+	color: #111827;
+	text-decoration: none;
+	font-weight: 600;
+	background: #fff;
+}
+
+.btn-soft:hover {
+	background: #f8fafc;
+}
+
+@media (max-width: 900px) {
+	.order-grid {
+		grid-template-columns: 1fr;
+	}
+}
 </style>
 
 @php
-    $orderStatus = (string) ($order->ecommerce_order_status ?: $order->sub_status ?: 'new');
-    if (strpos($orderStatus, 'ecommerce_') === 0) {
-        $orderStatus = substr($orderStatus, 10);
-    }
-    $paymentStatus = (string) ($order->payment_status ?: 'pending');
-    $shippingStatus = (string) ($order->shipping_status ?: 'pending');
-    $statusClass = 'chip-' . strtolower(str_replace([' ', '_'], '-', $orderStatus));
-    $paymentClass = 'chip-' . strtolower(str_replace([' ', '_'], '-', $paymentStatus));
-    $shippingClass = 'chip-' . strtolower(str_replace([' ', '_'], '-', $shippingStatus));
-    $shippingAddress = $order->shipping_address(true);
-    $hasPartnerItems = ! empty($servoItems);
+$orderStatus = (string) ($order->ecommerce_order_status ?: $order->sub_status ?: 'new');
+if (strpos($orderStatus, 'ecommerce_') === 0) {
+$orderStatus = substr($orderStatus, 10);
+}
+$paymentStatus = (string) ($order->payment_status ?: 'pending');
+$shippingStatus = (string) ($order->shipping_status ?: 'pending');
+$statusClass = 'chip-' . strtolower(str_replace([' ', '_'], '-', $orderStatus));
+$paymentClass = 'chip-' . strtolower(str_replace([' ', '_'], '-', $paymentStatus));
+$shippingClass = 'chip-' . strtolower(str_replace([' ', '_'], '-', $shippingStatus));
+$shippingAddress = $order->shipping_address(true);
+$servoItems = $servoItems ?? [];
+$hasPartnerItems = ! empty($servoItems);
+$partnerTotal = collect($servoItems)->sum(fn (array $item) => (float) ($item['line_total'] ?? 0));
+$displayGrandTotal = (float) $order->final_total + ($partnerTotal > 0 ? $partnerTotal : 0);
 @endphp
 
 <div class="container order-page">
-    @include('frontend.store.partials.flash_status')
+	@include('frontend.store.partials.flash_status')
 
-    <div class="card">
-        <div class="order-header">
-            <div>
-                <h2 class="order-id"> {{ __('lang_v1.order_id') }} #{{ $order->invoice_no ?: $order->id }}</h2>
-                <p class="order-sub"> {{ __('lang_v1.placed_on') }} {{ \Carbon\Carbon::parse($order->transaction_date)->format('d M Y, h:i A') }}</p>
-            </div>
-            <span class="chip {{ in_array($statusClass, ['chip-new','chip-confirmed','chip-packed','chip-shipped','chip-delivered','chip-cancelled','chip-refunded']) ? $statusClass : 'chip-default' }}">
-                {{ __('lang_v1.'.str_replace('_', ' ', strtolower($orderStatus))) }}
-            </span>
-            @if ($hasPartnerItems)
+	<div class="card">
+		<div class="order-header">
+			<div>
+				<h2 class="order-id"> {{ __('lang_v1.order_id') }}
+					#{{ $order->invoice_no ?: $order->id }}</h2>
+				<p class="order-sub"> {{ __('lang_v1.placed_on') }}
+					{{ \Carbon\Carbon::parse($order->transaction_date)->format('d M Y, h:i A') }}
+				</p>
+			</div>
+			<span
+				class="chip {{ in_array($statusClass, ['chip-new','chip-confirmed','chip-packed','chip-shipped','chip-delivered','chip-cancelled','chip-refunded']) ? $statusClass : 'chip-default' }}">
+				{{ __('lang_v1.'.str_replace('_', ' ', strtolower($orderStatus))) }}
+			</span>
+			<!-- @if ($hasPartnerItems)
                 <span class="chip chip-default">{{ __('storefront.orders.type_mixed') }}</span>
-            @endif
-        </div>
-    </div>
+            @endif -->
+		</div>
+	</div>
 
-    <div class="order-grid">
-        <div class="metric-card">
-            <p class="metric-label"> {{ __('lang_v1.total_amount') }}</p>
-            <p class="metric-value">{{ number_format((float) $order->final_total, 2) }}</p>
-        </div>
-        <div class="metric-card">
-            <p class="metric-label"> {{ __('lang_v1.payment') }}</p>
-            <p class="metric-value">
-                <span class="chip {{ in_array($paymentClass, ['chip-due','chip-paid','chip-partial']) ? $paymentClass : 'chip-default' }}">
-                    {{ __('lang_v1.'.str_replace('_', ' ', strtolower($paymentStatus))) }}
-                </span>
-            </p>
-        </div>
-        <div class="metric-card">
-            <p class="metric-label"> {{ __('lang_v1.shipping') }}</p>
-            <p class="metric-value">
-                <span class="chip {{ in_array($shippingClass, ['chip-ordered','chip-packed','chip-shipped','chip-delivered']) ? $shippingClass : 'chip-default' }}">
-                    {{ __('lang_v1.'.str_replace('_', ' ', strtolower($shippingStatus))) }}
-                </span>
-            </p>
-        </div>
-    </div>
+	<div class="order-grid">
+		<div class="metric-card">
+			<p class="metric-label"> {{ __('lang_v1.total_amount') }}</p>
+			<p class="metric-value">{{ number_format($displayGrandTotal, 2) }}</p>
+		</div>
+		<div class="metric-card">
+			<p class="metric-label"> {{ __('lang_v1.payment') }}</p>
+			<p class="metric-value">
+				<span
+					class="chip {{ in_array($paymentClass, ['chip-due','chip-paid','chip-partial']) ? $paymentClass : 'chip-default' }}">
+					{{ __('lang_v1.'.str_replace('_', ' ', strtolower($paymentStatus))) }}
+				</span>
+			</p>
+		</div>
+		<div class="metric-card">
+			<p class="metric-label"> {{ __('lang_v1.shipping') }}</p>
+			<p class="metric-value">
+				<span
+					class="chip {{ in_array($shippingClass, ['chip-ordered','chip-packed','chip-shipped','chip-delivered']) ? $shippingClass : 'chip-default' }}">
+					{{ __('lang_v1.'.str_replace('_', ' ', strtolower($shippingStatus))) }}
+				</span>
+			</p>
+		</div>
+	</div>
 
-    <div class="card">
-        <h3 class="section-title">{{ __('storefront.orders.local_items') }}</h3>
-        <table class="items-table" style="text-align: right;">
-            <thead>
-                <tr>
-                    <th class="txt-right"> {{ __('lang_v1.item') }}</th>
-                    <th class="txt-right"> {{ __('lang_v1.qty') }}</th>
-                    <th class="txt-right"> {{ __('lang_v1.unit_price') }}</th>
-                    <th class="txt-right"> {{ __('lang_v1.line_total') }}</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach($order->sell_lines as $line)
-                    @php
-                        $lineQty = (float) $line->quantity;
-                        $linePrice = (float) $line->unit_price_inc_tax;
-                        $itemName = optional($line->product)->name ?: 'Product #' . $line->product_id;
-                        $variantName = optional($line->variations)->name ?: ('Variation #' . $line->variation_id);
-                    @endphp
-                    <tr>
-                        <td class="txt-right">
-                            <div><strong>{{ $itemName }}</strong></div>
-                            <div class="muted">{{ $variantName }}</div>
-                        </td>
-                        <td class="txt-right">{{ number_format($lineQty, 2) }}</td>
-                        <td class="txt-right">{{ number_format($linePrice, 2) }}</td>
-                        <td class="txt-right">{{ number_format($lineQty * $linePrice, 2) }}</td>
-                    </tr>
-                @endforeach
-            </tbody>
-            <tfoot>
-                <tr>
-                    <td colspan="3" class="txt-right"><strong> {{ __('lang_v1.grand_total') }}</strong></td>
-                    <td class="txt-right"><strong>{{ number_format((float) $order->final_total, 2) }}</strong></td>
-                </tr>
-            </tfoot>
-        </table>
-    </div>
+	<div class="card">
+		<h3 class="section-title">{{ __('storefront.orders.local_items') }}</h3>
+		<table class="items-table" style="text-align: right;">
+			<thead>
+				<tr>
+					<th class="txt-right"> {{ __('lang_v1.item') }}</th>
+					<th class="txt-right"> {{ __('lang_v1.qty') }}</th>
+					<th class="txt-right"> {{ __('lang_v1.unit_price') }}</th>
+					<th class="txt-right"> {{ __('lang_v1.line_total') }}</th>
+				</tr>
+			</thead>
+			<tbody>
+				@foreach($order->sell_lines as $line)
+				@php
+				$lineQty = (float) $line->quantity;
+				$linePrice = (float) $line->unit_price_inc_tax;
+				$itemName = optional($line->product)->name ?: 'Product #' . $line->product_id;
+				$variantName = optional($line->variations)->name ?: ('Variation #' .
+				$line->variation_id);
+				@endphp
+				<tr>
+					<td class="txt-right">
+						<div><strong>{{ $itemName }}</strong></div>
+						<div class="muted">{{ $variantName }}</div>
+					</td>
+					<td class="txt-right">{{ number_format($lineQty, 2) }}</td>
+					<td class="txt-right">{{ number_format($linePrice, 2) }}</td>
+					<td class="txt-right">{{ number_format($lineQty * $linePrice, 2) }}
+					</td>
+				</tr>
+				@endforeach
+				@foreach($servoItems as $item)
+				<tr>
+					<td class="txt-right">
+						<div><strong>{{ $item['product_name'] }}</strong></div>
+						@if (! empty($item['variation_name']))
+						<div class="muted">{{ $item['variation_name'] }}</div>
+						@endif
+					</td>
+					<td class="txt-right">{{ number_format((float) $item['quantity'], 2) }}</td>
+					<td class="txt-right">
+						@if ($item['unit_price'] !== null)
+						{{ number_format((float) $item['unit_price'], 2) }}
+						@else
+						—
+						@endif
+					</td>
+					<td class="txt-right">
+						@if ($item['line_total'] !== null)
+						{{ number_format((float) $item['line_total'], 2) }}
+						@else
+						—
+						@endif
+					</td>
+				</tr>
+				@endforeach
+			</tbody>
+			<tfoot>
+				<tr>
+					<td colspan="3" class="txt-right"><strong>
+							{{ __('lang_v1.grand_total') }}</strong></td>
+					<td class="txt-right">
+						<strong>{{ number_format($displayGrandTotal, 2) }}</strong>
+					</td>
+				</tr>
+			</tfoot>
+		</table>
+	</div>
 
-    @include('frontend.store.account.partials.partner_items', [
-        'servoItems' => $servoItems ?? [],
-        'servoOrders' => $servoOrders ?? collect(),
-    ])
-
-<div class="card">
-    	<h3 class="section-title"> {{ __('lang_v1.shipping_details') }}</h3>
-    @if(!empty($shippingAddress))
-        <div><strong> {{ __('lang_v1.name') }}:</strong> {{ $shippingAddress['name'] ?? '-' }}</div>
-        <div><strong> {{ __('lang_v1.mobile') }}:</strong> {{ data_get($order->order_addresses ? json_decode($order->order_addresses, true) : [], 'shipping_address.shipping_mobile', '-') }}</div>
-        <div><strong> {{ __('lang_v1.address') }}:</strong> {{ implode(', ', array_filter([
+	<div class="card">
+		<h3 class="section-title"> {{ __('lang_v1.shipping_details') }}</h3>
+		@if(!empty($shippingAddress))
+		<div><strong> {{ __('lang_v1.name') }}:</strong> {{ $shippingAddress['name'] ?? '-' }}</div>
+		<div><strong> {{ __('lang_v1.mobile') }}:</strong>
+			{{ data_get($order->order_addresses ? json_decode($order->order_addresses, true) : [], 'shipping_address.shipping_mobile', '-') }}
+		</div>
+		<div><strong> {{ __('lang_v1.address') }}:</strong> {{ implode(', ', array_filter([
             $shippingAddress['address_line_1'] ?? null,
             $shippingAddress['address_line_2'] ?? null,
             $shippingAddress['city'] ?? null,
@@ -222,17 +311,18 @@ padding: 30px;
             $shippingAddress['country'] ?? null,
             $shippingAddress['zipcode'] ?? null,
         ])) ?: '-' }}</div>
-    @else
-        <div class="muted"> {{ __('lang_v1.no_shipping_details_found_for_this_order') }}</div>
-    @endif
-</div>
+		@else
+		<div class="muted"> {{ __('lang_v1.no_shipping_details_found_for_this_order') }}</div>
+		@endif
+	</div>
 
-    <div class="card">
-        <div class="card-actions">
-            <a href="{{ route('store.account.orders') }}" class="btn-soft"> {{ __('lang_v1.back_to_orders') }}</a>
-            <a href="{{ route('store.products.index') }}" class="btn-soft"> {{ __('lang_v1.continue_shopping') }}</a>
-        </div>
-    </div>
+	<div class="card">
+		<div class="card-actions">
+			<a href="{{ route('store.account.orders') }}" class="btn-soft">
+				{{ __('lang_v1.back_to_orders') }}</a>
+			<a href="{{ route('store.products.index') }}" class="btn-soft">
+				{{ __('lang_v1.continue_shopping') }}</a>
+		</div>
+	</div>
 </div>
 @endsection
-

@@ -70,6 +70,19 @@
 </section>
 
 <!-- ===================== CATEGORIES ===================== -->
+@php
+$servoCategoriesForGrid = collect($tab3eenCatalog ?? [])->map(function ($category) {
+	return [
+		'id' => (int) ($category['id'] ?? 0),
+		'name' => (string) ($category['name'] ?? ''),
+		'image' => (string) ($category['image'] ?? ''),
+		'products' => $category['products'] ?? [],
+	];
+})->filter(fn ($category) => $category['id'] > 0 && count($category['products']) > 0)->values();
+@endphp
+<script>
+window.__SSR_SERVO_CATEGORIES__ = @json($servoCategoriesForGrid);
+</script>
 <section class="cats-section section-sm">
 	<div class="container">
 		<div class="sec-head-row">
