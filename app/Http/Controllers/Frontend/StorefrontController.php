@@ -608,6 +608,13 @@ class StorefrontController extends Controller
         //         return (int) Business::query()->value('id');
     }
 
+    public function search(Request $request)
+    {
+        return view('frontend.store.search', [
+            'initialQuery' => trim((string) $request->input('q', '')),
+        ]);
+    }
+
     /**
      * JSON autocomplete: active-in-app categories + catalog products (active, in-app, in stock).
      */

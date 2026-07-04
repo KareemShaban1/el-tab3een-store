@@ -335,20 +335,22 @@
 	<!-- ===================== MOBILE BOTTOM NAV ===================== -->
 	<nav class="mob-nav">
 		<div class="mob-nav-inner">
-			<button class="mob-nav-item active">
+			<a href="{{ route('welcome') }}"
+				class="mob-nav-item{{ request()->routeIs('welcome') ? ' active' : '' }}">
 				<svg fill="none" stroke="currentColor" stroke-width="1.9" viewBox="0 0 24 24">
 					<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
 					<polyline points="9 22 9 12 15 12 15 22" />
 				</svg>
 				الرئيسية
-			</button>
-			<button class="mob-nav-item">
+			</a>
+			<a href="{{ route('store.search') }}"
+				class="mob-nav-item{{ request()->routeIs('store.search') ? ' active' : '' }}">
 				<svg fill="none" stroke="currentColor" stroke-width="1.9" viewBox="0 0 24 24">
 					<circle cx="11" cy="11" r="8" />
 					<path d="m21 21-4.35-4.35" />
 				</svg>
 				بحث
-			</button>
+			</a>
 			<button class="mob-nav-item" id="mob-cart-btn" style="position:relative;">
 				<svg fill="none" stroke="currentColor" stroke-width="1.9" viewBox="0 0 24 24">
 					<path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
@@ -1578,6 +1580,124 @@
 		});
 	}
 
+	/* ── Search page: live results via suggest API ── */
+	function initStorePageSearch() {
+		const input = document.getElementById('store-page-search-q');
+		const box = document.getElementById('store-page-search-results');
+		const hint = document.getElementById('store-page-search-hint');
+		const form = document.getElementById('store-page-search-form');
+		const url = window.__storeSearchSuggestUrl;
+		if (!input || !box || !url) return;
+
+		let timer = null;
+
+		function esc(s) {
+			const d = document.createElement('div');
+			d.textContent = s;
+			return d.innerHTML;
+		}
+
+		function setHint(text, loading) {
+			if (!hint) return;
+			hint.textContent = text || '';
+			hint.classList.toggle('is-loading', !!loading);
+		}
+
+		function renderItem(r) {
+			const meta = r.type === 'category' ? 'قسم' : 'منتج';
+			const href = String(r.url || '').replace(/"/g, '&quot;');
+			return (
+				'<a class="store-search-item" href="' + href + '">' +
+				'<span class="store-search-item-name">' + esc(r.name) + '</span>' +
+				'<span class="store-search-item-meta">' + meta + '</span>' +
+				'</a>'
+			);
+		}
+
+		function render(items, q) {
+			if (q.length < 3) {
+				box.innerHTML = '';
+				setHint('اكتب 3 أحرف على الأقل للبحث', false);
+				return;
+			}
+			if (!items.length) {
+				box.innerHTML =
+					'<div class="search-page-empty">لا توجد نتائج لـ «' + esc(q) + '»</div>';
+				setHint('', false);
+				return;
+			}
+
+			const categories = items.filter((r) => r.type === 'category');
+			const products = items.filter((r) => r.type === 'product');
+			let html = '';
+
+			if (categories.length) {
+				html +=
+					'<div class="search-page-group"><h2 class="search-page-group-title">الأقسام</h2>' +
+					'<div class="search-page-list">' +
+					categories.map(renderItem).join('') +
+					'</div></div>';
+			}
+			if (products.length) {
+				html +=
+					'<div class="search-page-group"><h2 class="search-page-group-title">المنتجات</h2>' +
+					'<div class="search-page-list">' +
+					products.map(renderItem).join('') +
+					'</div></div>';
+			}
+
+			const allUrl = @json(route('store.products.index')) +
+				'?q=' + encodeURIComponent(q);
+			html +=
+				'<a class="search-page-all-link" href="' + allUrl + '">عرض كل المنتجات المطابقة ←</a>';
+
+			box.innerHTML = html;
+			setHint('', false);
+		}
+
+		async function fetchSuggest() {
+			clearTimeout(timer);
+			const q = input.value.trim();
+			if (q.length < 3) {
+				render([], q);
+				return;
+			}
+			setHint('جاري البحث...', true);
+			timer = setTimeout(async () => {
+				try {
+					const res = await fetch(
+						url + (url.includes('?') ? '&' : '?') + 'q=' + encodeURIComponent(q), {
+							headers: {
+								Accept: 'application/json',
+								'X-Requested-With': 'XMLHttpRequest',
+							},
+							credentials: 'same-origin',
+						}
+					);
+					const data = await res.json();
+					if (input.value.trim() !== q) return;
+					render(Array.isArray(data.results) ? data.results : [], q);
+				} catch (e) {
+					if (input.value.trim() === q) {
+						box.innerHTML =
+							'<div class="search-page-empty">تعذر تحميل النتائج. حاول مرة أخرى.</div>';
+						setHint('', false);
+					}
+				}
+			}, 280);
+		}
+
+		input.addEventListener('input', fetchSuggest);
+		form?.addEventListener('submit', (e) => {
+			e.preventDefault();
+			fetchSuggest();
+		});
+
+		if (input.value.trim().length >= 3) {
+			fetchSuggest();
+		}
+	}
+
 	/* ── Newsletter ── */
 	function initNewsletter() {
 		$('news-form')?.addEventListener('submit', e => {
@@ -1640,6 +1760,7 @@
 		});
 		initMobMenu();
 		initStoreHeaderSearch();
+		initStorePageSearch();
 		initNewsletter();
 		startCountdown();
 		updateBadges();
