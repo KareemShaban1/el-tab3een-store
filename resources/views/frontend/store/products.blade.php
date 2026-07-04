@@ -626,7 +626,7 @@ window.__SSR_STORE_PRODUCTS__ = @json($productsSeed);
 <div id="filter-backdrop" class="sheet-backdrop"></div>
 <div id="filter-sheet" class="filter-sheet">
     <div class="sheet-head">
-        <h3 style="margin:0;">Filters</h3>
+        <h3 style="margin:0;">{{ __('lang_v1.filters') }}</h3>
         <button type="button" class="sheet-close" id="close-filter-sheet">✕</button>
     </div>
 
@@ -692,34 +692,34 @@ window.__SSR_STORE_PRODUCTS__ = @json($productsSeed);
 
     <form method="GET" action="{{ route('store.products.index') }}" class="js-store-filter-form" id="store-products-filters-mobile" novalidate>
         <div class="filter-group">
-            <label for="filter-q-mobile">Search</label>
+            <label for="filter-q-mobile">{{ __('lang_v1.search') }}</label>
             <div class="search-wrap">
-                <input id="filter-q-mobile" type="text" name="q" value="{{ request('q') }}" placeholder="Product name">
+                <input id="filter-q-mobile" type="text" name="q" value="{{ request('q') }}" placeholder="{{ __('lang_v1.product_name') }}">
                 @if($activeQ !== '')
                     <a class="clear-q-btn js-store-ajax-nav" href="{{ route('store.products.index', $queryWithoutQ) }}" aria-label="Clear search">✕</a>
                 @endif
             </div>
         </div>
         <div class="filter-group">
-            <label for="filter-category-mobile">Category</label>
+            <label for="filter-category-mobile">{{ __('lang_v1.category') }}</label>
             <select id="filter-category-mobile" name="category_id">
-                <option value="">All</option>
+                <option value="">{{ __('lang_v1.all') }}</option>
                 @foreach($categories as $category)
                     <option value="{{ $category->id }}" @selected((string)request('category_id') === (string)$category->id)>{{ $category->name }}</option>
                 @endforeach
             </select>
         </div>
         <div class="filter-group">
-            <label for="filter-brand-mobile">Brand</label>
+            <label for="filter-brand-mobile">{{ __('lang_v1.brand') }}</label>
             <select id="filter-brand-mobile" name="brand_id">
-                <option value="">All</option>
+                <option value="">{{ __('lang_v1.all') }}</option>
                 @foreach($brands as $brand)
                     <option value="{{ $brand->id }}" @selected((string)request('brand_id') === (string)$brand->id)>{{ $brand->name }}</option>
                 @endforeach
             </select>
         </div>
         <div class="filter-group filter-group--price-slider">
-            <label>Price range</label>
+            <label>{{ __('lang_v1.price_range') }}</label>
             <div class="price-dual-range">
                 <div class="price-dual-range__values" id="price-slider-label-mobile"></div>
                 <div class="price-dual-range__rail">
@@ -735,8 +735,8 @@ window.__SSR_STORE_PRODUCTS__ = @json($productsSeed);
             <input type="hidden" name="price_max" id="filter-price-max-mobile" value="{{ $hiddenPriceMax }}">
         </div>
         <div class="filter-actions">
-            <button class="btn" type="submit">Apply</button>
-            <button type="button" class="btn-soft js-store-filters-reset">Reset</button>
+            <button class="btn" type="submit">{{ __('lang_v1.apply') }}</button>
+            <button type="button" class="btn-soft js-store-filters-reset">{{ __('lang_v1.reset') }}</button>
         </div>
     </form>
 </div>

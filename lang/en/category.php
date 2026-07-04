@@ -24,5 +24,7 @@ return [
     'deleted_success' => 'Category deleted successfully',
     'add_category' => 'Add Category',
     'edit_category' => 'Edit Category',
+    'category_image' => 'Category image',
+    'category_image_help' => 'Optional. JPG, PNG or GIF. Recommended square image.',
 
 ];

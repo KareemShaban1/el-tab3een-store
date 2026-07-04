@@ -1116,6 +1116,18 @@
 		transition: var(--t)
 	}
 
+	.cat-icon--image {
+		padding: 6px;
+		overflow: hidden;
+	}
+
+	.cat-icon-img {
+		width: 100%;
+		height: 100%;
+		object-fit: contain;
+		border-radius: calc(var(--r) - 4px);
+	}
+
 	.cat-card:hover .cat-icon {
 		transform: scale(1.1)
 	}
@@ -2547,7 +2559,26 @@
 		}
 
 		.cats-grid {
-			grid-template-columns: repeat(2, 1fr)
+			display: flex;
+			flex-wrap: nowrap;
+			overflow-x: auto;
+			gap: 14px;
+			padding-bottom: 10px;
+			margin-inline: -16px;
+			padding-inline: 16px;
+			-webkit-overflow-scrolling: touch;
+			scroll-snap-type: x proximity;
+			scrollbar-width: none;
+		}
+
+		.cats-grid::-webkit-scrollbar {
+			display: none;
+		}
+
+		.cats-grid .cat-card {
+			flex: 0 0 132px;
+			min-width: 132px;
+			scroll-snap-align: start;
 		}
 
 		.products-grid {
@@ -2656,7 +2687,30 @@
 		}
 
 		.cats-grid {
-			grid-template-columns: repeat(3, 1fr)
+			gap: 12px;
+			margin-inline: -12px;
+			padding-inline: 12px;
+		}
+
+		.cats-grid .cat-card {
+			flex: 0 0 118px;
+			min-width: 118px;
+			padding: 16px 10px;
+		}
+
+		.cats-grid .cat-icon {
+			width: 52px;
+			height: 52px;
+			font-size: 1.45rem;
+			margin-bottom: 10px;
+		}
+
+		.cats-grid .cat-name {
+			font-size: .78rem;
+		}
+
+		.cats-grid .cat-count {
+			font-size: .66rem;
 		}
 
 		/* Two products per row on small phones; scale down card copy so it fits */

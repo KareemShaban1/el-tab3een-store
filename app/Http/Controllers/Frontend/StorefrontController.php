@@ -6,6 +6,7 @@ use App\Business;
 use App\Brands;
 use App\Category;
 use App\BusinessLocation;
+use App\Contact;
 use App\Product;
 use App\Services\Tab3eenCatalogService;
 use App\Variation;
@@ -14,10 +15,36 @@ use App\Http\Controllers\Controller;
 
 class StorefrontController extends Controller
 {
-    public function welcome(Tab3eenCatalogService $tab3eenCatalogService)
+    public function welcome(Request $request, Tab3eenCatalogService $tab3eenCatalogService)
     {
+        $tab3eenCatalog = $tab3eenCatalogService->getCatalog();
+        $business_id = self::resolveBusinessId($request);
+
+        $localProductCount = Product::where('business_id', $business_id)
+            ->active()
+            ->productForSales()
+            ->activeInApp()
+            ->inStockByBusiness($business_id)
+            ->count();
+
+        $tab3eenProductCount = collect($tab3eenCatalog)->sum(
+            fn ($category) => count($category['products'] ?? [])
+        );
+
+        $customerCount = Contact::where('business_id', $business_id)
+            ->whereIn('type', ['customer', 'both'])
+            ->where('contact_status', 'active')
+            ->count();
+
+        $brandCount = Brands::where('business_id', $business_id)->count();
+
         return view('frontend.welcome', [
-            'tab3eenCatalog' => $tab3eenCatalogService->getCatalog(),
+            'tab3eenCatalog' => $tab3eenCatalog,
+            'heroStats' => [
+                'products' => $this->formatHeroStat($localProductCount + $tab3eenProductCount),
+                'customers' => $this->formatHeroStat($customerCount),
+                'brands' => $this->formatHeroStat($brandCount),
+            ],
         ]);
     }
 
@@ -416,6 +443,7 @@ class StorefrontController extends Controller
             ->activeInApp()
             ->storefrontSortOrder()
             ->select('id', 'name')
+            ->with('media')
             ->limit(30)
             ->get()
             ->map(function ($category) use ($business_id) {
@@ -430,6 +458,7 @@ class StorefrontController extends Controller
                     'id' => $category->id,
                     'name' => $category->name,
                     'count' => $count,
+                    'image_url' => $category->image_url,
                 ];
             });
 
@@ -649,5 +678,28 @@ class StorefrontController extends Controller
         }
 
         return (int) \App\BusinessLocation::where('business_id', $business_id)->where('is_active', 1)->value('id');
+    }
+
+    private function formatHeroStat(int $value): string
+    {
+        if ($value >= 1_000_000) {
+            $scaled = $value / 1_000_000;
+            $formatted = fmod($scaled, 1.0) === 0.0
+                ? (string) (int) $scaled
+                : rtrim(rtrim(number_format($scaled, 1, '.', ''), '0'), '.');
+
+            return '+'.$formatted.'M';
+        }
+
+        if ($value >= 1_000) {
+            $scaled = $value / 1_000;
+            $formatted = fmod($scaled, 1.0) === 0.0
+                ? (string) (int) $scaled
+                : rtrim(rtrim(number_format($scaled, 1, '.', ''), '0'), '.');
+
+            return '+'.$formatted.'K';
+        }
+
+        return '+'.number_format($value);
     }
 }

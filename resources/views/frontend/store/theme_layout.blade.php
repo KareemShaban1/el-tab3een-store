@@ -13,9 +13,10 @@
 	<!-- ===================== ANNOUNCEMENT BAR ===================== -->
 	<div class="announce">
 		<div class="container">
-			<span>🎉 خصم يصل لـ 50% على أحدث الهواتف الذكية! <a href="#">تسوق الآن ←</a></span>
+			<span>🎉 خصم يصل لـ 50% على أحدث الهواتف الذكية! <a
+					href="{{ route('store.products.index') }}">تسوق الآن ←</a></span>
 			<div class="announce-links">
-				<a href="{{ route('store.account.orders') }}">تتبع طلبي</a>
+				<!-- <a href="{{ route('store.account.orders') }}">تتبع طلبي</a> -->
 				<a href="{{ route('store.account.profile') }}">حسابي</a>
 				<!-- <a href="#">مراكز الصيانة</a> -->
 				<span style="color:var(--accent);font-weight:700;">📞 19900</span>
@@ -285,13 +286,13 @@
 			</div>
 			<div class="footer-bottom">
 				<div class="f-copy">© 2025 التابعين للإلكترونيات. جميع الحقوق محفوظة.</div>
-				<div class="pay-icons">
+				<!-- <div class="pay-icons">
 					<span class="pay-ic">VISA</span>
 					<span class="pay-ic">MC</span>
 					<span class="pay-ic">فودافون</span>
 					<span class="pay-ic">فوري</span>
 					<span class="pay-ic">كاش</span>
-				</div>
+				</div> -->
 			</div>
 		</div>
 	</footer>
@@ -503,7 +504,8 @@
 				for (const variation of (product.variations || [])) {
 					const vid = Number(variation.variation_id ?? variation.id ?? 0);
 					if (vid === Number(variationId)) {
-						return Number(variation.qty_available ?? variation.total_qty_available ?? 0);
+						return Number(variation.qty_available ?? variation
+							.total_qty_available ?? 0);
 					}
 				}
 			}
@@ -567,7 +569,8 @@
 			if (requestedQty > available) {
 				return {
 					ok: false,
-					message: formatTab3eenMessage(TAB3EEN_MSG.stock_exceeded, requestedQty, available),
+					message: formatTab3eenMessage(TAB3EEN_MSG.stock_exceeded,
+						requestedQty, available),
 					available,
 				};
 			}
@@ -706,13 +709,19 @@
 				const selectedOption = select.options[select
 					.selectedIndex];
 				const selectedVariationId = +(selectedOption?.value || 0);
-				const selectedPrice = selectedOption?.dataset.price !== undefined && selectedOption?.dataset.price !== ''
-					? +(selectedOption.dataset.price)
-					: null;
-				const selectedHasPrice = selectedOption?.dataset.hasPrice === '1'
-					|| (selectedPrice !== null && !Number.isNaN(selectedPrice));
-				const selectedQty = +(selectedOption?.dataset.qtyAvailable ||
-					selectedOption?.dataset.qty_available || 0);
+				const selectedPrice = selectedOption?.dataset.price !==
+					undefined && selectedOption?.dataset.price !==
+					'' ?
+					+(selectedOption.dataset.price) :
+					null;
+				const selectedHasPrice = selectedOption?.dataset
+					.hasPrice === '1' ||
+					(selectedPrice !== null && !Number.isNaN(
+						selectedPrice));
+				const selectedQty = +(selectedOption?.dataset
+					.qtyAvailable ||
+					selectedOption?.dataset
+					.qty_available || 0);
 				const btn = document.querySelector(
 					`.pa-cart[data-id="${productId}"]`);
 				if (btn) {
@@ -720,11 +729,13 @@
 						selectedVariationId ||
 						productId);
 					if (selectedHasPrice && selectedPrice !== null) {
-						btn.dataset.price = String(selectedPrice);
+						btn.dataset.price = String(
+							selectedPrice);
 						btn.disabled = false;
 						btn.style.opacity = '';
 						btn.style.cursor = '';
-						btn.innerHTML = `<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/></svg> أضف للسلة`;
+						btn.innerHTML =
+							`<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/></svg> أضف للسلة`;
 					} else {
 						btn.dataset.price = '';
 						btn.disabled = true;
@@ -732,13 +743,15 @@
 						btn.style.cursor = 'not-allowed';
 						btn.textContent = 'السعر غير متاح';
 					}
-					btn.dataset.qtyAvailable = String(selectedQty || 0);
+					btn.dataset.qtyAvailable = String(selectedQty ||
+						0);
 				}
 				const priceEl = $(`prod-price-${productId}`);
 				if (priceEl) {
-					priceEl.textContent = selectedHasPrice && selectedPrice !== null
-						? fmt(selectedPrice)
-						: 'السعر غير متاح';
+					priceEl.textContent = selectedHasPrice &&
+						selectedPrice !== null ?
+						fmt(selectedPrice) :
+						'السعر غير متاح';
 				}
 			};
 		});
@@ -748,27 +761,36 @@
 				const id = +btn.dataset.id;
 				const name = btn.dataset.name;
 				const price = +btn.dataset.price;
-				const variationId = +(btn.dataset.variationId || id);
+				const variationId = +(btn.dataset.variationId ||
+					id);
 				const source = btn.dataset.source || null;
 				const img = PRODUCTS[id]?.img;
 
 				if (source === 'servo') {
 					if (!price || price <= 0) {
-						toast(TAB3EEN_MSG.price_unavailable, 'error');
+						toast(TAB3EEN_MSG.price_unavailable,
+							'error');
 						return;
 					}
-					const existing = cart.find(i => i.id === id);
-					const requestedQty = (existing ? existing.qty : 0) + 1;
+					const existing = cart.find(i => i
+						.id === id);
+					const requestedQty = (existing ?
+							existing.qty : 0) +
+						1;
 					btn.disabled = true;
-					const check = await validateServoStock(id, variationId, requestedQty);
+					const check = await validateServoStock(
+						id, variationId,
+						requestedQty);
 					btn.disabled = false;
 					if (!check.ok) {
-						toast(check.message, 'error');
+						toast(check.message,
+							'error');
 						return;
 					}
 				}
 
-				addToCart(id, name, price, img, variationId, source);
+				addToCart(id, name, price, img, variationId,
+					source);
 				toast(`تم إضافة "${name}" للسلة 🛒`);
 				animBtn(btn);
 			};
@@ -817,6 +839,7 @@
 		if (!grid) return;
 		if (!categories.length) {
 			grid.innerHTML = `<div class="cat-card"><div class="cat-name">لا توجد فئات متاحة</div></div>`;
+			resetCategoriesAutoScroll(grid);
 			return;
 		}
 
@@ -824,13 +847,76 @@
 		grid.innerHTML = categories.map((c, idx) => {
 			const u = new URL(base.href);
 			u.searchParams.set('category_id', String(c.id));
+			const iconHtml = c.image_url ?
+				`<img src="${megaEsc(c.image_url)}" alt="${megaEsc(c.name || '')}" class="cat-icon-img">` :
+				categoryIconByIndex(idx);
 			return `
 			<a href="${u.pathname + '?' + u.searchParams.toString()}" class="cat-card">
-				<div class="cat-icon" style="background:#f8f9fc;">${categoryIconByIndex(idx)}</div>
+				<div class="cat-icon${c.image_url ? ' cat-icon--image' : ''}" style="background:#f8f9fc;">${iconHtml}</div>
 				<div class="cat-name">${megaEsc(c.name || '')}</div>
 				<div class="cat-count">+${Number(c.count || 0).toLocaleString('ar-EG')} منتج</div>
 			</a>`;
 		}).join('');
+		// initCategoriesAutoScroll();
+	}
+
+	function resetCategoriesAutoScroll(grid) {
+		if (!grid) return;
+		if (grid._catsAutoScrollTimer) {
+			clearInterval(grid._catsAutoScrollTimer);
+			grid._catsAutoScrollTimer = null;
+		}
+		if (grid.dataset.autoScrollCloned === '1') {
+			const cards = [...grid.querySelectorAll('.cat-card')];
+			const half = Math.floor(cards.length / 2);
+			cards.slice(half).forEach((c) => c.remove());
+			grid.dataset.autoScrollCloned = '0';
+			grid.scrollLeft = 0;
+		}
+	}
+
+	function initCategoriesAutoScroll() {
+		const grid = $('dynamic-categories-grid');
+		if (!grid) return;
+
+		resetCategoriesAutoScroll(grid);
+
+		const mobile = window.matchMedia('(max-width:768px)').matches;
+		if (!mobile) return;
+
+		const cards = grid.querySelectorAll('.cat-card');
+		if (cards.length < 2 || grid.scrollWidth <= grid.clientWidth + 2) return;
+
+		grid.innerHTML += grid.innerHTML;
+		grid.dataset.autoScrollCloned = '1';
+
+		if (!grid._catsScrollListeners) {
+			grid._catsScrollListeners = true;
+			grid._catsScrollPaused = false;
+			grid.addEventListener('mouseenter', () => {
+				grid._catsScrollPaused = true;
+			});
+			grid.addEventListener('mouseleave', () => {
+				grid._catsScrollPaused = false;
+			});
+			grid.addEventListener('touchstart', () => {
+				grid._catsScrollPaused = true;
+			}, {
+				passive: true
+			});
+			grid.addEventListener('touchend', () => {
+				grid._catsScrollPaused = false;
+			}, {
+				passive: true
+			});
+		}
+
+		grid._catsAutoScrollTimer = setInterval(() => {
+			if (!grid._catsScrollPaused) {
+				grid.scrollLeft -= 1.2;
+				if (grid.scrollLeft <= 0) grid.scrollLeft = grid.scrollWidth / 2;
+			}
+		}, 20);
 	}
 
 	function renderMegaMenuCategories(categories) {
@@ -1546,6 +1632,12 @@
 		initMegaMenu();
 		initHeroDots();
 		initBrands();
+		let catsAutoScrollResizeTimer;
+		window.addEventListener('resize', () => {
+			clearTimeout(catsAutoScrollResizeTimer);
+			catsAutoScrollResizeTimer = setTimeout(
+				initCategoriesAutoScroll, 150);
+		});
 		initMobMenu();
 		initStoreHeaderSearch();
 		initNewsletter();

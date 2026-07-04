@@ -28,6 +28,22 @@ class Category extends Model
         'order' => 'integer',
     ];
 
+    protected $appends = ['image_url'];
+
+    public function media()
+    {
+        return $this->morphMany(\App\Media::class, 'model');
+    }
+
+    public function getImageUrlAttribute()
+    {
+        $media = $this->relationLoaded('media')
+            ? $this->media->first()
+            : $this->media()->first();
+
+        return $media?->display_url;
+    }
+
     public function scopeActiveInApp($query)
     {
         $t = $query->getModel()->getTable();

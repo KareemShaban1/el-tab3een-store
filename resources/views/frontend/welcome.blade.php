@@ -14,21 +14,26 @@
 					الماركات العالمية. جودة عالية، ضمان أصلي، وتوصيل سريع لباب
 					بيتك.</p>
 				<div class="hero-actions">
-					<a href="#" class="btn btn-primary btn-lg">🛒 تسوق الآن</a>
-					<a href="#" class="btn btn-outline-light btn-lg">🔥 عروض
-						اليوم</a>
+					<a href="{{ route('store.products.index') }}"
+						class="btn btn-primary">🛒
+						تسوق الآن</a>
+					<!-- <a href="#" class="btn btn-outline-light">🔥 عروض
+						اليوم</a> -->
 				</div>
 				<div class="hero-stats">
 					<div>
-						<div class="h-stat-num">+50K</div>
+						<div class="h-stat-num">{{ $heroStats['products'] ?? '+0' }}
+						</div>
 						<div class="h-stat-lbl">منتج متوفر</div>
 					</div>
 					<div>
-						<div class="h-stat-num">+200K</div>
+						<div class="h-stat-num">
+							{{ $heroStats['customers'] ?? '+0' }}</div>
 						<div class="h-stat-lbl">عميل سعيد</div>
 					</div>
 					<div>
-						<div class="h-stat-num">+500</div>
+						<div class="h-stat-num">{{ $heroStats['brands'] ?? '+0' }}
+						</div>
 						<div class="h-stat-lbl">ماركة عالمية</div>
 					</div>
 				</div>
@@ -72,7 +77,7 @@
 				<h2 class="sec-title">تسوق حسب <span>الفئة</span></h2>
 				<p class="sec-sub">اكتشف تشكيلتنا من أفضل الفئات الإلكترونية</p>
 			</div>
-			<a href="#" class="view-all">عرض الكل ←</a>
+			<a href="{{ route('store.products.index') }}" class="view-all">عرض الكل ←</a>
 		</div>
 		<div class="cats-grid" id="dynamic-categories-grid"></div>
 	</div>
@@ -202,9 +207,7 @@ window.__SSR_STORE_PRODUCTS__ = Object.assign(window.__SSR_STORE_PRODUCTS__ || {
 
 		<div class="tab3een-tabs" role="tablist">
 			@foreach ($tab3eenCatalog as $index => $category)
-			<button type="button"
-				class="tab3een-tab{{ $index === 0 ? ' active' : '' }}"
-				role="tab"
+			<button type="button" class="tab3een-tab{{ $index === 0 ? ' active' : '' }}" role="tab"
 				aria-selected="{{ $index === 0 ? 'true' : 'false' }}"
 				data-tab="tab3een-cat-{{ $category['id'] }}">
 				@if (!empty($category['image']))
@@ -216,15 +219,16 @@ window.__SSR_STORE_PRODUCTS__ = Object.assign(window.__SSR_STORE_PRODUCTS__ || {
 		</div>
 
 		@foreach ($tab3eenCatalog as $index => $category)
-		<div class="tab3een-panel{{ $index === 0 ? ' active' : '' }}"
-			id="tab3een-cat-{{ $category['id'] }}"
+		<div class="tab3een-panel{{ $index === 0 ? ' active' : '' }}" id="tab3een-cat-{{ $category['id'] }}"
 			role="tabpanel">
 			<div class="products-grid">
 				@foreach ($category['products'] as $product)
 				@php
 				$variations = collect($product['variations'] ?? []);
-				$defaultVariationId = (int) ($product['default_variation_id'] ?? $product['id']);
-				$defaultVariation = $variations->firstWhere('variation_id', $defaultVariationId) ?? $variations->first();
+				$defaultVariationId = (int) ($product['default_variation_id'] ??
+				$product['id']);
+				$defaultVariation = $variations->firstWhere('variation_id', $defaultVariationId)
+				?? $variations->first();
 				$defaultPrice = $defaultVariation['price'] ?? null;
 				$hasPrice = ! empty($product['has_price']) && $defaultPrice !== null;
 				$defaultQty = (float) ($defaultVariation['qty_available'] ?? 0);
@@ -244,11 +248,13 @@ window.__SSR_STORE_PRODUCTS__ = Object.assign(window.__SSR_STORE_PRODUCTS__ || {
 								data-qty-available="{{ $defaultQty }}"
 								data-source="servo">
 								<svg width="14" height="14" fill="none"
-									stroke="currentColor" stroke-width="2.5"
+									stroke="currentColor"
+									stroke-width="2.5"
 									viewBox="0 0 24 24">
 									<path
 										d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
-									<line x1="3" y1="6" x2="21" y2="6" />
+									<line x1="3" y1="6" x2="21"
+										y2="6" />
 								</svg>
 								أضف للسلة
 							</button>
@@ -273,19 +279,24 @@ window.__SSR_STORE_PRODUCTS__ = Object.assign(window.__SSR_STORE_PRODUCTS__ || {
 						</div>
 						@if ($variations->count() > 1)
 						<div class="prod-variant-wrap">
-							<select class="prod-variant" data-id="{{ $product['id'] }}">
+							<select class="prod-variant"
+								data-id="{{ $product['id'] }}">
 								@foreach ($variations as $variation)
 								@php
-								$variationPrice = $variation['price'] ?? null;
+								$variationPrice = $variation['price'] ??
+								null;
 								@endphp
 								<option value="{{ (int) $variation['variation_id'] }}"
 									data-price="{{ $variationPrice !== null ? (float) $variationPrice : '' }}"
 									data-has-price="{{ $variationPrice !== null ? '1' : '0' }}"
 									data-qty-available="{{ (float) $variation['qty_available'] }}"
-									@selected((int) $variation['variation_id'] === $defaultVariationId)>
-									{{ $variation['name'] ?: 'Default' }} —
+									@selected((int)
+									$variation['variation_id']===$defaultVariationId)>
+									{{ $variation['name'] ?: 'Default' }}
+									—
 									@if ($variationPrice !== null)
-									{{ number_format((float) $variationPrice, 2) }} ج.م
+									{{ number_format((float) $variationPrice, 2) }}
+									ج.م
 									@else
 									السعر غير متاح
 									@endif
@@ -295,9 +306,11 @@ window.__SSR_STORE_PRODUCTS__ = Object.assign(window.__SSR_STORE_PRODUCTS__ || {
 						</div>
 						@endif
 						<div class="price-row">
-							<span class="price-now" id="prod-price-{{ $product['id'] }}">
+							<span class="price-now"
+								id="prod-price-{{ $product['id'] }}">
 								@if ($hasPrice)
-								{{ number_format((float) $defaultPrice, 2) }} ج.م
+								{{ number_format((float) $defaultPrice, 2) }}
+								ج.م
 								@else
 								السعر غير متاح
 								@endif
@@ -317,9 +330,11 @@ document.querySelectorAll('.tab3een-tab').forEach(tab => {
 		const targetId = tab.dataset.tab;
 		document.querySelectorAll('.tab3een-tab').forEach(t => {
 			t.classList.remove('active');
-			t.setAttribute('aria-selected', 'false');
+			t.setAttribute('aria-selected',
+				'false');
 		});
-		document.querySelectorAll('.tab3een-panel').forEach(p => p.classList.remove('active'));
+		document.querySelectorAll('.tab3een-panel').forEach(p => p
+			.classList.remove('active'));
 		tab.classList.add('active');
 		tab.setAttribute('aria-selected', 'true');
 		document.getElementById(targetId)?.classList.add('active');
@@ -384,7 +399,7 @@ document.querySelectorAll('.tab3een-tab').forEach(tab => {
 </section>
 
 <!-- ===================== OFFER BANNER ===================== -->
-<section class="section">
+<!-- <section class="section">
 	<div class="container">
 		<div class="offer-banner">
 			<div class="offer-content">
@@ -405,7 +420,7 @@ document.querySelectorAll('.tab3een-tab').forEach(tab => {
 			</div>
 		</div>
 	</div>
-</section>
+</section> -->
 
 <!-- ===================== TESTIMONIALS ===================== -->
 <!-- <section class="testi-section section">

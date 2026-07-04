@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Category;
+use App\Media;
 use App\Utils\ModuleUtil;
 use Illuminate\Http\Request;
 use Yajra\DataTables\Facades\DataTables;
@@ -17,7 +18,6 @@ class TaxonomyController extends Controller
     /**
      * Constructor
      *
-     * @param  ProductUtils  $product
      * @return void
      */
     public function __construct(ModuleUtil $moduleUtil)
@@ -165,6 +165,17 @@ class TaxonomyController extends Controller
             $input['order'] = $request->input('order') !== null && $request->input('order') !== '' ? (int) $request->input('order') : 0;
 
             $category = Category::create($input);
+
+            Media::uploadMedia(
+                (int) $input['business_id'],
+                $category,
+                $request,
+                'image',
+                true,
+                'category_image'
+            );
+
+            $category->load('media');
             $output = ['success' => true,
                 'data' => $category,
                 'msg' => __('category.added_success'),
@@ -206,7 +217,7 @@ class TaxonomyController extends Controller
 
         if (request()->ajax()) {
             $business_id = request()->session()->get('user.business_id');
-            $category = Category::where('business_id', $business_id)->find($id);
+            $category = Category::where('business_id', $business_id)->with('media')->find($id);
 
             $module_category_data = $this->moduleUtil->getTaxonomyData($category_type);
 
@@ -262,6 +273,17 @@ class TaxonomyController extends Controller
                 $category->featured = (! empty($request->input('featured')) && $request->input('featured') == 1) ? 1 : 0;
                 $category->order = $request->input('order') !== null && $request->input('order') !== '' ? (int) $request->input('order') : 0;
                 $category->save();
+
+                Media::uploadMedia(
+                    $business_id,
+                    $category,
+                    $request,
+                    'image',
+                    true,
+                    'category_image'
+                );
+
+                $category->load('media');
 
                 $output = ['success' => true,
                     'msg' => __('category.updated_success'),

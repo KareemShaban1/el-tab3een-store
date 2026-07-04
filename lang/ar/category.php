@@ -14,4 +14,6 @@
      'deleted_success' => 'تم حذف الصنف بنجاح',
      'add_category' => 'إضافة صنف',
      'edit_category' => 'تعديل صنف',
+     'category_image' => 'صورة الصنف',
+     'category_image_help' => 'اختياري. JPG أو PNG أو GIF. يُفضّل صورة مربعة.',
  ];

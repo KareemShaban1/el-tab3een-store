@@ -1,7 +1,7 @@
 <div class="modal-dialog" role="document">
   <div class="modal-content">
 
-    {!! Form::open(['url' => action([\App\Http\Controllers\TaxonomyController::class, 'store']), 'method' => 'post', 'id' => 'category_add_form' ]) !!}
+    {!! Form::open(['url' => action([\App\Http\Controllers\TaxonomyController::class, 'store']), 'method' => 'post', 'id' => 'category_add_form', 'files' => true ]) !!}
     <div class="modal-header">
       <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
       <h4 class="modal-title">@lang( 'messages.add' )</h4>
@@ -33,6 +33,11 @@
       <div class="form-group">
         {!! Form::label('description', __( 'lang_v1.description' ) . ':') !!}
         {!! Form::textarea('description', null, ['class' => 'form-control', 'placeholder' => __( 'lang_v1.description'), 'rows' => 3]); !!}
+      </div>
+      <div class="form-group">
+        {!! Form::label('image', __('category.category_image') . ':') !!}
+        {!! Form::file('image', ['accept' => 'image/*', 'class' => 'form-control']); !!}
+        <p class="help-block">@lang('category.category_image_help')</p>
       </div>
       <div class="form-group">
         <label>

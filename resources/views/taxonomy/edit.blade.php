@@ -1,7 +1,7 @@
 <div class="modal-dialog" role="document">
   <div class="modal-content">
 
-    {!! Form::open(['url' => action([\App\Http\Controllers\TaxonomyController::class, 'update'], [$category->id]), 'method' => 'PUT', 'id' => 'category_edit_form' ]) !!}
+    {!! Form::open(['url' => action([\App\Http\Controllers\TaxonomyController::class, 'update'], [$category->id]), 'method' => 'PUT', 'id' => 'category_edit_form', 'files' => true ]) !!}
 
     <div class="modal-header">
       <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
@@ -33,6 +33,16 @@
       <div class="form-group">
         {!! Form::label('description', __( 'lang_v1.description' ) . ':') !!}
         {!! Form::textarea('description', $category->description, ['class' => 'form-control', 'placeholder' => __( 'lang_v1.description'), 'rows' => 3]); !!}
+      </div>
+      <div class="form-group">
+        {!! Form::label('image', __('category.category_image') . ':') !!}
+        @if(!empty($category->image_url))
+          <div style="margin-bottom:10px;">
+            <img src="{{ $category->image_url }}" alt="{{ $category->name }}" style="max-width:120px;max-height:120px;border-radius:8px;border:1px solid #ddd;">
+          </div>
+        @endif
+        {!! Form::file('image', ['accept' => 'image/*', 'class' => 'form-control']); !!}
+        <p class="help-block">@lang('category.category_image_help')</p>
       </div>
       <div class="form-group">
         <label>
