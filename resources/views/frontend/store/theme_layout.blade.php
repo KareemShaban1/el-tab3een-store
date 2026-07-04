@@ -49,6 +49,10 @@
 				</a>
 
 				<!-- Search -->
+				<script>
+				window.__storeSearchSuggestUrl = @json($storeSearchSuggestUrl ?? '');
+				</script>
+				@unless(request()->routeIs('store.search'))
 				<form class="header-search" id="store-header-search-form" method="GET"
 					action="{{ route('store.products.index') }}">
 					<!-- <select name="category_id" class="search-cat" aria-label="تصفية حسب القسم">
@@ -78,9 +82,7 @@
 						</svg>
 					</button>
 				</form>
-				<script>
-				window.__storeSearchSuggestUrl = @json($storeSearchSuggestUrl ?? '');
-				</script>
+				@endunless
 
 				<!-- Actions -->
 				<div class="header-actions">
@@ -1666,7 +1668,13 @@
 			timer = setTimeout(async () => {
 				try {
 					const res = await fetch(
-						url + (url.includes('?') ? '&' : '?') + 'q=' + encodeURIComponent(q), {
+						url + (url.includes(
+								'?') ?
+							'&' : '?'
+							) +
+						'q=' +
+						encodeURIComponent(
+							q), {
 							headers: {
 								Accept: 'application/json',
 								'X-Requested-With': 'XMLHttpRequest',
@@ -1676,7 +1684,9 @@
 					);
 					const data = await res.json();
 					if (input.value.trim() !== q) return;
-					render(Array.isArray(data.results) ? data.results : [], q);
+					render(Array.isArray(data.results) ?
+						data.results : [],
+						q);
 				} catch (e) {
 					if (input.value.trim() === q) {
 						box.innerHTML =
