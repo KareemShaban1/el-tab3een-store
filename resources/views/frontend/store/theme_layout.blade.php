@@ -16,7 +16,9 @@
 			<span>🎉 خصم يصل لـ 50% على أحدث الهواتف الذكية! <a
 					href="{{ route('store.products.index') }}">تسوق الآن ←</a></span>
 			<div class="announce-links">
-				<!-- <a href="{{ route('store.account.orders') }}">تتبع طلبي</a> -->
+				@foreach ($storeHeaderPages ?? [] as $headerPage)
+				<a href="{{ $headerPage->url }}">{{ $headerPage->title }}</a>
+				@endforeach
 				<a href="{{ route('store.account.profile') }}">حسابي</a>
 				@if (Route::has('repair-status'))
 				<a
@@ -259,23 +261,25 @@
 				<div>
 					<div class="f-col-title">روابط سريعة</div>
 					<div class="f-links">
-						<a href="#" class="f-link">الصفحة الرئيسية</a>
-						<a href="#" class="f-link">المتجر</a>
-						<a href="#" class="f-link">🔥 العروض الحالية</a>
-						<a href="#" class="f-link">المدونة التقنية</a>
-						<a href="#" class="f-link">من نحن</a>
-						<a href="#" class="f-link">اتصل بنا</a>
+						<a href="{{ route('welcome') }}" class="f-link">الصفحة الرئيسية</a>
+						<a href="{{ route('store.products.index') }}" class="f-link">المتجر</a>
+						@foreach (($storeFooterPages[\App\StorePage::FOOTER_GROUP_QUICK_LINKS] ?? collect()) as $footerPage)
+						<a href="{{ $footerPage->url }}" class="f-link">{{ $footerPage->title }}</a>
+						@endforeach
 					</div>
 				</div>
 				<div>
 					<div class="f-col-title">خدمة العملاء</div>
 					<div class="f-links">
-						<a href="#" class="f-link">حسابي</a>
-						<a href="#" class="f-link">تتبع طلبي</a>
-						<a href="#" class="f-link">سياسة الإرجاع</a>
-						<a href="#" class="f-link">الضمان والصيانة</a>
-						<a href="#" class="f-link">الأسئلة الشائعة</a>
-						<a href="#" class="f-link">مراكز الخدمة</a>
+						@auth('customer')
+						<a href="{{ route('store.account.profile') }}" class="f-link">حسابي</a>
+						<a href="{{ route('store.account.orders') }}" class="f-link">تتبع طلبي</a>
+						@else
+						<a href="{{ route('store.auth.login.form') }}" class="f-link">حسابي</a>
+						@endauth
+						@foreach (($storeFooterPages[\App\StorePage::FOOTER_GROUP_CUSTOMER_SERVICE] ?? collect()) as $footerPage)
+						<a href="{{ $footerPage->url }}" class="f-link">{{ $footerPage->title }}</a>
+						@endforeach
 					</div>
 				</div>
 				<div>
@@ -291,7 +295,14 @@
 				</div>
 			</div>
 			<div class="footer-bottom">
-				<div class="f-copy">© 2025 التابعين للإلكترونيات. جميع الحقوق محفوظة.</div>
+				<div class="f-copy">© {{ date('Y') }} التابعين للإلكترونيات. جميع الحقوق محفوظة.</div>
+				@if (($storeFooterPages[\App\StorePage::FOOTER_GROUP_LEGAL] ?? collect())->isNotEmpty())
+				<div class="f-legal-links">
+					@foreach (($storeFooterPages[\App\StorePage::FOOTER_GROUP_LEGAL] ?? collect()) as $footerPage)
+					<a href="{{ $footerPage->url }}" class="f-legal-link">{{ $footerPage->title }}</a>
+					@endforeach
+				</div>
+				@endif
 				<!-- <div class="pay-icons">
 					<span class="pay-ic">VISA</span>
 					<span class="pay-ic">MC</span>

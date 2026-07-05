@@ -451,6 +451,11 @@ $is_superadmin = auth()->user()->can('superadmin');
                                 __('lang_v1.hero_banners'),
                                 ['icon' => '', 'active' => request()->segment(1) == 'store-hero-banners']
                             );
+                            $sub->url(
+                                action([\App\Http\Controllers\StorePageController::class, 'index']),
+                                __('store_pages.store_pages'),
+                                ['icon' => '', 'active' => request()->segment(1) == 'store-pages']
+                            );
                         }
                     },
                     ['icon' => '<svg aria-hidden="true" class="tw-size-5 tw-shrink-0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">

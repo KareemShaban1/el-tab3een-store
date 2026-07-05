@@ -141,7 +141,7 @@ return [
         'title' => 'العنوان',
         'content' => 'المحتوى',
         'description' => 'الوصف',
-        'excerpt' => 'مقتطف',
+        'excerpt' => 'العنوان الفرعى',
         'date' => 'التاريخ',
         'time' => 'الوقت',
         'available' => 'متاح',

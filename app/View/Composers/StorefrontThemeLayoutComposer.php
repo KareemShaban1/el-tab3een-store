@@ -4,6 +4,8 @@ namespace App\View\Composers;
 
 use App\Category;
 use App\Http\Controllers\Frontend\StorefrontController;
+use App\StorePage;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\View\View;
 
 class StorefrontThemeLayoutComposer
@@ -26,9 +28,20 @@ class StorefrontThemeLayoutComposer
             ->select('id', 'name')
             ->get();
 
+        $storeFooterPages = collect();
+        $storeHeaderPages = collect();
+
+        if (Schema::hasTable('store_pages')) {
+            $pages = StorePage::forBusiness($businessId)->active()->ordered()->get();
+            $storeFooterPages = $pages->where('show_in_footer', true)->groupBy('footer_group');
+            $storeHeaderPages = $pages->where('show_in_header', true)->values();
+        }
+
         $view->with([
             'storeHeaderFeaturedCategories' => $storeHeaderFeaturedCategories,
             'storeSearchSuggestUrl' => route('store.search.suggest'),
+            'storeFooterPages' => $storeFooterPages,
+            'storeHeaderPages' => $storeHeaderPages,
         ]);
     }
 }

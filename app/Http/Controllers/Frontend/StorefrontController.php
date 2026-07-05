@@ -9,6 +9,7 @@ use App\BusinessLocation;
 use App\Contact;
 use App\Product;
 use App\StoreHeroBanner;
+use App\StorePage;
 use App\Services\Tab3eenCatalogService;
 use App\Variation;
 use Illuminate\Http\Request;
@@ -807,6 +808,22 @@ class StorefrontController extends Controller
     {
         return view('frontend.store.search', [
             'initialQuery' => trim((string) $request->input('q', '')),
+        ]);
+    }
+
+    public function page(Request $request, string $slug)
+    {
+        $business_id = self::resolveBusinessId($request);
+
+        $page = StorePage::forBusiness($business_id)
+            ->active()
+            ->where('slug', $slug)
+            ->firstOrFail();
+
+        return view('frontend.store.page', [
+            'page' => $page,
+            'title' => $page->meta_title ?: $page->title,
+            'metaDescription' => $page->meta_description ?: $page->excerpt,
         ]);
     }
 

@@ -73,6 +73,7 @@ use App\Http\Controllers\LocationsFees\CityController as LocationsFeesCityContro
 use App\Http\Controllers\LocationsFees\GovernorateController as LocationsFeesGovernorateController;
 use App\Http\Controllers\LocationsFees\LocationFeeController;
 use App\Http\Controllers\StoreHeroBannerController;
+use App\Http\Controllers\StorePageController;
 /*
 |--------------------------------------------------------------------------
 | Web Routes
@@ -127,6 +128,7 @@ Route::middleware(['setData'])->group(function () {
         Route::get('/search/suggest', [StorefrontController::class, 'searchSuggest'])
             ->middleware('throttle:90,1')
             ->name('search.suggest');
+        Route::get('/pages/{slug}', [StorefrontController::class, 'page'])->name('pages.show');
 
         Route::get('/register', [StoreCustomerAuthController::class, 'showRegister'])->name('auth.register.form');
         Route::get('/login', [StoreCustomerAuthController::class, 'showLogin'])->name('auth.login.form');
@@ -294,6 +296,7 @@ Route::middleware(['setData', 'auth', 'SetSessionData', 'language', 'timezone', 
     Route::get('/servo-orders/client/{contact_id}', [ServoOrderController::class, 'clientDetails'])->name('servo-orders.client');
     Route::get('/servo-orders/{id}', [ServoOrderController::class, 'show'])->name('servo-orders.show');
     Route::resource('store-hero-banners', StoreHeroBannerController::class)->except(['show']);
+    Route::resource('store-pages', StorePageController::class)->except(['show']);
 
     Route::prefix('locations-fees')->group(function () {
         Route::get('/', [LocationFeeController::class, 'index'])->name('locations-fees.index');
