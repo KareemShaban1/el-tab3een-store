@@ -11,10 +11,17 @@
             }]
         });
 
+        var cities_by_governorate_url = '{{ action([\App\Http\Controllers\LocationsFees\CityController::class, "byGovernorate"]) }}';
+
         var cities_table = $('#lf_cities_table').DataTable({
             processing: true,
             serverSide: true,
-            ajax: '{{ action([\App\Http\Controllers\LocationsFees\CityController::class, "index"]) }}',
+            ajax: {
+                url: '{{ action([\App\Http\Controllers\LocationsFees\CityController::class, "index"]) }}',
+                data: function (d) {
+                    d.governorate_id = $('#lf_cities_governorate_filter').val();
+                }
+            },
             columnDefs: [{
                 targets: -1,
                 orderable: false,
@@ -28,7 +35,13 @@
         var areas_table = $('#lf_areas_table').DataTable({
             processing: true,
             serverSide: true,
-            ajax: '{{ action([\App\Http\Controllers\LocationsFees\AreaController::class, "index"]) }}',
+            ajax: {
+                url: '{{ action([\App\Http\Controllers\LocationsFees\AreaController::class, "index"]) }}',
+                data: function (d) {
+                    d.governorate_id = $('#lf_areas_governorate_filter').val();
+                    d.city_id = $('#lf_areas_city_filter').val();
+                }
+            },
             columnDefs: [{
                 targets: -1,
                 orderable: false,
@@ -43,6 +56,53 @@
             governorates_table.columns.adjust();
             cities_table.columns.adjust();
             areas_table.columns.adjust();
+        });
+
+        $('#lf_cities_governorate_filter').on('change', function () {
+            cities_table.ajax.reload();
+        });
+
+        function resetLfAreasCityFilter() {
+            var $cityFilter = $('#lf_areas_city_filter');
+            $cityFilter.empty().append(
+                $('<option>', { value: '', text: LANG.all || @json(__('lang_v1.all')) })
+            );
+            $cityFilter.val('').trigger('change.select2');
+        }
+
+        function loadLfAreasCityFilter(governorateId, selectedCityId) {
+            resetLfAreasCityFilter();
+
+            if (!governorateId) {
+                return $.Deferred().resolve().promise();
+            }
+
+            return $.getJSON(cities_by_governorate_url, { governorate_id: governorateId })
+                .done(function (response) {
+                    var $cityFilter = $('#lf_areas_city_filter');
+                    $.each(response.data || [], function (_, city) {
+                        $cityFilter.append(
+                            $('<option>', { value: city.id, text: city.name })
+                        );
+                    });
+
+                    if (selectedCityId) {
+                        $cityFilter.val(String(selectedCityId));
+                    }
+
+                    $cityFilter.trigger('change.select2');
+                });
+        }
+
+        $('#lf_areas_governorate_filter').on('change', function () {
+            var governorateId = $(this).val();
+            loadLfAreasCityFilter(governorateId).always(function () {
+                areas_table.ajax.reload();
+            });
+        });
+
+        $('#lf_areas_city_filter').on('change', function () {
+            areas_table.ajax.reload();
         });
 
         function bindLfForm(formId, table) {

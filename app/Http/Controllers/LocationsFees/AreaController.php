@@ -38,6 +38,14 @@ class AreaController extends Controller
                     'lf_areas.is_active',
                 ]);
 
+            if (request()->filled('governorate_id')) {
+                $rows->where('lf_governorates.id', (int) request()->input('governorate_id'));
+            }
+
+            if (request()->filled('city_id')) {
+                $rows->where('lf_cities.id', (int) request()->input('city_id'));
+            }
+
             return DataTables::of($rows)
                 ->editColumn('delivery_cost', function ($row) {
                     return '<span class="display_currency" data-currency_symbol="true">'.$row->delivery_cost.'</span>';

@@ -1,3 +1,27 @@
+<div class="row">
+    <div class="col-md-4">
+        <div class="form-group">
+            {!! Form::label('lf_areas_governorate_filter', __('locations_fees.governorate') . ':') !!}
+            {!! Form::select('lf_areas_governorate_filter', $governorates, null, [
+                'class' => 'form-control select2',
+                'style' => 'width:100%',
+                'placeholder' => __('lang_v1.all'),
+                'id' => 'lf_areas_governorate_filter',
+            ]) !!}
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="form-group">
+            {!! Form::label('lf_areas_city_filter', __('locations_fees.city') . ':') !!}
+            {!! Form::select('lf_areas_city_filter', [], null, [
+                'class' => 'form-control select2',
+                'style' => 'width:100%',
+                'placeholder' => __('lang_v1.all'),
+                'id' => 'lf_areas_city_filter',
+            ]) !!}
+        </div>
+    </div>
+</div>
 <button type="button" class="btn btn-sm btn-primary btn-modal pull-right"
     data-href="{{ action([\App\Http\Controllers\LocationsFees\AreaController::class, 'create']) }}"
     data-container=".view_modal">

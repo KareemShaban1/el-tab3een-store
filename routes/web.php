@@ -306,6 +306,7 @@ Route::middleware(['setData', 'auth', 'SetSessionData', 'language', 'timezone', 
         Route::delete('/governorates/{id}', [LocationsFeesGovernorateController::class, 'destroy']);
 
         Route::get('/cities', [LocationsFeesCityController::class, 'index']);
+        Route::get('/cities/by-governorate', [LocationsFeesCityController::class, 'byGovernorate']);
         Route::get('/cities/create', [LocationsFeesCityController::class, 'create']);
         Route::post('/cities', [LocationsFeesCityController::class, 'store']);
         Route::get('/cities/{id}/edit', [LocationsFeesCityController::class, 'edit']);

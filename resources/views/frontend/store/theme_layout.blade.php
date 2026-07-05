@@ -19,7 +19,8 @@
 				<!-- <a href="{{ route('store.account.orders') }}">تتبع طلبي</a> -->
 				<a href="{{ route('store.account.profile') }}">حسابي</a>
 				@if (Route::has('repair-status'))
-					<a href="{{ route('repair-status') }}">{{ __('storefront.repair_status.track_repair') }}</a>
+				<a
+					href="{{ route('repair-status') }}">{{ __('storefront.repair_status.track_repair') }}</a>
 				@endif
 				<!-- <a href="#">مراكز الصيانة</a> -->
 				<span style="color:var(--accent);font-weight:700;">📞 19900</span>
@@ -654,7 +655,7 @@
 				old: null,
 				img: p.image_url,
 				// stars: '⭐⭐⭐⭐⭐',
-				reviews: 'متوفر',
+				// reviews: 'متوفر',
 				variation_id: defaultVariant ? Number(defaultVariant
 					.variation_id) : (p.variation_id || p
 					.id),
@@ -847,7 +848,8 @@
 			.map((c) => ({
 				id: Number(c.id),
 				name: String(c.name || ''),
-				count: Array.isArray(c.products) ? c.products.length : Number(c.count || 0),
+				count: Array.isArray(c.products) ? c.products.length : Number(c
+					.count || 0),
 				image_url: String(c.image_url || c.image || ''),
 				source: 'servo',
 			}))
@@ -1025,8 +1027,8 @@
 				price,
 				old: null,
 				img: p.image_url,
-				stars: '⭐⭐⭐⭐⭐',
-				reviews: 'متوفر',
+				// stars: '⭐⭐⭐⭐⭐',
+				// reviews: 'متوفر',
 				variation_id: vid,
 				variations,
 			};
@@ -1168,8 +1170,8 @@
 							.old_price
 						) : null,
 						img: d.image_url,
-						stars: '⭐⭐⭐⭐⭐',
-						reviews: 'عرض',
+						// stars: '⭐⭐⭐⭐⭐',
+						// reviews: 'عرض',
 						variation_id: d.variation_id
 					};
 				});
@@ -1314,8 +1316,8 @@
 						price: defPrice,
 						old: prev.old != null ? prev.old : null,
 						img: d.image_url || prev.img || '',
-						stars: prev.stars || '⭐⭐⭐⭐⭐',
-						reviews: prev.reviews || 'متوفر',
+						// stars: prev.stars || '⭐⭐⭐⭐⭐',
+						// reviews: prev.reviews || 'متوفر',
 						variation_id: def ? Number(def.variation_id) :
 							Number(prev.variation_id || id),
 						variations: vars.map((v) => ({
@@ -1746,7 +1748,7 @@
 					const res = await fetch(
 						url + (url.includes(
 								'?'
-								) ?
+							) ?
 							'&' : '?'
 						) +
 						'q=' +

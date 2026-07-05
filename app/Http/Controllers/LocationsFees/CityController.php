@@ -35,6 +35,10 @@ class CityController extends Controller
                     'lf_cities.is_active',
                 ]);
 
+            if (request()->filled('governorate_id')) {
+                $rows->where('lf_cities.governorate_id', (int) request()->input('governorate_id'));
+            }
+
             return DataTables::of($rows)
                 ->editColumn('delivery_cost', function ($row) {
                     return '<span class="display_currency" data-currency_symbol="true">'.$row->delivery_cost.'</span>';
@@ -54,6 +58,25 @@ class CityController extends Controller
         }
 
         return view('locations_fees.cities.index');
+    }
+
+    public function byGovernorate(Request $request)
+    {
+        $this->authorizeAccess();
+        $business_id = (int) request()->session()->get('user.business_id');
+        $governorate_id = $request->integer('governorate_id');
+
+        if ($governorate_id <= 0) {
+            return ['data' => []];
+        }
+
+        $items = City::forBusiness($business_id)
+            ->active()
+            ->where('governorate_id', $governorate_id)
+            ->orderBy('name')
+            ->get(['id', 'name']);
+
+        return ['data' => $items];
     }
 
     public function create()
