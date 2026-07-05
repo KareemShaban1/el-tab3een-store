@@ -18,6 +18,9 @@
 			<div class="announce-links">
 				<!-- <a href="{{ route('store.account.orders') }}">تتبع طلبي</a> -->
 				<a href="{{ route('store.account.profile') }}">حسابي</a>
+				@if (Route::has('repair-status'))
+					<a href="{{ route('repair-status') }}">{{ __('storefront.repair_status.track_repair') }}</a>
+				@endif
 				<!-- <a href="#">مراكز الصيانة</a> -->
 				<span style="color:var(--accent);font-weight:700;">📞 19900</span>
 			</div>
@@ -1504,18 +1507,24 @@
 		});
 	}
 
-	/* ── Hero Slider Dots ── */
+	/* ── Hero Slider ── */
 	function initHeroDots() {
+		const slides = $$('.hero-slide');
 		const dots = $$('.hero-dot');
-		if (!dots.length) return;
+		if (!slides.length) return;
 		let cur = 0;
-		const go = i => {
-			dots[cur].classList.remove('active');
+		const go = (i) => {
+			if (!slides[i]) return;
+			slides[cur]?.classList.remove('active');
+			dots[cur]?.classList.remove('active');
 			cur = i;
-			dots[cur].classList.add('active');
+			slides[cur]?.classList.add('active');
+			dots[cur]?.classList.add('active');
 		};
 		dots.forEach((d, i) => d.addEventListener('click', () => go(i)));
-		setInterval(() => go((cur + 1) % dots.length), 3500);
+		if (slides.length > 1) {
+			setInterval(() => go((cur + 1) % slides.length), 5000);
+		}
 	}
 
 	/* ── Brands Auto-scroll ── */

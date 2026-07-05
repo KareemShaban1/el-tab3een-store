@@ -22,7 +22,7 @@ use App\Utils\ModuleUtil;
 use App\CustomerGroup;
 use App\Utils\ContactUtil;
 use App\Utils\ProductUtil;
-use App\Models\Media;
+use App\Media;
 use Spatie\Activitylog\Models\Activity;
 
 class JobSheetController extends Controller
@@ -103,7 +103,7 @@ class JobSheetController extends Controller
                     )
                     ->leftJoin('users', 'repair_job_sheets.created_by', '=', 'users.id')
                     ->where('repair_job_sheets.business_id', $business_id)
-                    ->select('delivery_date', 'job_sheet_no', DB::raw("CONCAT(COALESCE(technecian.surname, ''),' ',COALESCE(technecian.first_name, ''),' ',COALESCE(technecian.last_name,'')) as technecian"), DB::raw("CONCAT(COALESCE(users.surname, ''),' ',COALESCE(users.first_name, ''),' ',COALESCE(users.last_name,'')) as added_by"), 'contacts.name as customer', 'b.name as brand', 'rdm.name as device_model', 'serial_no', 'estimated_cost', 'rs.name as status', 'repair_job_sheets.id as id', 'repair_job_sheets.created_at as created_at', 'service_type', 'rs.color as status_color', 'bl.name as location', 'rs.is_completed_status', 'device.name as device');
+                    ->select('delivery_date', 'job_sheet_no', DB::raw("CONCAT(COALESCE(technecian.surname, ''),' ',COALESCE(technecian.first_name, ''),' ',COALESCE(technecian.last_name,'')) as technecian"), DB::raw("CONCAT(COALESCE(users.surname, ''),' ',COALESCE(users.first_name, ''),' ',COALESCE(users.last_name,'')) as added_by"), 'contacts.name as customer', 'contacts.mobile as mobile', 'contacts.landline as landline', 'b.name as brand', 'rdm.name as device_model', 'serial_no', 'estimated_cost', 'rs.name as status', 'repair_job_sheets.id as id', 'repair_job_sheets.created_at as created_at', 'service_type', 'rs.color as status_color', 'bl.name as location', 'rs.is_completed_status', 'device.name as device');
 
             //if user is not admin get only assgined/created_by job sheet
             if (!auth()->user()->can('job_sheet.view_all')) {
@@ -273,6 +273,14 @@ class JobSheetController extends Controller
                             </a>
                         ';
                     return $html;
+                })
+                ->filterColumn('contacts.name', function ($query, $keyword) {
+                    $query->where(function ($q) use ($keyword) {
+                        $q->where('contacts.name', 'like', "%{$keyword}%")
+                            ->orWhere('contacts.mobile', 'like', "%{$keyword}%")
+                            ->orWhere('contacts.landline', 'like', "%{$keyword}%")
+                            ->orWhere('contacts.alternate_number', 'like', "%{$keyword}%");
+                    });
                 })
                 ->removeColumn('id')
                 ->rawColumns(['action', 'service_type', 'delivery_date', 'repair_no', 'status', 'estimated_cost', 'created_at'])

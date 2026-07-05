@@ -46,4 +46,15 @@ return [
         'partner_section' => 'Items from our partners',
         'error_message' => 'Note',
     ],
+    'repair_status' => [
+        'subtitle' => 'Search for your device repair status using the job sheet number, invoice number, or mobile number.',
+        'search_type' => 'Search type',
+        'back_to_store' => 'Back to store',
+        'searching' => 'Searching...',
+        'results_found' => 'Results found',
+        'no_results' => 'No results found',
+        'search_error' => 'An error occurred while searching. Please try again.',
+        'track_repair' => 'Track repair',
+        'not_available' => '—',
+    ],
 ];

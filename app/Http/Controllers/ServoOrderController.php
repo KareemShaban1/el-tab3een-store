@@ -4,15 +4,19 @@ namespace App\Http\Controllers;
 
 use App\ServoOrderLog;
 use App\Utils\ContactUtil;
+use App\Utils\ServoOrderUtil;
 use Yajra\DataTables\Facades\DataTables;
 
 class ServoOrderController extends Controller
 {
     protected $contactUtil;
 
-    public function __construct(ContactUtil $contactUtil)
+    protected $servoOrderUtil;
+
+    public function __construct(ContactUtil $contactUtil, ServoOrderUtil $servoOrderUtil)
     {
         $this->contactUtil = $contactUtil;
+        $this->servoOrderUtil = $servoOrderUtil;
     }
 
     public function index()
@@ -43,6 +47,8 @@ class ServoOrderController extends Controller
                     'servo_order_logs.http_status',
                     'servo_order_logs.error_message',
                     'contacts.name as customer_name',
+                    'contacts.mobile as customer_mobile',
+                    'contacts.email as customer_email',
                     'transactions.invoice_no',
                 ]);
 
@@ -56,6 +62,20 @@ class ServoOrderController extends Controller
                 })
                 ->editColumn('customer_name', function ($row) {
                     return $this->contactNameLink($row->customer_name, $row->contact_id);
+                })
+                ->editColumn('customer_mobile', function ($row) {
+                    if (empty($row->customer_mobile)) {
+                        return '-';
+                    }
+
+                    return e($row->customer_mobile);
+                })
+                ->editColumn('customer_email', function ($row) {
+                    if (empty($row->customer_email)) {
+                        return '-';
+                    }
+
+                    return '<a href="mailto:'.e($row->customer_email).'">'.e($row->customer_email).'</a>';
                 })
                 ->editColumn('client_name', function ($row) {
                     return $this->contactNameLink($row->client_name, $row->contact_id);
@@ -87,7 +107,14 @@ class ServoOrderController extends Controller
                 ->addColumn('action', function ($row) {
                     return '<a href="'.action([self::class, 'show'], [$row->id]).'" class="tw-dw-btn tw-dw-btn-xs tw-dw-btn-outline tw-dw-btn-primary">'.__('messages.view').'</a>';
                 })
-                ->rawColumns(['status', 'local_order', 'action', 'customer_name', 'client_name'])
+                ->filterColumn('contacts.name', function ($query, $keyword) {
+                    $query->where(function ($q) use ($keyword) {
+                        $q->where('contacts.name', 'like', "%{$keyword}%")
+                            ->orWhere('contacts.mobile', 'like', "%{$keyword}%")
+                            ->orWhere('contacts.email', 'like', "%{$keyword}%");
+                    });
+                })
+                ->rawColumns(['status', 'local_order', 'action', 'customer_name', 'client_name', 'customer_email'])
                 ->make(true);
         }
 
@@ -105,11 +132,34 @@ class ServoOrderController extends Controller
 
         $business_id = request()->session()->get('user.business_id');
 
-        $log = ServoOrderLog::with(['contact', 'transaction'])
+        $log = ServoOrderLog::with([
+            'contact',
+            'transaction.sell_lines.product',
+            'transaction.sell_lines.variations',
+        ])
             ->where('business_id', $business_id)
             ->findOrFail($id);
 
-        return view('servo_orders.show', compact('log'));
+        $formatted_servo_items = $this->servoOrderUtil->formatItems($log->items ?? []);
+        $formatted_local_items = $this->servoOrderUtil->formatLocalItems($log->transaction);
+        $servo_total = collect($formatted_servo_items)->sum(fn (array $item) => (float) ($item['line_total'] ?? 0));
+        $local_total = $log->transaction ? (float) $log->transaction->final_total : 0;
+        $has_local_items = count($formatted_local_items) > 0;
+        $has_servo_items = count($formatted_servo_items) > 0;
+        $is_mixed_order = $has_local_items && $has_servo_items;
+        $grand_total = ($has_local_items ? $local_total : 0) + ($servo_total > 0 ? $servo_total : 0);
+
+        return view('servo_orders.show', compact(
+            'log',
+            'formatted_servo_items',
+            'formatted_local_items',
+            'servo_total',
+            'local_total',
+            'grand_total',
+            'has_local_items',
+            'has_servo_items',
+            'is_mixed_order'
+        ));
     }
 
     public function clientDetails($contact_id)

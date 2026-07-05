@@ -888,6 +888,25 @@
 		z-index: 1
 	}
 
+	.hero-slides {
+		position: relative;
+	}
+
+	.hero-slide {
+		display: none;
+	}
+
+	.hero-slide.active {
+		display: block;
+	}
+
+	.hero-dots-wrap {
+		position: relative;
+		z-index: 1;
+		margin-top: -42px;
+		padding-bottom: 24px;
+	}
+
 	/* Hero Content */
 	.hero-content {
 		color: #fff
@@ -2543,6 +2562,11 @@
 			grid-template-columns: 1fr;
 			text-align: center;
 			padding: 44px 0 36px
+		}
+
+		.hero-dots-wrap {
+			margin-top: -20px;
+			text-align: center;
 		}
 
 		.hero-visual {

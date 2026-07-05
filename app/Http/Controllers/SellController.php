@@ -2165,4 +2165,60 @@ class SellController extends Controller
             exit;
         }
     }
+
+    /**
+     * Profit by user (added by) from sales.
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function userProfitReport()
+    {
+        if (! auth()->user()->can('profit_loss_report.view') && ! auth()->user()->can('purchase_n_sell_report.view')) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        $business_id = request()->session()->get('user.business_id');
+
+        return view('sell.reports.user_profit')
+            ->with($this->sellProfitReportFilters($business_id));
+    }
+
+    /**
+     * Profit by service staff from sales.
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function serviceStaffProfitReport()
+    {
+        if (! auth()->user()->can('profit_loss_report.view') && ! auth()->user()->can('purchase_n_sell_report.view')) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        if (! $this->productUtil->isModuleEnabled('service_staff')) {
+            abort(404);
+        }
+
+        $business_id = request()->session()->get('user.business_id');
+
+        return view('sell.reports.service_staff_profit')
+            ->with($this->sellProfitReportFilters($business_id));
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function sellProfitReportFilters(int $business_id): array
+    {
+        $service_staffs = null;
+        if ($this->productUtil->isModuleEnabled('service_staff')) {
+            $service_staffs = $this->productUtil->serviceStaffDropdown($business_id);
+        }
+
+        return [
+            'business_locations' => BusinessLocation::forDropdown($business_id, false),
+            'sales_representative' => User::forDropdown($business_id, false, false, true),
+            'service_staffs' => $service_staffs,
+            'is_service_staff_enabled' => $this->productUtil->isModuleEnabled('service_staff'),
+        ];
+    }
 }

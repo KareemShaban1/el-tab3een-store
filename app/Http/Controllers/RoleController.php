@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\SellingPriceGroup;
+use App\LocationsFees\Permissions;
 use App\Utils\ModuleUtil;
 use Illuminate\Http\Request;
 use Spatie\Permission\Models\Permission;
@@ -97,6 +98,7 @@ class RoleController extends Controller
                                     ->get();
 
         $module_permissions = $this->moduleUtil->getModuleData('user_permissions');
+        $module_permissions['LocationsFees'] = Permissions::forRoleForm();
 
         $common_settings = ! empty(session('business.common_settings')) ? session('business.common_settings') : [];
 
@@ -216,6 +218,7 @@ class RoleController extends Controller
                                     ->get();
 
         $module_permissions = $this->moduleUtil->getModuleData('user_permissions');
+        $module_permissions['LocationsFees'] = Permissions::forRoleForm();
 
         $common_settings = ! empty(session('business.common_settings')) ? session('business.common_settings') : [];
 

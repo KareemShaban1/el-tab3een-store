@@ -10,8 +10,11 @@ use App\ServoOrderLog;
 use App\Utils\NotificationUtil;
 use App\Utils\ProductUtil;
 use App\Utils\TransactionUtil;
+use App\Utils\ModuleUtil;
 use App\Variation;
 use App\Services\Tab3eenOrderService;
+use App\LocationsFees\Governorate;
+use App\Utils\LocationsFeesUtil;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -25,7 +28,8 @@ class StoreCheckoutController extends Controller
         private TransactionUtil $transactionUtil,
         private ProductUtil $productUtil,
         private NotificationUtil $notificationUtil,
-        private Tab3eenOrderService $tab3eenOrderService
+        private Tab3eenOrderService $tab3eenOrderService,
+        private ModuleUtil $moduleUtil
     ) {}
 
     public function show(Request $request)
@@ -48,11 +52,18 @@ class StoreCheckoutController extends Controller
                 ->first();
         }
 
+        $locations_fees_enabled = \Illuminate\Support\Facades\Schema::hasTable('lf_governorates');
+        $lf_governorates = $locations_fees_enabled
+            ? Governorate::forBusiness($business_id)->active()->orderBy('name')->get(['id', 'name'])
+            : collect();
+
         return view('frontend.store.checkout')->with([
             'variation' => $variation,
             'qty' => $selected_qty,
             'location_id' => $location_id,
             'customer' => $customer,
+            'locations_fees_enabled' => $locations_fees_enabled,
+            'lf_governorates' => $lf_governorates,
         ]);
     }
 
@@ -77,12 +88,18 @@ class StoreCheckoutController extends Controller
             'addresses.shipping_address.shipping_country' => 'nullable|string|max:191',
             'addresses.shipping_address.shipping_zip_code' => 'nullable|string|max:20',
             'addresses.shipping_address.shipping_mobile' => 'nullable|string|max:30',
+            'addresses.shipping_address.shipping_area' => 'nullable|string|max:191',
+            'addresses.shipping_address.lf_governorate_id' => 'nullable|integer',
+            'addresses.shipping_address.lf_city_id' => 'nullable|integer',
+            'addresses.shipping_address.lf_area_id' => 'nullable|integer',
+            'addresses.shipping_address.lf_custom_area' => 'nullable|string|max:191',
             'idempotency_key' => 'nullable|string|max:191',
             'payment_method' => 'nullable|string|max:50',
         ]);
 
         $customer_contact = Contact::findOrFail($customer->id);
-        $resolved_addresses = $this->resolveShippingAddress($validated, $customer_contact, $request);
+        $delivery_fee = 0.0;
+        $resolved_addresses = $this->resolveShippingAddress($validated, $customer_contact, $request, $business_id, $delivery_fee);
         [$servo_products, $local_products] = $this->splitCheckoutProducts($validated['products'], $business_id);
         $servo_client_name = trim((string) ($resolved_addresses['shipping_address']['shipping_name'] ?? $customer_contact->name ?? ''));
 
@@ -115,7 +132,8 @@ class StoreCheckoutController extends Controller
                 $customer_contact,
                 $business_id,
                 $location_id,
-                $resolved_addresses
+                $resolved_addresses,
+                $delivery_fee
             );
         }
 
@@ -149,7 +167,8 @@ class StoreCheckoutController extends Controller
         Contact $customer_contact,
         int $business_id,
         int $location_id,
-        array $resolved_addresses
+        array $resolved_addresses,
+        float $delivery_fee = 0.0
     ) {
         if (! empty($validated['idempotency_key'])) {
             $existing = Transaction::where('business_id', $business_id)
@@ -265,7 +284,8 @@ class StoreCheckoutController extends Controller
                 'business_id' => $business_id,
                 'location_id' => $location_id,
                 'contact_id' => $customer->id,
-                'final_total' => $final_total,
+                'final_total' => $final_total + $delivery_fee,
+                'shipping_charges' => $delivery_fee,
                 'created_by' => $user_id,
                 'status' => 'final',
                 'sub_status' => 'ecommerce_new',
@@ -288,7 +308,7 @@ class StoreCheckoutController extends Controller
                 'discount_amount' => 0,
             ];
 
-            $invoice_total = ['total_before_tax' => $final_total, 'tax' => 0];
+            $invoice_total = ['total_before_tax' => $final_total + $delivery_fee, 'tax' => 0];
             $business_data = [
                 'id' => $business_id,
                 'accounting_method' => $business->accounting_method,
@@ -1096,10 +1116,11 @@ class StoreCheckoutController extends Controller
         }
     }
 
-    private function resolveShippingAddress(array $validated, Contact $customer_contact, Request $request): array
+    private function resolveShippingAddress(array $validated, Contact $customer_contact, Request $request, int $business_id, float &$delivery_fee): array
     {
         $option = $validated['shipping_address_option'] ?? null;
         $provided = $validated['addresses']['shipping_address'] ?? [];
+        $locations_fees_enabled = \Illuminate\Support\Facades\Schema::hasTable('lf_governorates');
 
         if ($option === 'new' || (! empty($provided) && empty($option))) {
             $name = trim((string) ($provided['shipping_name'] ?? ''));
@@ -1111,16 +1132,71 @@ class StoreCheckoutController extends Controller
                 ]);
             }
 
+            $shipping_state = (string) ($provided['shipping_state'] ?? '');
+            $shipping_city = (string) ($provided['shipping_city'] ?? '');
+            $shipping_area = (string) ($provided['shipping_area'] ?? '');
+            $location_meta = [];
+
+            if ($locations_fees_enabled) {
+                $governorate_id = (int) ($provided['lf_governorate_id'] ?? 0);
+                $city_id = (int) ($provided['lf_city_id'] ?? 0);
+                $area_id = ! empty($provided['lf_area_id']) ? (int) $provided['lf_area_id'] : null;
+                $custom_area = trim((string) ($provided['lf_custom_area'] ?? ''));
+
+                if ($governorate_id <= 0 || $city_id <= 0) {
+                    throw ValidationException::withMessages([
+                        'addresses.shipping_address.lf_governorate_id' => __('locations_fees.location_required'),
+                    ]);
+                }
+
+                if (empty($area_id) && $custom_area === '') {
+                    throw ValidationException::withMessages([
+                        'addresses.shipping_address.lf_area_id' => __('locations_fees.location_required'),
+                    ]);
+                }
+
+                $locationsFeesUtil = app(LocationsFeesUtil::class);
+
+                try {
+                    $resolved_fee = $locationsFeesUtil->resolveDeliveryFee(
+                        $business_id,
+                        $governorate_id,
+                        $city_id,
+                        $area_id,
+                        $custom_area
+                    );
+                } catch (\InvalidArgumentException $e) {
+                    throw ValidationException::withMessages([
+                        'addresses.shipping_address.lf_governorate_id' => $e->getMessage(),
+                    ]);
+                }
+
+                $delivery_fee = (float) $resolved_fee['fee'];
+                $shipping_state = $resolved_fee['governorate_name'];
+                $shipping_city = $resolved_fee['city_name'];
+                $shipping_area = (string) ($resolved_fee['area_name'] ?? $custom_area);
+
+                $location_meta = [
+                    'lf_governorate_id' => $governorate_id,
+                    'lf_city_id' => $city_id,
+                    'lf_area_id' => $area_id,
+                    'lf_custom_area' => $custom_area !== '' ? $custom_area : null,
+                    'delivery_fee' => $delivery_fee,
+                    'delivery_fee_source' => $resolved_fee['fee_source'],
+                ];
+            }
+
             return [
-                'shipping_address' => [
+                'shipping_address' => array_merge([
                     'shipping_name' => $name,
                     'shipping_address_line_1' => $line1,
-                    'shipping_city' => (string) ($provided['shipping_city'] ?? ''),
-                    'shipping_state' => (string) ($provided['shipping_state'] ?? ''),
+                    'shipping_city' => $shipping_city,
+                    'shipping_state' => $shipping_state,
+                    'shipping_area' => $shipping_area,
                     'shipping_country' => (string) ($provided['shipping_country'] ?? ''),
                     'shipping_zip_code' => (string) ($provided['shipping_zip_code'] ?? ''),
                     'shipping_mobile' => (string) ($provided['shipping_mobile'] ?? ''),
-                ],
+                ], $location_meta),
             ];
         }
 
@@ -1140,6 +1216,7 @@ class StoreCheckoutController extends Controller
                 'shipping_country' => (string) ($customer_contact->country ?? ''),
                 'shipping_zip_code' => (string) ($customer_contact->zip_code ?? ''),
                 'shipping_mobile' => (string) ($customer_contact->mobile ?? ''),
+                'shipping_area' => '',
             ],
         ];
     }

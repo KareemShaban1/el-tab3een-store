@@ -8,6 +8,7 @@ use App\Category;
 use App\BusinessLocation;
 use App\Contact;
 use App\Product;
+use App\StoreHeroBanner;
 use App\Services\Tab3eenCatalogService;
 use App\Variation;
 use Illuminate\Http\Request;
@@ -39,8 +40,18 @@ class StorefrontController extends Controller
 
         $brandCount = Brands::where('business_id', $business_id)->count();
 
+        $heroBanners = StoreHeroBanner::forBusiness($business_id)
+            ->active()
+            ->ordered()
+            ->get();
+
+        if ($heroBanners->isEmpty()) {
+            $heroBanners = collect([StoreHeroBanner::defaultFallback()]);
+        }
+
         return view('frontend.welcome', [
             'tab3eenCatalog' => $tab3eenCatalog,
+            'heroBanners' => $heroBanners,
             'heroStats' => [
                 'products' => $this->formatHeroStat($localProductCount + $tab3eenProductCount),
                 'customers' => $this->formatHeroStat($customerCount),

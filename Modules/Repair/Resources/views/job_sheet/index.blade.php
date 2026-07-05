@@ -90,6 +90,8 @@
                                         <th>
                                             @lang('role.customer')
                                         </th>
+                                        <th>@lang('contact.mobile')</th>
+                                        <th>@lang('contact.landline')</th>
                                         <th>@lang('business.location')</th>
                                         <th>@lang('product.brand')</th>
                                         <th>@lang('repair::lang.device')</th>
@@ -133,6 +135,8 @@
                                         <th>
                                             @lang('role.customer')
                                         </th>
+                                        <th>@lang('contact.mobile')</th>
+                                        <th>@lang('contact.landline')</th>
                                         <th>@lang('business.location')</th>
                                         <th>@lang('product.brand')</th>
                                         <th>@lang('repair::lang.device')</th>
@@ -195,6 +199,8 @@
                             { data: 'technecian', name: 'technecian', searchable: false},
                         @endif
                         { data: 'customer', name : 'contacts.name'},
+                        { data: 'mobile', name: 'contacts.mobile' },
+                        { data: 'landline', name: 'contacts.landline' },
                         { data: 'location', name: 'bl.name' },
                         { data: 'brand', name: 'b.name' },
                         { data: 'device', name: 'device.name' },
@@ -253,6 +259,8 @@
                             { data: 'technecian', name: 'technecian', searchable: false},
                         @endif
                         { data: 'customer', name : 'contacts.name'},
+                        { data: 'mobile', name: 'contacts.mobile' },
+                        { data: 'landline', name: 'contacts.landline' },
                         { data: 'location', name: 'bl.name' },
                         { data: 'brand', name: 'b.name' },
                         { data: 'device', name: 'device.name' },

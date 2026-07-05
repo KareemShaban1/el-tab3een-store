@@ -17,7 +17,7 @@ class CustomerRepairStatusController extends Controller
      */
     public function index()
     {
-        return view('repair::customer_repair.index');
+        return view('frontend.store.repair_status');
     }
 
     /**
@@ -96,7 +96,7 @@ class CustomerRepairStatusController extends Controller
                                            ->get();
                 }
 
-                $repair_html = View::make('repair::customer_repair.repair_details')
+                $repair_html = View::make('frontend.store.partials.repair_status_details')
                                 ->with(compact('sells'))
                                 ->render();
 

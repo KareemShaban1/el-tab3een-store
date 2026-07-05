@@ -22,7 +22,7 @@ return [
     'sort_order' => 'امر ترتيب',
     'is_active' => 'تفعيل',
     'infinite_help' => '0 = لانهائي',
-    'active' => 'نشيط',
+    'active' => 'نشط',
     'invoices' => 'الفواتير',
     'inactive' => 'غير نشط',
     'all_packages' => 'جميع الحزم',

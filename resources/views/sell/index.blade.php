@@ -12,6 +12,20 @@
     <section class="content-header no-print">
         <h1  class="tw-text-xl md:tw-text-3xl tw-font-bold tw-text-black">{{ $page_title }} <span id="sell_list_selected_range" class="tw-text-gray-600 tw-font-normal tw-text-base">{{ @format_date(\Carbon\Carbon::now()->subDays(29)) }} ~ {{ @format_date(\Carbon\Carbon::now()) }}</span>
         </h1>
+        @if (auth()->user()->can('profit_loss_report.view') || auth()->user()->can('purchase_n_sell_report.view'))
+            <div class="tw-mt-2 tw-flex tw-flex-wrap tw-gap-2">
+                <a href="{{ action([\App\Http\Controllers\SellController::class, 'userProfitReport']) }}"
+                    class="tw-dw-btn tw-dw-btn-sm tw-dw-btn-outline tw-dw-btn-primary">
+                    @lang('lang_v1.profit_by_user')
+                </a>
+                @if (!empty($is_service_staff_enabled))
+                    <a href="{{ action([\App\Http\Controllers\SellController::class, 'serviceStaffProfitReport']) }}"
+                        class="tw-dw-btn tw-dw-btn-sm tw-dw-btn-outline tw-dw-btn-primary">
+                        @lang('lang_v1.profit_by_service_staff')
+                    </a>
+                @endif
+            </div>
+        @endif
     </section>
 
     <!-- Main content -->

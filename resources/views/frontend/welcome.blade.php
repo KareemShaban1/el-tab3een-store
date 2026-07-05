@@ -2,82 +2,76 @@
 
 @section('content')
 <!-- ===================== HERO ===================== -->
-<section class="hero">
+<section class="hero" id="store-hero">
 	<div class="container">
-		<div class="hero-inner">
-
-			<div class="hero-content">
-				<div class="hero-badge">🔥 أحدث تقنيات 2025</div>
-				<h1 class="hero-title">اكتشف <span>عالم التقنية</span><br>بأفضل
-					الأسعار</h1>
-				<p class="hero-desc">تشكيلة ضخمة من أحدث الأجهزة الإلكترونية من أفضل
-					الماركات العالمية. جودة عالية، ضمان أصلي، وتوصيل سريع لباب
-					بيتك.</p>
-				<div class="hero-actions">
-					<a href="{{ route('store.products.index') }}"
-						class="btn btn-primary">🛒
-						تسوق الآن</a>
-					<!-- <a href="#" class="btn btn-outline-light">🔥 عروض
-						اليوم</a> -->
-				</div>
-				<div class="hero-stats">
-					<div>
-						<div class="h-stat-num">{{ $heroStats['products'] ?? '+0' }}
+		<div class="hero-slides">
+			@foreach ($heroBanners as $index => $banner)
+				@php
+					$linkUrl = $banner->link_url ?: route('store.products.index');
+					$imageUrl = $banner->image_url ?: 'https://placehold.co/460x400/3d3868/ffffff?text=Hero';
+					$imageAlt = $banner->image_alt ?: strip_tags((string) $banner->title);
+				@endphp
+				<div class="hero-slide {{ $index === 0 ? 'active' : '' }}" data-slide="{{ $index }}">
+					<div class="hero-inner">
+						<div class="hero-content">
+							@if (! empty($banner->badge))
+								<div class="hero-badge">{{ $banner->badge }}</div>
+							@endif
+							<h1 class="hero-title">{!! $banner->title !!}</h1>
+							@if (! empty($banner->content))
+								<p class="hero-desc">{{ $banner->content }}</p>
+							@endif
+							@if (! empty($banner->link_title))
+								<div class="hero-actions">
+									<a href="{{ $linkUrl }}" class="btn btn-primary">{{ $banner->link_title }}</a>
+								</div>
+							@endif
 						</div>
-						<div class="h-stat-lbl">منتج متوفر</div>
-					</div>
-					<div>
-						<div class="h-stat-num">
-							{{ $heroStats['customers'] ?? '+0' }}</div>
-						<div class="h-stat-lbl">عميل سعيد</div>
-					</div>
-					<div>
-						<div class="h-stat-num">{{ $heroStats['brands'] ?? '+0' }}
+
+						<div class="hero-visual">
+							<div class="hero-glow"></div>
+							<img class="hero-img" src="{{ $imageUrl }}" alt="{{ $imageAlt }}">
+							<div class="float-badge fb1">
+								<div class="fb-icon" style="background:#fff3e0;">⭐</div>
+								<div>
+									<strong class="fb-strong">تقييم 4.9 / 5</strong>
+									<span class="fb-small">من +50,000 تقييم</span>
+								</div>
+							</div>
+							<div class="float-badge fb2">
+								<div class="fb-icon" style="background:#e8f5e9;">🚚</div>
+								<div>
+									<strong class="fb-strong">توصيل مجاني</strong>
+									<span class="fb-small">على الطلبات +500 ج.م</span>
+								</div>
+							</div>
 						</div>
-						<div class="h-stat-lbl">ماركة عالمية</div>
 					</div>
 				</div>
-				<div class="hero-dots" style="margin-top:28px;">
-					<button class="hero-dot active" data-dot="0"></button>
-					<button class="hero-dot" data-dot="1"></button>
-					<button class="hero-dot" data-dot="2"></button>
-				</div>
-			</div>
-
-			<div class="hero-visual">
-				<div class="hero-glow"></div>
-				<img class="hero-img"
-					src="https://placehold.co/460x400/3d3868/ffffff?text=iPhone+15+Pro+Max"
-					alt="iPhone 15 Pro Max">
-				<div class="float-badge fb1">
-					<div class="fb-icon" style="background:#fff3e0;">⭐</div>
-					<div>
-						<strong class="fb-strong">تقييم 4.9 / 5</strong>
-						<span class="fb-small">من +50,000 تقييم</span>
-					</div>
-				</div>
-				<div class="float-badge fb2">
-					<div class="fb-icon" style="background:#e8f5e9;">🚚</div>
-					<div>
-						<strong class="fb-strong">توصيل مجاني</strong>
-						<span class="fb-small">على الطلبات +500 ج.م</span>
-					</div>
-				</div>
-			</div>
-
+			@endforeach
 		</div>
+
+		@if ($heroBanners->count() > 1)
+			<div class="hero-dots-wrap">
+				<div class="hero-dots">
+					@foreach ($heroBanners as $index => $banner)
+						<button type="button" class="hero-dot {{ $index === 0 ? 'active' : '' }}" data-dot="{{ $index }}" aria-label="Slide {{ $index + 1 }}"></button>
+					@endforeach
+				</div>
+			</div>
+		@endif
 	</div>
 </section>
 
 <!-- ===================== CATEGORIES ===================== -->
 @php
 $servoCategoriesForGrid = collect($tab3eenCatalog ?? [])->map(function ($category) {
-	return [
-		'id' => (int) ($category['id'] ?? 0),
-		'name' => (string) ($category['name'] ?? ''),
-		'image' => (string) ($category['image'] ?? ''),
-		'products' => $category['products'] ?? [],
-	];
+return [
+'id' => (int) ($category['id'] ?? 0),
+'name' => (string) ($category['name'] ?? ''),
+'image' => (string) ($category['image'] ?? ''),
+'products' => $category['products'] ?? [],
+];
 })->filter(fn ($category) => $category['id'] > 0 && count($category['products']) > 0)->values();
 @endphp
 <script>
@@ -209,7 +203,7 @@ $id => [
 <script>
 window.__SSR_STORE_PRODUCTS__ = Object.assign(window.__SSR_STORE_PRODUCTS__ || {}, @json($tab3eenProductsSeed));
 </script>
-<section class="section tab3een-catalog-section">
+<!-- <section class="section tab3een-catalog-section">
 	<div class="container">
 		<div class="sec-head-row">
 			<div>
@@ -336,7 +330,7 @@ window.__SSR_STORE_PRODUCTS__ = Object.assign(window.__SSR_STORE_PRODUCTS__ || {
 		</div>
 		@endforeach
 	</div>
-</section>
+</section> -->
 <script>
 document.querySelectorAll('.tab3een-tab').forEach(tab => {
 	tab.addEventListener('click', () => {

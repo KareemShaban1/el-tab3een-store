@@ -53,6 +53,7 @@ use App\Http\Controllers\StockAdjustmentController;
 use App\Http\Controllers\StockTransferController;
 use App\Http\Controllers\Frontend\StoreAccountController;
 use App\Http\Controllers\Frontend\StoreCheckoutController;
+use App\Http\Controllers\Frontend\StorefrontLocationController;
 use App\Http\Controllers\Frontend\StoreCustomerAuthController;
 use App\Http\Controllers\Frontend\StorefrontController;
 use App\Http\Controllers\TaxonomyController;
@@ -67,6 +68,11 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\EcommerceSellController;
 use App\Http\Controllers\ServoOrderController;
+use App\Http\Controllers\LocationsFees\AreaController as LocationsFeesAreaController;
+use App\Http\Controllers\LocationsFees\CityController as LocationsFeesCityController;
+use App\Http\Controllers\LocationsFees\GovernorateController as LocationsFeesGovernorateController;
+use App\Http\Controllers\LocationsFees\LocationFeeController;
+use App\Http\Controllers\StoreHeroBannerController;
 /*
 |--------------------------------------------------------------------------
 | Web Routes
@@ -142,6 +148,11 @@ Route::middleware(['setData'])->group(function () {
 
             Route::get('/checkout', [StoreCheckoutController::class, 'show'])->name('checkout.form');
             Route::post('/checkout', [StoreCheckoutController::class, 'checkout'])->name('checkout');
+
+            Route::get('/locations/governorates', [StorefrontLocationController::class, 'governorates'])->name('locations.governorates');
+            Route::get('/locations/cities', [StorefrontLocationController::class, 'cities'])->name('locations.cities');
+            Route::get('/locations/areas', [StorefrontLocationController::class, 'areas'])->name('locations.areas');
+            Route::get('/locations/fee', [StorefrontLocationController::class, 'fee'])->name('locations.fee');
         });
     });
 });
@@ -277,9 +288,37 @@ Route::middleware(['setData', 'auth', 'SetSessionData', 'language', 'timezone', 
     Route::resource('sells', SellController::class)->except(['show']);
     Route::get('/sells/ecommerce/orders', [SellController::class, 'ecommerceOrders'])->name('sells.ecommerce.orders');
     Route::get('/sells/ecommerce/orders/data', [SellController::class, 'ecommerceOrdersData'])->name('sells.ecommerce.orders.data');
+    Route::get('/sells/reports/user-profit', [SellController::class, 'userProfitReport'])->name('sells.reports.user_profit');
+    Route::get('/sells/reports/service-staff-profit', [SellController::class, 'serviceStaffProfitReport'])->name('sells.reports.service_staff_profit');
     Route::get('/servo-orders', [ServoOrderController::class, 'index'])->name('servo-orders.index');
     Route::get('/servo-orders/client/{contact_id}', [ServoOrderController::class, 'clientDetails'])->name('servo-orders.client');
     Route::get('/servo-orders/{id}', [ServoOrderController::class, 'show'])->name('servo-orders.show');
+    Route::resource('store-hero-banners', StoreHeroBannerController::class)->except(['show']);
+
+    Route::prefix('locations-fees')->group(function () {
+        Route::get('/', [LocationFeeController::class, 'index'])->name('locations-fees.index');
+
+        Route::get('/governorates', [LocationsFeesGovernorateController::class, 'index']);
+        Route::get('/governorates/create', [LocationsFeesGovernorateController::class, 'create']);
+        Route::post('/governorates', [LocationsFeesGovernorateController::class, 'store']);
+        Route::get('/governorates/{id}/edit', [LocationsFeesGovernorateController::class, 'edit']);
+        Route::put('/governorates/{id}', [LocationsFeesGovernorateController::class, 'update']);
+        Route::delete('/governorates/{id}', [LocationsFeesGovernorateController::class, 'destroy']);
+
+        Route::get('/cities', [LocationsFeesCityController::class, 'index']);
+        Route::get('/cities/create', [LocationsFeesCityController::class, 'create']);
+        Route::post('/cities', [LocationsFeesCityController::class, 'store']);
+        Route::get('/cities/{id}/edit', [LocationsFeesCityController::class, 'edit']);
+        Route::put('/cities/{id}', [LocationsFeesCityController::class, 'update']);
+        Route::delete('/cities/{id}', [LocationsFeesCityController::class, 'destroy']);
+
+        Route::get('/areas', [LocationsFeesAreaController::class, 'index']);
+        Route::get('/areas/create', [LocationsFeesAreaController::class, 'create']);
+        Route::post('/areas', [LocationsFeesAreaController::class, 'store']);
+        Route::get('/areas/{id}/edit', [LocationsFeesAreaController::class, 'edit']);
+        Route::put('/areas/{id}', [LocationsFeesAreaController::class, 'update']);
+        Route::delete('/areas/{id}', [LocationsFeesAreaController::class, 'destroy']);
+    });
     Route::get('/sells/{id}/ecommerce-status/edit', [SellController::class, 'editEcommerceStatus'])->name('sells.ecommerce.status.edit');
     Route::post('/sells/{id}/ecommerce-status', [EcommerceSellController::class, 'updateEcommerceStatus'])->name('sells.ecommerce.status');
 
@@ -359,6 +398,7 @@ Route::middleware(['setData', 'auth', 'SetSessionData', 'language', 'timezone', 
     Route::get('/reports/sell-payment-report', [ReportController::class, 'sellPaymentReport']);
     Route::get('/reports/product-stock-details', [ReportController::class, 'productStockDetails']);
     Route::get('/reports/adjust-product-stock', [ReportController::class, 'adjustProductStock']);
+    Route::get('/reports/profit-by-person-details', [ReportController::class, 'profitByPersonDetails']);
     Route::get('/reports/get-profit/{by?}', [ReportController::class, 'getProfit']);
     Route::get('/reports/items-report', [ReportController::class, 'itemsReport']);
     Route::get('/reports/get-stock-value', [ReportController::class, 'getStockValue']);

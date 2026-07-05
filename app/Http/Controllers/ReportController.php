@@ -3197,18 +3197,34 @@ class ReportController extends Controller
                 ->groupBy('sale.contact_id');
         }
 
+        if ($by == 'user') {
+            $query->join('users as U', 'sale.created_by', '=', 'U.id')
+                ->addSelect('U.id as user_id')
+                ->addSelect(DB::raw("TRIM(CONCAT(COALESCE(U.surname, ''), ' ', COALESCE(U.first_name, ''), ' ', COALESCE(U.last_name, ''))) as user_name"))
+                ->groupBy('U.id');
+        }
+
         if ($by == 'service_staff') {
             $query->join('users as U', function ($join) {
-                $join->on(DB::raw("COALESCE(transaction_sell_lines.res_service_staff_id, sale.res_waiter_id)"), '=', 'U.id');
+                $join->on(DB::raw('COALESCE(transaction_sell_lines.res_service_staff_id, sale.res_waiter_id)'), '=', 'U.id');
             })
-            ->where('U.is_enable_service_staff_pin', 1)
-            ->addSelect(
-                "U.first_name as f_name",
-                "U.last_name as l_name",
-                "U.surname as surname"
-            )
+            ->whereNotNull(DB::raw('COALESCE(transaction_sell_lines.res_service_staff_id, sale.res_waiter_id)'))
+            ->addSelect('U.id as user_id')
+            ->addSelect(DB::raw("TRIM(CONCAT(COALESCE(U.surname, ''), ' ', COALESCE(U.first_name, ''), ' ', COALESCE(U.last_name, ''))) as staff_name"))
             ->groupBy('U.id');
-        }        
+        }
+
+        if (! empty(request()->created_by)) {
+            $query->where('sale.created_by', request()->integer('created_by'));
+        }
+
+        if (! empty(request()->service_staff_id)) {
+            $staff_id = request()->integer('service_staff_id');
+            $query->where(function ($q) use ($staff_id) {
+                $q->where('transaction_sell_lines.res_service_staff_id', $staff_id)
+                    ->orWhere('sale.res_waiter_id', $staff_id);
+            });
+        }
 
         $datatable = Datatables::of($query);
 
@@ -3263,8 +3279,17 @@ class ReportController extends Controller
             $raw_columns[] = 'customer';
         }
 
-        if($by == 'service_staff'){
-            $datatable->editColumn('staff_name', '{{$surname}} {{$f_name}} {{$l_name}}');
+        if ($by == 'user') {
+            $datatable->editColumn('user_name', function ($row) {
+                return '<a href="#" class="profit-drilldown" data-user-id="'.(int) $row->user_id.'" data-type="user">'.e($row->user_name).'</a>';
+            });
+            $raw_columns[] = 'user_name';
+        }
+
+        if ($by == 'service_staff') {
+            $datatable->editColumn('staff_name', function ($row) {
+                return '<a href="#" class="profit-drilldown" data-user-id="'.(int) $row->user_id.'" data-type="service_staff">'.e($row->staff_name).'</a>';
+            });
             $raw_columns[] = 'staff_name';
         }
 
@@ -3278,6 +3303,164 @@ class ReportController extends Controller
 
         return $datatable->rawColumns($raw_columns)
                   ->make(true);
+    }
+
+    /**
+     * Drill-down: sells, purchase cost and profit lines for a user or service staff member.
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function profitByPersonDetails(Request $request)
+    {
+        if (! auth()->user()->can('profit_loss_report.view') && ! auth()->user()->can('purchase_n_sell_report.view')) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        $business_id = $request->session()->get('user.business_id');
+        $type = (string) $request->input('type');
+        $user_id = $request->integer('user_id');
+
+        if (! in_array($type, ['user', 'service_staff'], true) || $user_id <= 0) {
+            abort(404);
+        }
+
+        if ($request->has('draw')) {
+            return $this->profitByPersonDetailsDatatable($request, $business_id, $type, $user_id);
+        }
+
+        $person = User::where('business_id', $business_id)->findOrFail($user_id);
+        $person_name = trim(implode(' ', array_filter([
+            $person->surname,
+            $person->first_name,
+            $person->last_name,
+        ])));
+
+        return view('sell.reports.partials.profit_details_modal', compact('type', 'user_id', 'person_name'));
+    }
+
+    /**
+     * @return \Illuminate\Http\Response
+     */
+    private function profitByPersonDetailsDatatable(Request $request, int $business_id, string $type, int $user_id)
+    {
+        $query = $this->buildProfitSellLinesQuery($business_id);
+        $this->applyProfitPersonFilter($query, $type, $user_id);
+
+        $query->join('variations as V', 'transaction_sell_lines.variation_id', '=', 'V.id')
+            ->leftJoin('product_variations as PV', 'PV.id', '=', 'V.product_variation_id')
+            ->select(
+                'sale.transaction_date',
+                'sale.invoice_no',
+                'sale.id as transaction_id',
+                DB::raw("IF(P.type='variable', CONCAT(P.name, ' - ', COALESCE(PV.name, ''), ' - ', COALESCE(V.name, '')), P.name) as product"),
+                DB::raw('(transaction_sell_lines.quantity - transaction_sell_lines.quantity_returned) as quantity'),
+                'transaction_sell_lines.unit_price_inc_tax',
+                DB::raw('((transaction_sell_lines.quantity - transaction_sell_lines.quantity_returned) * transaction_sell_lines.unit_price_inc_tax) as sell_total'),
+                DB::raw('SUM(IF(P.enable_stock=0, 0, (TSPL.quantity - TSPL.qty_returned) * PL.purchase_price_inc_tax)) as purchase_total'),
+                DB::raw($this->grossProfitLineSelectExpression().' as line_profit')
+            )
+            ->groupBy(
+                'transaction_sell_lines.id',
+                'sale.transaction_date',
+                'sale.invoice_no',
+                'sale.id',
+                'P.name',
+                'P.type',
+                'PV.name',
+                'V.name',
+                'transaction_sell_lines.quantity',
+                'transaction_sell_lines.quantity_returned',
+                'transaction_sell_lines.unit_price_inc_tax'
+            );
+
+        if (! empty($request->location_id)) {
+            $query->where('sale.location_id', $request->location_id);
+        }
+
+        if (! empty($request->start_date) && ! empty($request->end_date)) {
+            $query->whereDate('sale.transaction_date', '>=', $request->start_date)
+                ->whereDate('sale.transaction_date', '<=', $request->end_date);
+        }
+
+        $permitted_locations = auth()->user()->permitted_locations();
+        if ($permitted_locations != 'all') {
+            $query->whereIn('sale.location_id', $permitted_locations);
+        }
+
+        return Datatables::of($query)
+            ->editColumn('transaction_date', '{{@format_datetime($transaction_date)}}')
+            ->editColumn('invoice_no', function ($row) {
+                return '<a data-href="'.action([\App\Http\Controllers\SellController::class, 'show'], [$row->transaction_id])
+                    .'" href="#" data-container=".view_modal" class="btn-modal">'.e($row->invoice_no).'</a>';
+            })
+            ->editColumn('quantity', function ($row) {
+                return '<span data-is_quantity="true" data-orig-value="'.(float) $row->quantity.'">'
+                    .$this->transactionUtil->num_f($row->quantity, false).'</span>';
+            })
+            ->editColumn('unit_price_inc_tax', function ($row) {
+                return '<span class="unit_price_inc_tax" data-orig-value="'.(float) $row->unit_price_inc_tax.'">'
+                    .$this->transactionUtil->num_f($row->unit_price_inc_tax, true).'</span>';
+            })
+            ->editColumn('purchase_total', function ($row) {
+                return '<span class="purchase_total" data-orig-value="'.(float) $row->purchase_total.'">'
+                    .$this->transactionUtil->num_f($row->purchase_total, true).'</span>';
+            })
+            ->editColumn('sell_total', function ($row) {
+                return '<span class="sell_total" data-orig-value="'.(float) $row->sell_total.'">'
+                    .$this->transactionUtil->num_f($row->sell_total, true).'</span>';
+            })
+            ->editColumn('line_profit', function ($row) {
+                return '<span class="line_profit" data-orig-value="'.(float) $row->line_profit.'">'
+                    .$this->transactionUtil->num_f($row->line_profit, true).'</span>';
+            })
+            ->rawColumns(['invoice_no', 'quantity', 'unit_price_inc_tax', 'purchase_total', 'sell_total', 'line_profit'])
+            ->make(true);
+    }
+
+    /**
+     * @param  \Illuminate\Database\Eloquent\Builder|\Illuminate\Database\Query\Builder  $query
+     */
+    private function applyProfitPersonFilter($query, string $type, int $user_id): void
+    {
+        if ($type === 'user') {
+            $query->where('sale.created_by', $user_id);
+
+            return;
+        }
+
+        $query->where(function ($q) use ($user_id) {
+            $q->where('transaction_sell_lines.res_service_staff_id', $user_id)
+                ->orWhere('sale.res_waiter_id', $user_id);
+        });
+    }
+
+    /**
+     * @return \Illuminate\Database\Eloquent\Builder
+     */
+    private function buildProfitSellLinesQuery(int $business_id)
+    {
+        return TransactionSellLine::query()
+            ->join('transactions as sale', 'transaction_sell_lines.transaction_id', '=', 'sale.id')
+            ->leftjoin('transaction_sell_lines_purchase_lines as TSPL', 'transaction_sell_lines.id', '=', 'TSPL.sell_line_id')
+            ->leftjoin('purchase_lines as PL', 'TSPL.purchase_line_id', '=', 'PL.id')
+            ->join('products as P', 'transaction_sell_lines.product_id', '=', 'P.id')
+            ->where('sale.type', 'sell')
+            ->where('sale.status', 'final')
+            ->where('sale.business_id', $business_id)
+            ->where('transaction_sell_lines.children_type', '!=', 'combo');
+    }
+
+    private function grossProfitLineSelectExpression(): string
+    {
+        return 'SUM(IF (TSPL.id IS NULL AND P.type="combo", ( 
+            SELECT Sum((tspl2.quantity - tspl2.qty_returned) * (tsl.unit_price_inc_tax - pl2.purchase_price_inc_tax)) AS total
+                FROM transaction_sell_lines AS tsl
+                    JOIN transaction_sell_lines_purchase_lines AS tspl2
+                ON tsl.id=tspl2.sell_line_id 
+                JOIN purchase_lines AS pl2 
+                ON tspl2.purchase_line_id = pl2.id 
+                WHERE tsl.parent_sell_line_id = transaction_sell_lines.id), IF(P.enable_stock=0,(transaction_sell_lines.quantity - transaction_sell_lines.quantity_returned) * transaction_sell_lines.unit_price_inc_tax,   
+                (TSPL.quantity - TSPL.qty_returned) * (transaction_sell_lines.unit_price_inc_tax - PL.purchase_price_inc_tax)) ))';
     }
 
     /**

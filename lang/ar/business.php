@@ -95,7 +95,7 @@
      'business_created_succesfully' => 'تم إنشاء النشاط بنجاح!',
      'tax_number1' => 'رقم الضريبة 1',
      'tax_number2' => 'رقم الضريبة 2',
-     'is_active' => 'نشيط',
+     'is_active' => 'نشط',
      'created_by' => 'انشأ من قبل',
      'additional_number_secondary' => 'الرقم الإضافي/الرقم الثانوي',
  ];

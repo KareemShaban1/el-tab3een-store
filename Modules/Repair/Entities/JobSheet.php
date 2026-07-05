@@ -44,7 +44,7 @@ class JobSheet extends Model
      */
     public function createdBy()
     {
-        return $this->belongsTo('App\Models\User', 'created_by');
+        return $this->belongsTo('App\User', 'created_by');
     }
 
     /**
@@ -52,7 +52,7 @@ class JobSheet extends Model
      */
     public function technician()
     {
-        return $this->belongsTo('App\Models\User', 'service_staff');
+        return $this->belongsTo('App\User', 'service_staff');
     }
 
     /**
@@ -105,7 +105,7 @@ class JobSheet extends Model
 
     public function media()
     {
-        return $this->morphMany(\App\Models\Media::class, 'model');
+        return $this->morphMany(\App\Media::class, 'model');
     }
 
     public function getPartsUsed()

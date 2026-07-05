@@ -2,7 +2,7 @@
 
 namespace Modules\Essentials\Http\Controllers;
 
-use App\Models\Media;
+use App\Media;
 use App\User;
 use App\Utils\ModuleUtil;
 use App\Utils\Util;

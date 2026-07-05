@@ -318,16 +318,7 @@ $is_superadmin = auth()->user()->can('superadmin');
                                 __('lang_v1.all_sales'),
                                 ['icon' => '', 'active' => request()->segment(1) == 'sells' && request()->segment(2) == null]
                             );
-                            $sub->url(
-                                action([\App\Http\Controllers\SellController::class, 'ecommerceOrders']),
-                                'E-commerce Orders',
-                                ['icon' => '', 'active' => request()->segment(1) == 'sells' && request()->segment(2) == 'ecommerce' && request()->segment(3) == 'orders']
-                            );
-                            $sub->url(
-                                action([\App\Http\Controllers\ServoOrderController::class, 'index']),
-                                __('lang_v1.servo_orders'),
-                                ['icon' => '', 'active' => request()->segment(1) == 'servo-orders']
-                            );
+                           
                         }
                         if (in_array('add_sale', $enabled_modules) && auth()->user()->can('direct_sell.access')) {
                             $sub->url(
@@ -432,13 +423,21 @@ $is_superadmin = auth()->user()->can('superadmin');
                 )->order(30);
             }
 
+            if ($is_admin || auth()->user()->can('locations_fees.access')) {
+                $menu->url(
+                    action([\App\Http\Controllers\LocationsFees\LocationFeeController::class, 'index']),
+                    __('locations_fees.locations_fees'),
+                    ['icon' => 'fa fas fa-map-marker-alt', 'active' => request()->segment(1) == 'locations-fees']
+                )->order(26);
+            }
+
             if ($is_admin || auth()->user()->hasAnyPermission(['sell.view', 'direct_sell.view', 'view_own_sell_only', 'view_commission_agent_sell'])) {
                 $menu->dropdown(
-                    'Orders',
-                    function ($sub) {
+                    __('lang_v1.orders'),
+                    function ($sub) use ($is_admin) {
                         $sub->url(
                             action([\App\Http\Controllers\SellController::class, 'ecommerceOrders']),
-                            'E-commerce Orders',
+                            __('lang_v1.tab3een_orders'),
                             ['icon' => '', 'active' => request()->segment(1) == 'sells' && request()->segment(2) == 'ecommerce' && request()->segment(3) == 'orders']
                         );
                         $sub->url(
@@ -446,6 +445,13 @@ $is_superadmin = auth()->user()->can('superadmin');
                             __('lang_v1.servo_orders'),
                             ['icon' => '', 'active' => request()->segment(1) == 'servo-orders']
                         );
+                        if (auth()->user()->can('business_settings.access') || $is_admin) {
+                            $sub->url(
+                                action([\App\Http\Controllers\StoreHeroBannerController::class, 'index']),
+                                __('lang_v1.hero_banners'),
+                                ['icon' => '', 'active' => request()->segment(1) == 'store-hero-banners']
+                            );
+                        }
                     },
                     ['icon' => '<svg aria-hidden="true" class="tw-size-5 tw-shrink-0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
                     <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
@@ -611,6 +617,20 @@ $is_superadmin = auth()->user()->can('superadmin');
                                 __('report.profit_loss'),
                                 ['icon' => '', 'active' => request()->segment(2) == 'profit-loss']
                             );
+                        }
+                        if (auth()->user()->can('profit_loss_report.view') || auth()->user()->can('purchase_n_sell_report.view')) {
+                            $sub->url(
+                                action([\App\Http\Controllers\SellController::class, 'userProfitReport']),
+                                __('lang_v1.profit_by_user'),
+                                ['icon' => '', 'active' => request()->segment(1) == 'sells' && request()->segment(2) == 'reports' && request()->segment(3) == 'user-profit']
+                            );
+                            if (in_array('service_staff', $enabled_modules)) {
+                                $sub->url(
+                                    action([\App\Http\Controllers\SellController::class, 'serviceStaffProfitReport']),
+                                    __('lang_v1.profit_by_service_staff'),
+                                    ['icon' => '', 'active' => request()->segment(1) == 'sells' && request()->segment(2) == 'reports' && request()->segment(3) == 'service-staff-profit']
+                                );
+                            }
                         }
                         if (config('constants.show_report_606') == true) {
                             $sub->url(
