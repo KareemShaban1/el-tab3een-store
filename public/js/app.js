@@ -2457,10 +2457,33 @@ $(document).on('click', 'a.load_notifications', function(e) {
             success: function(result) {
                 $('li.notification-li').remove();
                 $('ul#notifications_list').prepend(result);
-                $('span.notifications_count').text('');
+                getTotalUnreadNotifications();
                 $('li.load_more_li').removeClass('hide');
             },
         });
+});
+
+$(document).on('click', '#notifications_list a[data-notification-id]', function() {
+    var notification_id = $(this).data('notification-id');
+    var $item = $(this).closest('li.notification-li');
+
+    if (!notification_id || !$item.hasClass('unread')) {
+        return;
+    }
+
+    $.ajax({
+        method: 'POST',
+        url: '/notifications/' + notification_id + '/read',
+        dataType: 'json',
+        global: false,
+        data: {
+            _token: $('meta[name="csrf-token"]').attr('content'),
+        },
+        success: function(data) {
+            $item.removeClass('unread');
+            updateNotificationCounts(data);
+        },
+    });
 });
 
 $(document).on('click', 'a.delete_purchase_return', function(e) {
@@ -2709,6 +2732,41 @@ $(document).on('click', 'button.activate-deactivate-location', function(){
     });
 });
 
+function updateNotificationCounts(data) {
+    var $badge = $('span.notifications_count');
+    if (!$badge.length || typeof data === 'undefined') {
+        return;
+    }
+
+    var total_unread = parseInt(data.total_unread, 10) || 0;
+    if (total_unread > 0) {
+        $badge.text(total_unread).removeClass('is-empty');
+    } else {
+        $badge.text('').addClass('is-empty');
+    }
+
+    if (!data.store_order_counts) {
+        return;
+    }
+
+    updateStoreOrderSidebarBadge('#sidebar-tab3een-orders-badge', data.store_order_counts.tab3een);
+    updateStoreOrderSidebarBadge('#sidebar-servo-orders-badge', data.store_order_counts.servo);
+}
+
+function updateStoreOrderSidebarBadge(selector, count) {
+    var $badge = $(selector);
+    if (!$badge.length) {
+        return;
+    }
+
+    count = parseInt(count, 10) || 0;
+    if (count > 0) {
+        $badge.text(count).removeClass('is-empty');
+    } else {
+        $badge.text('').addClass('is-empty');
+    }
+}
+
 function getTotalUnreadNotifications(){
     if ($('span.notifications_count').length) {
         var href = '/get-total-unread';
@@ -2717,9 +2775,7 @@ function getTotalUnreadNotifications(){
             dataType: 'json',
             global: false,
             success: function(data) {
-                if (data.total_unread != 0 ) {
-                    $('span.notifications_count').text(data.total_unread);
-                }
+                updateNotificationCounts(data);
                 if (data.notification_html) {
                     $('.view_modal').html(data.notification_html);
                     $('.view_modal').modal('show');

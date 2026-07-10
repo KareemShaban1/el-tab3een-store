@@ -1066,3 +1066,48 @@ table.table-text-center td, table.table-text-center th{
   width: 100%;
   height: auto;
 }
+
+/* Header + sidebar notification badges */
+.notifications-menu > a {
+  position: relative;
+  overflow: visible !important;
+}
+.notifications-menu .notifications_count {
+  position: absolute;
+  top: -5px;
+  right: -7px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 18px;
+  text-align: center;
+  color: #fff !important;
+  background-color: #f39c12 !important;
+  border-radius: 9999px;
+  z-index: 5;
+  display: inline-block;
+}
+.notifications-menu .notifications_count.is-empty {
+  display: none !important;
+}
+.store-order-unread-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 6px;
+  margin-left: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  color: #fff;
+  background-color: #f39c12;
+  border-radius: 9999px;
+  vertical-align: middle;
+}
+.store-order-unread-badge.is-empty {
+  display: none !important;
+}

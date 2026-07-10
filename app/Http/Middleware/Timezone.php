@@ -16,11 +16,11 @@ class Timezone
      */
     public function handle($request, Closure $next)
     {
-        $timezone = config('app.timezone');
+        $timezone = config('app.timezone', 'Africa/Cairo');
 
-        if (session()->has('business.time_zone')) {
+        if (session()->has('business.time_zone') && ! empty($request->session()->get('business.time_zone'))) {
             $timezone = $request->session()->get('business.time_zone');
-        } else {
+        } elseif (Auth::check() && ! empty(Auth::user()->business?->time_zone)) {
             $timezone = Auth::user()->business->time_zone;
         }
 

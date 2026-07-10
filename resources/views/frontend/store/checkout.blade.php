@@ -660,7 +660,7 @@ window.updateCheckoutOrderSummary = function(deliveryFee) {
 	form?.addEventListener('input', hideClientError, true);
 	form?.addEventListener('change', hideClientError, true);
 
-	form?.addEventListener('submit', function(e) {
+	form?.addEventListener('submit', async function(e) {
 		hideClientError();
 		const latestCart = readCart();
 		renderProductInputs(latestCart);
@@ -670,6 +670,62 @@ window.updateCheckoutOrderSummary = function(deliveryFee) {
 					.emptyCartMsg) ? form.dataset
 				.emptyCartMsg : '';
 			showClientError(msg);
+			return;
+		}
+
+		e.preventDefault();
+		const submitBtn = form.querySelector('[type="submit"]');
+		if (submitBtn) {
+			submitBtn.disabled = true;
+		}
+
+		try {
+			const response = await fetch(form.action, {
+				method: 'POST',
+				body: new FormData(form),
+				headers: {
+					'X-Requested-With': 'XMLHttpRequest',
+					'Accept': 'application/json',
+				},
+			});
+
+			let data = {};
+			try {
+				data = await response.json();
+			} catch (parseError) {
+				data = {};
+			}
+
+			if (response.status === 422) {
+				const errors = data.errors || {};
+				const messages = Object.values(errors).flat().filter(Boolean);
+				showClientError(messages.join(' ') || data.message || 'تعذر إتمام الطلب.');
+				return;
+			}
+
+			if (response.ok && data.success) {
+				if (data.clear_cart) {
+					if (typeof window.clearStoreCart === 'function') {
+						window.clearStoreCart();
+					} else {
+						try {
+							localStorage.removeItem(CART_STORAGE_KEY);
+						} catch (storageError) {}
+					}
+				}
+
+				window.location.href = data.redirect_url || @json(route('welcome'));
+				return;
+			}
+
+			const errorMessages = Array.isArray(data.error_messages) ? data.error_messages : [];
+			showClientError(data.msg || errorMessages.join(' ') || 'تعذر إتمام الطلب.');
+		} catch (error) {
+			showClientError('تعذر إتمام الطلب. حاول مرة أخرى.');
+		} finally {
+			if (submitBtn) {
+				submitBtn.disabled = false;
+			}
 		}
 	});
 

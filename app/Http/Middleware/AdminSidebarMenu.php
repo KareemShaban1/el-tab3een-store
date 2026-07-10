@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Utils\ModuleUtil;
+use App\Utils\StoreOrderNotificationUtil;
 use Closure;
 use Menu;
 use Modules\CustomDashboard\Entities\CustomDashboard;
@@ -432,17 +433,22 @@ $is_superadmin = auth()->user()->can('superadmin');
             }
 
             if ($is_admin || auth()->user()->hasAnyPermission(['sell.view', 'direct_sell.view', 'view_own_sell_only', 'view_commission_agent_sell'])) {
+                $storeOrderNotificationUtil = app(StoreOrderNotificationUtil::class);
+                $store_order_counts = $storeOrderNotificationUtil->getSidebarCounts(auth()->user());
+                $tab3een_badge = $storeOrderNotificationUtil->sidebarBadgeHtml($store_order_counts['tab3een'], 'sidebar-tab3een-orders-badge');
+                $servo_badge = $storeOrderNotificationUtil->sidebarBadgeHtml($store_order_counts['servo'], 'sidebar-servo-orders-badge');
+
                 $menu->dropdown(
                     __('lang_v1.orders'),
-                    function ($sub) use ($is_admin) {
+                    function ($sub) use ($is_admin, $tab3een_badge, $servo_badge) {
                         $sub->url(
                             action([\App\Http\Controllers\SellController::class, 'ecommerceOrders']),
-                            __('lang_v1.tab3een_orders'),
+                            __('lang_v1.tab3een_orders').$tab3een_badge,
                             ['icon' => '', 'active' => request()->segment(1) == 'sells' && request()->segment(2) == 'ecommerce' && request()->segment(3) == 'orders']
                         );
                         $sub->url(
                             action([\App\Http\Controllers\ServoOrderController::class, 'index']),
-                            __('lang_v1.servo_orders'),
+                            __('lang_v1.servo_orders').$servo_badge,
                             ['icon' => '', 'active' => request()->segment(1) == 'servo-orders']
                         );
                         if (auth()->user()->can('business_settings.access') || $is_admin) {

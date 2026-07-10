@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\ServoOrderLog;
 use App\Utils\ContactUtil;
 use App\Utils\ServoOrderUtil;
+use App\Utils\StoreOrderNotificationUtil;
 use Yajra\DataTables\Facades\DataTables;
 
 class ServoOrderController extends Controller
@@ -117,6 +118,12 @@ class ServoOrderController extends Controller
                 ->rawColumns(['status', 'local_order', 'action', 'customer_name', 'client_name', 'customer_email'])
                 ->make(true);
         }
+
+        app(StoreOrderNotificationUtil::class)->markUnreadAsReadForTypes(
+            auth()->user(),
+            ['servo', 'mixed'],
+            (int) request()->session()->get('user.business_id')
+        );
 
         return view('servo_orders.index');
     }

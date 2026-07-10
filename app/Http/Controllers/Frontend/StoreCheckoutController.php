@@ -11,6 +11,7 @@ use App\Utils\NotificationUtil;
 use App\Utils\ProductUtil;
 use App\Utils\TransactionUtil;
 use App\Utils\ModuleUtil;
+use App\Utils\StoreOrderNotificationUtil;
 use App\Variation;
 use App\Services\Tab3eenOrderService;
 use App\LocationsFees\Governorate;
@@ -29,7 +30,8 @@ class StoreCheckoutController extends Controller
         private ProductUtil $productUtil,
         private NotificationUtil $notificationUtil,
         private Tab3eenOrderService $tab3eenOrderService,
-        private ModuleUtil $moduleUtil
+        private ModuleUtil $moduleUtil,
+        private StoreOrderNotificationUtil $storeOrderNotificationUtil
     ) {}
 
     public function show(Request $request)
@@ -153,7 +155,9 @@ class StoreCheckoutController extends Controller
             $has_local,
             $has_servo,
             $local_result,
-            $servo_result
+            $servo_result,
+            $business_id,
+            $servo_client_name
         );
     }
 
@@ -452,7 +456,44 @@ class StoreCheckoutController extends Controller
         return [
             'success' => true,
             'servo_reference' => $result['servo_reference'],
+            'servo_order_log_id' => $log->id,
         ];
+    }
+
+    private function notifyStoreOrderIfNeeded(
+        int $business_id,
+        bool $has_local,
+        bool $has_servo,
+        ?array $local_result,
+        ?array $servo_result,
+        bool $local_ok,
+        bool $servo_ok,
+        string $customer_name
+    ): void {
+        $local_new = $has_local && $local_ok && ! ($local_result['already_processed'] ?? false);
+        $servo_new = $has_servo && $servo_ok && ! ($servo_result['already_processed'] ?? false);
+
+        if (! $local_new && ! $servo_new) {
+            return;
+        }
+
+        $order_type = match (true) {
+            $local_new && $servo_new => 'mixed',
+            $local_new => 'tab3een',
+            default => 'servo',
+        };
+
+        $transaction = $local_result['transaction'] ?? null;
+
+        $this->storeOrderNotificationUtil->notify($business_id, [
+            'order_type' => $order_type,
+            'business_id' => $business_id,
+            'transaction_id' => $transaction?->id,
+            'invoice_no' => $transaction?->invoice_no,
+            'servo_order_log_id' => $servo_result['servo_order_log_id'] ?? null,
+            'servo_reference' => $servo_result['servo_reference'] ?? null,
+            'customer_name' => $customer_name,
+        ]);
     }
 
     /**
@@ -533,11 +574,24 @@ class StoreCheckoutController extends Controller
         bool $has_local,
         bool $has_servo,
         ?array $local_result,
-        ?array $servo_result
+        ?array $servo_result,
+        int $business_id,
+        string $customer_name
     ) {
         $local_ok = ! $has_local || ($local_result['success'] ?? false);
         $servo_ok = ! $has_servo || ($servo_result['success'] ?? false);
         $transaction = $local_result['transaction'] ?? null;
+
+        $this->notifyStoreOrderIfNeeded(
+            $business_id,
+            $has_local,
+            $has_servo,
+            $local_result,
+            $servo_result,
+            $local_ok,
+            $servo_ok,
+            $customer_name
+        );
 
         if ($local_ok && $servo_ok) {
             return $this->checkoutSuccessResponse(
@@ -660,6 +714,8 @@ class StoreCheckoutController extends Controller
             return [
                 'success' => true,
                 'servo_reference' => $log->servo_reference,
+                'servo_order_log_id' => $log->id,
+                'already_processed' => true,
             ];
         }
 
@@ -728,6 +784,9 @@ class StoreCheckoutController extends Controller
             'success' => true,
             'msg' => $msg,
             'clear_cart' => true,
+            'redirect_url' => $transaction
+                ? route('store.account.orders.show', $transaction->id)
+                : route('welcome'),
             'transaction_id' => $transaction?->id,
             'invoice_no' => $transaction?->invoice_no,
             'payment_status' => $transaction?->payment_status,

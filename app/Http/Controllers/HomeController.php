@@ -14,6 +14,7 @@ use App\Utils\RestaurantUtil;
 use App\Utils\TransactionUtil;
 use App\Utils\ProductUtil;
 use App\Utils\Util;
+use App\Utils\StoreOrderNotificationUtil;
 use App\VariationLocationDetails;
 use Datatables;
 use DB;
@@ -467,9 +468,6 @@ class HomeController extends Controller
     {
         $notifications = auth()->user()->notifications()->orderBy('created_at', 'DESC')->paginate(10);
 
-        if (request()->input('page') == 1) {
-            auth()->user()->unreadNotifications->markAsRead();
-        }
         $notifications_data = $this->commonUtil->parseNotifications($notifications);
 
         return view('layouts.partials.notification_list', compact('notifications_data'));
@@ -484,6 +482,10 @@ class HomeController extends Controller
     {
         $unread_notifications = auth()->user()->unreadNotifications;
         $total_unread = $unread_notifications->count();
+        $store_order_counts = app(StoreOrderNotificationUtil::class)->getSidebarCounts(
+            auth()->user(),
+            (int) session('business.id', 0)
+        );
 
         $notification_html = '';
         $modal_notifications = [];
@@ -500,6 +502,21 @@ class HomeController extends Controller
         return [
             'total_unread' => $total_unread,
             'notification_html' => $notification_html,
+            'store_order_counts' => $store_order_counts,
+        ];
+    }
+
+    public function markNotificationRead($id)
+    {
+        $notification = auth()->user()->notifications()->where('id', $id)->firstOrFail();
+        $notification->markAsRead();
+
+        return [
+            'total_unread' => auth()->user()->unreadNotifications()->count(),
+            'store_order_counts' => app(StoreOrderNotificationUtil::class)->getSidebarCounts(
+                auth()->user(),
+                (int) session('business.id', 0)
+            ),
         ];
     }
 

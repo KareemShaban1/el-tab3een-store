@@ -5,9 +5,7 @@
 <body>
 	@if (session()->pull('clear_store_cart'))
 	<script>
-	try {
-		localStorage.removeItem('store_cart_v1');
-	} catch (e) {}
+	window.__clearStoreCartPending = true;
 	</script>
 	@endif
 	<!-- ===================== ANNOUNCEMENT BAR ===================== -->
@@ -458,6 +456,21 @@
 			// ignore storage failures
 		}
 	}
+
+	window.clearStoreCart = function() {
+		cart = [];
+		try {
+			localStorage.removeItem(CART_STORAGE_KEY);
+		} catch (e) {
+			// ignore storage failures
+		}
+		if (typeof updateBadges === 'function') {
+			updateBadges();
+		}
+		if (typeof renderCart === 'function') {
+			renderCart();
+		}
+	};
 
 	function loadCartFromStorage() {
 		try {
@@ -1314,6 +1327,7 @@
 			el.innerHTML =
 				`<div style="text-align:center;padding:52px 24px;color:var(--muted)"><div style="font-size:3.5rem;margin-bottom:16px">🛒</div><p style="font-weight:700;color:var(--primary);margin-bottom:6px">السلة فارغة</p><p style="font-size:.85rem">أضف منتجاً للبدء</p></div>`;
 			if (tot) tot.textContent = '0 ج.م';
+			updateBadges();
 			return;
 		}
 		el.innerHTML = cart.map(i => `
@@ -1332,6 +1346,7 @@
     </div>`).join('');
 		const total = cart.reduce((s, i) => s + i.price * i.qty, 0);
 		if (tot) tot.textContent = fmt(total);
+		updateBadges();
 	}
 
 	/* ── Wishlist ── */
@@ -1900,6 +1915,11 @@
 	/* ── DOMContentLoaded ── */
 	document.addEventListener('DOMContentLoaded', () => {
 		loadCartFromStorage();
+
+		if (window.__clearStoreCartPending) {
+			window.clearStoreCart();
+			window.__clearStoreCartPending = false;
+		}
 
 		/* Cart drawer open/close */
 		$('cart-open-btn')?.addEventListener('click', openCart);

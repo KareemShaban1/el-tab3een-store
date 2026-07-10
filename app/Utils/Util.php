@@ -1322,9 +1322,59 @@ class Util
     public function parseNotifications($notifications)
     {
         $notifications_data = [];
+        $storeOrderNotificationUtil = app(StoreOrderNotificationUtil::class);
         foreach ($notifications as $notification) {
             $data = $notification->data;
-            if (in_array($notification->type, [\App\Notifications\RecurringInvoiceNotification::class, \App\Notifications\RecurringExpenseNotification::class])) {
+            if ($notification->type == \App\Notifications\NewStoreOrderNotification::class) {
+                $order_type = $data['order_type'] ?? 'tab3een';
+                $customer_name = $data['customer_name'] ?? '';
+                $invoice_no = $data['invoice_no'] ?? '';
+                $servo_reference = $data['servo_reference'] ?? '';
+
+                if ($order_type === 'mixed') {
+                    $msg = __(
+                        'lang_v1.store_order_notification_mixed',
+                        [
+                            'invoice_no' => $invoice_no,
+                            'servo_reference' => $servo_reference,
+                            'customer' => $customer_name,
+                        ]
+                    );
+                } elseif ($order_type === 'servo') {
+                    $msg = __(
+                        'lang_v1.store_order_notification_servo',
+                        [
+                            'servo_reference' => $servo_reference,
+                            'customer' => $customer_name,
+                        ]
+                    );
+                } else {
+                    $msg = __(
+                        'lang_v1.store_order_notification_tab3een',
+                        [
+                            'invoice_no' => $invoice_no,
+                            'customer' => $customer_name,
+                        ]
+                    );
+                }
+
+                if ($order_type === 'servo' && ! empty($data['servo_order_log_id'])) {
+                    $link = route('servo-orders.show', $data['servo_order_log_id']);
+                } elseif (! empty($data['transaction_id'])) {
+                    $link = action([\App\Http\Controllers\SellController::class, 'show'], [$data['transaction_id']]);
+                } else {
+                    $link = route('sells.ecommerce.orders');
+                }
+
+                $notifications_data[] = [
+                    'msg' => $msg,
+                    'icon_class' => 'fas fa-shopping-cart bg-green',
+                    'link' => $link,
+                    'read_at' => $notification->read_at,
+                    'created_at' => $storeOrderNotificationUtil->formatNotificationTime($notification->created_at),
+                    'notification_id' => $notification->id,
+                ];
+            } elseif (in_array($notification->type, [\App\Notifications\RecurringInvoiceNotification::class, \App\Notifications\RecurringExpenseNotification::class])) {
                 $msg = '';
                 $icon_class = '';
                 $link = '';
@@ -1360,7 +1410,8 @@ class Util
                     'icon_class' => $icon_class,
                     'link' => $link,
                     'read_at' => $notification->read_at,
-                    'created_at' => $notification->created_at->diffForHumans(),
+                    'created_at' => $storeOrderNotificationUtil->formatNotificationTime($notification->created_at),
+                    'notification_id' => $notification->id,
                 ];
             } else {
                 $moduleUtil = new \App\Utils\ModuleUtil;

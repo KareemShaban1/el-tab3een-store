@@ -21,6 +21,7 @@ use App\Utils\ContactUtil;
 use App\Utils\ModuleUtil;
 use App\Utils\ProductUtil;
 use App\Utils\TransactionUtil;
+use App\Utils\StoreOrderNotificationUtil;
 use App\Variation;
 use App\Warranty;
 use DB;
@@ -717,6 +718,12 @@ class SellController extends Controller
         ];
 
         request()->merge(['source' => 'ecommerce', 'sale_type' => 'sell']);
+
+        app(StoreOrderNotificationUtil::class)->markUnreadAsReadForTypes(
+            auth()->user(),
+            ['tab3een', 'mixed'],
+            (int) request()->session()->get('user.business_id')
+        );
 
         return view('sell.ecommerce_orders')
             ->with(compact('business_locations', 'customers', 'is_woocommerce', 'sales_representative', 'is_cmsn_agent_enabled', 'commission_agents', 'service_staffs', 'is_tables_enabled', 'is_service_staff_enabled', 'is_types_service_enabled', 'shipping_statuses', 'sources', 'payment_types', 'ecommerce_order_statuses'));
