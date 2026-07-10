@@ -218,7 +218,7 @@
 			<div class="mm-item" style="pointer-events:none;color:var(--muted);">جاري تحميل الأقسام…
 			</div>
 		</div>
-		<a href="{{ route('store.products.index') }}" class="mm-item">📦 كل المنتجات <span>›</span></a>
+		<!-- <a href="{{ route('store.products.index') }}" class="mm-item">📦 كل المنتجات <span>›</span></a> -->
 		<!-- <a href="{{ route('store.flash_deals.index') }}" class="mm-item"
 			style="color:var(--accent);font-weight:700;">🔥 العروض
 			<span>›</span></a> -->
@@ -261,10 +261,13 @@
 				<div>
 					<div class="f-col-title">روابط سريعة</div>
 					<div class="f-links">
-						<a href="{{ route('welcome') }}" class="f-link">الصفحة الرئيسية</a>
-						<a href="{{ route('store.products.index') }}" class="f-link">المتجر</a>
-						@foreach (($storeFooterPages[\App\StorePage::FOOTER_GROUP_QUICK_LINKS] ?? collect()) as $footerPage)
-						<a href="{{ $footerPage->url }}" class="f-link">{{ $footerPage->title }}</a>
+						<a href="{{ route('welcome') }}" class="f-link">الصفحة
+							الرئيسية</a>
+						<a href="{{ route('store.products.index') }}"
+							class="f-link">المتجر</a>
+						@foreach(($storeFooterPages[\App\StorePage::FOOTER_GROUP_QUICK_LINKS] ?? collect()) as $footerPage)
+						<a href="{{ $footerPage->url }}"
+							class="f-link">{{ $footerPage->title }}</a>
 						@endforeach
 					</div>
 				</div>
@@ -272,13 +275,17 @@
 					<div class="f-col-title">خدمة العملاء</div>
 					<div class="f-links">
 						@auth('customer')
-						<a href="{{ route('store.account.profile') }}" class="f-link">حسابي</a>
-						<a href="{{ route('store.account.orders') }}" class="f-link">تتبع طلبي</a>
+						<a href="{{ route('store.account.profile') }}"
+							class="f-link">حسابي</a>
+						<a href="{{ route('store.account.orders') }}"
+							class="f-link">تتبع طلبي</a>
 						@else
-						<a href="{{ route('store.auth.login.form') }}" class="f-link">حسابي</a>
+						<a href="{{ route('store.auth.login.form') }}"
+							class="f-link">حسابي</a>
 						@endauth
-						@foreach (($storeFooterPages[\App\StorePage::FOOTER_GROUP_CUSTOMER_SERVICE] ?? collect()) as $footerPage)
-						<a href="{{ $footerPage->url }}" class="f-link">{{ $footerPage->title }}</a>
+						@foreach(($storeFooterPages[\App\StorePage::FOOTER_GROUP_CUSTOMER_SERVICE] ?? collect()) as $footerPage)
+						<a href="{{ $footerPage->url }}"
+							class="f-link">{{ $footerPage->title }}</a>
 						@endforeach
 					</div>
 				</div>
@@ -295,11 +302,14 @@
 				</div>
 			</div>
 			<div class="footer-bottom">
-				<div class="f-copy">© {{ date('Y') }} التابعين للإلكترونيات. جميع الحقوق محفوظة.</div>
-				@if (($storeFooterPages[\App\StorePage::FOOTER_GROUP_LEGAL] ?? collect())->isNotEmpty())
+				<div class="f-copy">© {{ date('Y') }} التابعين للإلكترونيات. جميع الحقوق محفوظة.
+				</div>
+				@if (($storeFooterPages[\App\StorePage::FOOTER_GROUP_LEGAL] ??
+				collect())->isNotEmpty())
 				<div class="f-legal-links">
 					@foreach (($storeFooterPages[\App\StorePage::FOOTER_GROUP_LEGAL] ?? collect()) as $footerPage)
-					<a href="{{ $footerPage->url }}" class="f-legal-link">{{ $footerPage->title }}</a>
+					<a href="{{ $footerPage->url }}"
+						class="f-legal-link">{{ $footerPage->title }}</a>
 					@endforeach
 				</div>
 				@endif
@@ -1005,6 +1015,24 @@
 		loadMegaCategoryProducts('', 'كل المنتجات');
 	}
 
+	function closeAllMobCategoryGroups(wrap) {
+		if (!wrap) return;
+		wrap.querySelectorAll('.mm-cat-toggle').forEach((btn) => {
+			btn.setAttribute('aria-expanded', 'false');
+			btn.classList.remove('mm-cat-toggle--open');
+			const list = btn.closest('.mm-cat-group')?.querySelector('.mm-sub-list');
+			if (list) list.hidden = true;
+		});
+	}
+
+	function openMobCategoryGroup(btn) {
+		if (!btn) return;
+		btn.setAttribute('aria-expanded', 'true');
+		btn.classList.add('mm-cat-toggle--open');
+		const list = btn.closest('.mm-cat-group')?.querySelector('.mm-sub-list');
+		if (list) list.hidden = false;
+	}
+
 	function renderMobMenuCategories(categories) {
 		const wrap = $('mob-menu-categories');
 		if (!wrap) return;
@@ -1017,11 +1045,55 @@
 		}
 
 		wrap.innerHTML = categories.map((c, idx) => {
-			const u = new URL(base.href);
-			u.searchParams.set('category_id', String(c.id));
+			const subs = Array.isArray(c.sub_categories) ? c.sub_categories : [];
 			const icon = categoryIconByIndex(idx);
-			return `<a href="${u.pathname + '?' + u.searchParams.toString()}" class="mm-item">${icon} ${megaEsc(c.name || '')} <span>›</span></a>`;
+			const parentHref = categoryCardHref({
+				...c,
+				source: 'local',
+			});
+
+			if (!subs.length) {
+				return `<a href="${parentHref}" class="mm-item mm-item--link">${icon} ${megaEsc(c.name || '')}</a>`;
+			}
+
+			const subLinks = subs.map((sub) => {
+				const u = new URL(base.href);
+				u.searchParams.set('category_id', String(sub.id));
+				return `<a href="${u.pathname + '?' + u.searchParams.toString()}" class="mm-sub-item">${megaEsc(sub.name || '')}</a>`;
+			}).join('');
+
+			return `
+			<div class="mm-cat-group">
+				<button type="button" class="mm-item mm-cat-toggle" aria-expanded="false">
+					<span class="mm-cat-label">${icon} ${megaEsc(c.name || '')}</span>
+					<span class="mm-chevron" aria-hidden="true">›</span>
+				</button>
+				<div class="mm-sub-list" hidden>
+					<a href="${parentHref}" class="mm-sub-item mm-sub-item--all">كل منتجات ${megaEsc(c.name || '')}</a>
+					${subLinks}
+				</div>
+			</div>`;
 		}).join('');
+	}
+
+	function initMobMenuCategoryAccordion() {
+		const wrap = $('mob-menu-categories');
+		if (!wrap || wrap.dataset.accordionBound === '1') return;
+		wrap.dataset.accordionBound = '1';
+
+		wrap.addEventListener('click', (e) => {
+			const btn = e.target.closest('.mm-cat-toggle');
+			if (!btn || !wrap.contains(btn)) return;
+
+			e.preventDefault();
+			e.stopPropagation();
+
+			const wasOpen = btn.getAttribute('aria-expanded') === 'true';
+			closeAllMobCategoryGroups(wrap);
+			if (!wasOpen) {
+				openMobCategoryGroup(btn);
+			}
+		});
 	}
 
 	function syncMegaProductsIntoCatalog(items) {
@@ -1570,16 +1642,18 @@
 			menu?.classList.remove('open');
 			overlay?.classList.remove('open');
 			document.body.style.overflow = '';
+			closeAllMobCategoryGroups($('mob-menu-categories'));
 		};
 		tog?.addEventListener('click', openMenu);
 		cls?.addEventListener('click', closeMenu);
 		overlay?.addEventListener('click', closeMenu);
 		menu?.addEventListener('click', (e) => {
-			if (e.target.closest('a.mm-item')) closeMenu();
+			if (e.target.closest('a.mm-item, a.mm-sub-item')) closeMenu();
 		});
 
 		// Hard reset on load so menu never appears opened by default.
 		closeMenu();
+		initMobMenuCategoryAccordion();
 	}
 
 	/* ── Header search: autocomplete (categories + products) ── */

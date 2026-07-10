@@ -2468,6 +2468,71 @@
 		color: var(--accent)
 	}
 
+	.mm-item--link {
+		justify-content: flex-start;
+		gap: 6px;
+	}
+
+	.mm-cat-group {
+		border-bottom: 1px solid #f5f5fa;
+	}
+
+	.mm-cat-toggle {
+		width: 100%;
+		border: none;
+		background: transparent;
+		text-align: inherit;
+		font: inherit;
+		color: inherit;
+	}
+
+	.mm-cat-label {
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
+	}
+
+	.mm-chevron {
+		display: inline-flex;
+		transition: transform .2s ease;
+		font-size: 1.1rem;
+		color: var(--muted);
+	}
+
+	.mm-cat-toggle--open .mm-chevron {
+		transform: rotate(90deg);
+		color: var(--accent);
+	}
+
+	.mm-sub-list {
+		background: var(--bg-soft);
+		border-top: 1px solid #ececf3;
+	}
+
+	.mm-sub-item {
+		display: block;
+		padding: 11px 20px 11px 36px;
+		font-size: .85rem;
+		font-weight: 500;
+		color: var(--text);
+		border-bottom: 1px solid #ececf3;
+		transition: var(--t);
+	}
+
+	.mm-sub-item:last-child {
+		border-bottom: none;
+	}
+
+	.mm-sub-item:hover {
+		background: #fff;
+		color: var(--accent);
+	}
+
+	.mm-sub-item--all {
+		font-weight: 700;
+		color: var(--primary);
+	}
+
 	/* ============================================================
    RESPONSIVE
    ============================================================ */

@@ -462,7 +462,12 @@ class StorefrontController extends Controller
             ->activeInApp()
             ->storefrontSortOrder()
             ->select('id', 'name')
-            ->with('media')
+            ->with(['media', 'sub_categories' => function ($query) {
+                $query->where('category_type', 'product')
+                    ->activeInApp()
+                    ->storefrontSortOrder()
+                    ->select('id', 'name', 'parent_id');
+            }])
             ->limit(30)
             ->get()
             ->map(function ($category) use ($business_id) {
@@ -473,11 +478,28 @@ class StorefrontController extends Controller
                     ->where('category_id', $category->id)
                     ->count();
 
+                $sub_categories = $category->sub_categories->map(function ($sub) use ($business_id) {
+                    $sub_count = Product::where('business_id', $business_id)
+                        ->active()
+                        ->productForSales()
+                        ->activeInApp()
+                        ->where('category_id', $sub->id)
+                        ->count();
+
+                    return [
+                        'id' => $sub->id,
+                        'name' => $sub->name,
+                        'parent_id' => $sub->parent_id,
+                        'count' => $sub_count,
+                    ];
+                })->values();
+
                 return [
                     'id' => $category->id,
                     'name' => $category->name,
                     'count' => $count,
                     'image_url' => $category->image_url,
+                    'sub_categories' => $sub_categories,
                 ];
             });
 
