@@ -1002,6 +1002,29 @@
 		}, 20);
 	}
 
+	function closeAllMegaCategoryGroups(side) {
+		if (!side) return;
+		side.querySelectorAll('.mega-cat-toggle').forEach((btn) => {
+			btn.setAttribute('aria-expanded', 'false');
+			btn.classList.remove('mega-cat-toggle--open', 'active');
+			const list = btn.closest('.mega-cat-group')?.querySelector('.mega-sub-list');
+			if (list) list.hidden = true;
+		});
+	}
+
+	function openMegaCategoryGroup(btn) {
+		if (!btn) return;
+		btn.setAttribute('aria-expanded', 'true');
+		btn.classList.add('mega-cat-toggle--open', 'active');
+		const list = btn.closest('.mega-cat-group')?.querySelector('.mega-sub-list');
+		if (list) list.hidden = false;
+	}
+
+	function clearMegaSidebarActive(side) {
+		if (!side) return;
+		side.querySelectorAll('.mega-sitem.active, .mega-sub-item.active').forEach((el) => el.classList.remove('active'));
+	}
+
 	function renderMegaMenuCategories(categories) {
 		const side = $('mega-sidebar');
 		if (!side) return;
@@ -1016,13 +1039,36 @@
 		}
 
 		const rows = [allRow].concat(
-			categories.map(
-				(c, idx) =>
-				`<div class="mega-sitem" data-category-id="${Number(c.id)}" role="button" tabindex="0"><span class="mega-sitem-ico" aria-hidden="true">${categoryIconByIndex(idx)}</span><span>${megaEsc(c.name || '')}</span></div>`
-			)
+			categories.map((c, idx) => {
+				const subs = Array.isArray(c.sub_categories) ? c.sub_categories : [];
+				const icon = categoryIconByIndex(idx);
+				const name = megaEsc(c.name || '');
+
+				if (!subs.length) {
+					return `<div class="mega-sitem" data-category-id="${Number(c.id)}" role="button" tabindex="0"><span class="mega-sitem-ico" aria-hidden="true">${icon}</span><span>${name}</span></div>`;
+				}
+
+				const parentLabel = `كل منتجات ${name}`;
+				const subRows = subs.map((sub) =>
+					`<button type="button" class="mega-sub-item" data-category-id="${Number(sub.id)}" data-category-label="${megaEsc(sub.name || '')}">${megaEsc(sub.name || '')}</button>`
+				).join('');
+
+				return `
+				<div class="mega-cat-group">
+					<button type="button" class="mega-sitem mega-cat-toggle" aria-expanded="false">
+						<span class="mega-sitem-ico" aria-hidden="true">${icon}</span>
+						<span class="mega-cat-label">${name}</span>
+						<span class="mega-chevron" aria-hidden="true">›</span>
+					</button>
+					<div class="mega-sub-list" hidden>
+						<button type="button" class="mega-sub-item mega-sub-item--parent" data-category-id="${Number(c.id)}" data-category-label="${parentLabel}">${parentLabel}</button>
+						${subRows}
+					</div>
+				</div>`;
+			})
 		);
 		side.innerHTML = rows.join('');
-		$$('#mega-sidebar .mega-sitem').forEach((el) => el.classList.remove('active'));
+		clearMegaSidebarActive(side);
 		const allEl = side.querySelector('.mega-sitem--all');
 		if (allEl) allEl.classList.add('active');
 		loadMegaCategoryProducts('', 'كل المنتجات');
@@ -1584,10 +1630,39 @@
 				'open');
 		});
 		sidebar?.addEventListener('click', (e) => {
+			const subItem = e.target.closest('.mega-sub-item');
+			if (subItem && sidebar.contains(subItem)) {
+				e.preventDefault();
+				const id = subItem.dataset.categoryId;
+				const label = subItem.dataset.categoryLabel || subItem.textContent.trim();
+				clearMegaSidebarActive(sidebar);
+				subItem.classList.add('active');
+				const toggle = subItem.closest('.mega-cat-group')?.querySelector('.mega-cat-toggle');
+				closeAllMegaCategoryGroups(sidebar);
+				if (toggle) openMegaCategoryGroup(toggle);
+				loadMegaCategoryProducts(id, label);
+				return;
+			}
+
+			const toggle = e.target.closest('.mega-cat-toggle');
+			if (toggle && sidebar.contains(toggle)) {
+				e.preventDefault();
+				const wasOpen = toggle.getAttribute('aria-expanded') === 'true';
+				closeAllMegaCategoryGroups(sidebar);
+				if (!wasOpen) {
+					openMegaCategoryGroup(toggle);
+				}
+				return;
+			}
+
 			const item = e.target.closest('.mega-sitem');
-			if (!item || item.classList.contains('mega-sitem--loading')) return;
+			if (!item || item.classList.contains('mega-sitem--loading') || item.classList.contains('mega-cat-toggle')) {
+				return;
+			}
+
 			e.preventDefault();
-			$$('#mega-sidebar .mega-sitem').forEach((x) => x.classList.remove('active'));
+			clearMegaSidebarActive(sidebar);
+			closeAllMegaCategoryGroups(sidebar);
 			item.classList.add('active');
 			const raw = item.dataset.categoryId;
 			const id = raw === undefined || raw === '' ? '' : Number(raw);
@@ -1600,7 +1675,7 @@
 		});
 		sidebar?.addEventListener('keydown', (e) => {
 			if (e.key !== 'Enter' && e.key !== ' ') return;
-			const item = e.target.closest('.mega-sitem');
+			const item = e.target.closest('.mega-sitem, .mega-sub-item');
 			if (!item || item.classList.contains('mega-sitem--loading')) return;
 			e.preventDefault();
 			item.click();
