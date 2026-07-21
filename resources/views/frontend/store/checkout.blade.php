@@ -647,6 +647,8 @@ window.updateCheckoutOrderSummary = function(deliveryFee) {
                 <input type="hidden" name="products[${idx}][variation_id]" value="${Number(item.variation_id || 0)}">
                 <input type="hidden" name="products[${idx}][quantity]" value="${Math.max(1, Number(item.qty || 1))}">
                 <input type="hidden" name="products[${idx}][product_id]" value="${Number(item.id || 0)}">
+                <input type="hidden" name="products[${idx}][name]" value="${String(item.name || '').replace(/"/g, '&quot;')}">
+                <input type="hidden" name="products[${idx}][price]" value="${Number(item.price || 0)}">
                 ${item.source === 'servo' ? `<input type="hidden" name="products[${idx}][source]" value="servo">` : ''}
             `).join('');
 	}

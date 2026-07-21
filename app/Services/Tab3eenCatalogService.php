@@ -146,6 +146,61 @@ class Tab3eenCatalogService
     }
 
     /**
+     * Full product/variation lookup from raw catalog (no in-stock filter).
+     *
+     * @return array<string, array{product_name: string, variation_name: string, price: float|null}>
+     */
+    public function getVariationLookupMap(): array
+    {
+        $url = trim((string) config('storefront.tab3een_catalog_api_url', ''));
+
+        if ($url === '') {
+            return [];
+        }
+
+        try {
+            $response = Http::timeout(15)->acceptJson()->get($url);
+
+            if (! $response->successful()) {
+                return [];
+            }
+
+            $body = $response->json();
+            if (($body['status'] ?? null) !== 'success' || ! is_array($body['data'] ?? null)) {
+                return [];
+            }
+
+            $map = [];
+
+            foreach ($body['data'] as $category) {
+                foreach ($category['products'] ?? [] as $product) {
+                    $productId = (int) ($product['id'] ?? 0);
+                    $productName = (string) ($product['name'] ?? '');
+
+                    foreach ($product['variations'] ?? [] as $variation) {
+                        $variationId = (int) ($variation['id'] ?? 0);
+                        if ($productId <= 0 || $variationId <= 0) {
+                            continue;
+                        }
+
+                        $map[$productId.'-'.$variationId] = [
+                            'product_name' => $productName,
+                            'variation_name' => (string) ($variation['name'] ?? ''),
+                            'price' => isset($variation['price']) ? (float) $variation['price'] : null,
+                        ];
+                    }
+                }
+            }
+
+            return $map;
+        } catch (\Throwable $e) {
+            Log::warning('Tab3een variation lookup map failed: '.$e->getMessage());
+
+            return [];
+        }
+    }
+
+    /**
      * @param  array<int, array<string, mixed>>  $categories
      * @return array<int, array<string, mixed>>
      */

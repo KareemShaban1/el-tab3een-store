@@ -4,7 +4,7 @@ namespace App\Utils;
 
 use App\Services\Tab3eenCatalogService;
 use App\Transaction;
-use App\Variation;
+use Illuminate\Validation\ValidationException;
 
 class ServoOrderUtil
 {
@@ -14,6 +14,47 @@ class ServoOrderUtil
     public function __construct(
         private Tab3eenCatalogService $catalogService
     ) {}
+
+    /**
+     * @param  array<int, array<string, mixed>>  $products
+     * @return array<int, array<string, mixed>>
+     */
+    public function normalizeAndEnrichItems(array $products): array
+    {
+        $catalogMap = $this->buildCatalogVariationMap();
+
+        return collect($products)->map(function ($product) use ($catalogMap) {
+            $product_id = (int) ($product['product_id'] ?? $product['id'] ?? 0);
+            $variation_id = (int) ($product['variation_id'] ?? 0);
+            $quantity = (float) ($product['quantity'] ?? 0);
+
+            if ($product_id <= 0 || $variation_id <= 0 || $quantity <= 0) {
+                throw ValidationException::withMessages([
+                    'products' => __('This product is no longer available for purchase.'),
+                ]);
+            }
+
+            $name = trim((string) ($product['name'] ?? ''));
+            $variation_name = trim((string) ($product['variation_name'] ?? ''));
+            $price = isset($product['price']) ? (float) $product['price'] : null;
+            $catalogKey = $product_id.'-'.$variation_id;
+
+            if ($name === '' && isset($catalogMap[$catalogKey])) {
+                $name = $catalogMap[$catalogKey]['product_name'];
+                $variation_name = $variation_name !== '' ? $variation_name : $catalogMap[$catalogKey]['variation_name'];
+                $price = $price ?? $catalogMap[$catalogKey]['price'];
+            }
+
+            return array_filter([
+                'product_id' => $product_id,
+                'variation_id' => $variation_id,
+                'quantity' => $quantity,
+                'name' => $name !== '' ? $name : null,
+                'variation_name' => $variation_name !== '' ? $variation_name : null,
+                'price' => $price,
+            ], fn ($value) => $value !== null);
+        })->values()->all();
+    }
 
     /**
      * @param  array<int, array<string, mixed>>  $items
@@ -26,36 +67,21 @@ class ServoOrderUtil
         }
 
         $catalogMap = $this->buildCatalogVariationMap();
-        $variationIds = collect($items)->pluck('variation_id')->map(fn ($id) => (int) $id)->filter()->unique()->values()->all();
 
-        $localVariations = empty($variationIds)
-            ? collect()
-            : Variation::whereIn('id', $variationIds)
-                ->with(['product', 'product_variation'])
-                ->get()
-                ->keyBy('id');
-
-        return collect($items)->map(function ($item) use ($catalogMap, $localVariations) {
+        return collect($items)->map(function ($item) use ($catalogMap) {
             $product_id = (int) ($item['product_id'] ?? 0);
             $variation_id = (int) ($item['variation_id'] ?? 0);
             $quantity = (float) ($item['quantity'] ?? 0);
             $catalogKey = $product_id.'-'.$variation_id;
 
-            $product_name = (string) ($item['name'] ?? '');
-            $variation_name = (string) ($item['variation_name'] ?? '');
+            $product_name = trim((string) ($item['name'] ?? ''));
+            $variation_name = trim((string) ($item['variation_name'] ?? ''));
             $unit_price = isset($item['price']) ? (float) $item['price'] : null;
 
             if ($product_name === '' && isset($catalogMap[$catalogKey])) {
                 $product_name = $catalogMap[$catalogKey]['product_name'];
-                $variation_name = $catalogMap[$catalogKey]['variation_name'];
+                $variation_name = $variation_name !== '' ? $variation_name : $catalogMap[$catalogKey]['variation_name'];
                 $unit_price = $unit_price ?? $catalogMap[$catalogKey]['price'];
-            }
-
-            if ($product_name === '' && $localVariations->has($variation_id)) {
-                $variation = $localVariations->get($variation_id);
-                $product_name = optional($variation->product)->name ?: '';
-                $variation_name = $variation->name ?: $variation_name;
-                $unit_price = $unit_price ?? (float) ($variation->sell_price_inc_tax ?? 0);
             }
 
             if ($product_name === '') {
@@ -113,26 +139,6 @@ class ServoOrderUtil
             return $this->catalogVariationMapCache;
         }
 
-        $map = [];
-
-        foreach ($this->catalogService->getCatalog() as $category) {
-            foreach ($category['products'] ?? [] as $product) {
-                foreach ($product['variations'] ?? [] as $variation) {
-                    $productId = (int) ($product['id'] ?? 0);
-                    $variationId = (int) ($variation['variation_id'] ?? 0);
-                    if ($productId <= 0 || $variationId <= 0) {
-                        continue;
-                    }
-
-                    $map[$productId.'-'.$variationId] = [
-                        'product_name' => (string) ($product['name'] ?? ''),
-                        'variation_name' => (string) ($variation['name'] ?? ''),
-                        'price' => isset($variation['price']) ? (float) $variation['price'] : null,
-                    ];
-                }
-            }
-        }
-
-        return $this->catalogVariationMapCache = $map;
+        return $this->catalogVariationMapCache = $this->catalogService->getVariationLookupMap();
     }
 }

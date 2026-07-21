@@ -14,6 +14,7 @@ use App\Utils\ModuleUtil;
 use App\Utils\StoreOrderNotificationUtil;
 use App\Variation;
 use App\Services\Tab3eenOrderService;
+use App\Utils\ServoOrderUtil;
 use App\LocationsFees\Governorate;
 use App\Utils\LocationsFeesUtil;
 use Illuminate\Http\Request;
@@ -30,6 +31,7 @@ class StoreCheckoutController extends Controller
         private ProductUtil $productUtil,
         private NotificationUtil $notificationUtil,
         private Tab3eenOrderService $tab3eenOrderService,
+        private ServoOrderUtil $servoOrderUtil,
         private ModuleUtil $moduleUtil,
         private StoreOrderNotificationUtil $storeOrderNotificationUtil
     ) {}
@@ -391,7 +393,7 @@ class StoreCheckoutController extends Controller
         }
 
         try {
-            $items = $this->normalizeServoOrderItems($servo_products);
+            $items = $this->servoOrderUtil->normalizeAndEnrichItems($servo_products);
         } catch (ValidationException $e) {
             $error_message = collect($e->errors())->flatten()->first() ?: __('This product is no longer available for purchase.');
 
@@ -537,31 +539,6 @@ class StoreCheckoutController extends Controller
         }
 
         return [$servo_products, $local_products];
-    }
-
-    /**
-     * @param  array<int, array<string, mixed>>  $products
-     * @return array<int, array{product_id: int, variation_id: int, quantity: float}>
-     */
-    private function normalizeServoOrderItems(array $products): array
-    {
-        return collect($products)->map(function ($product) {
-            $product_id = (int) ($product['product_id'] ?? $product['id'] ?? 0);
-            $variation_id = (int) ($product['variation_id'] ?? 0);
-            $quantity = (float) ($product['quantity'] ?? 0);
-
-            if ($product_id <= 0 || $variation_id <= 0 || $quantity <= 0) {
-                throw ValidationException::withMessages([
-                    'products' => __('This product is no longer available for purchase.'),
-                ]);
-            }
-
-            return [
-                'product_id' => $product_id,
-                'variation_id' => $variation_id,
-                'quantity' => $quantity,
-            ];
-        })->values()->all();
     }
 
     /**
