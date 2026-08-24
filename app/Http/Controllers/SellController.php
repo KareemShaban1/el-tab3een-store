@@ -130,6 +130,7 @@ class SellController extends Controller
                 'only_shipments' => request()->input('only_shipments'),
                 'shipping_status' => request()->input('shipping_status'),
                 'source' => request()->input('source'),
+                'ecommerce_order_status' => request()->input('ecommerce_order_status'),
                 'crm_is_order_request' => request()->input('crm_is_order_request'),
                 'only_subscriptions' => request()->input('only_subscriptions'),
                 'res_waiter_id' => request()->input('res_waiter_id'),
@@ -185,17 +186,10 @@ class SellController extends Controller
             }
 
             $with[] = 'payment_lines';
-            
-            if (!empty($with)) {
-                foreach ($with as $relation) {
-                    if ($relation == 'payment_lines' && !empty(request()->input('payment_method'))) {
-                        $sells->whereHas($relation, function ($query) {
-                            $query->where('method', request()->input('payment_method'));
-                        });
-                    } else {
-                        $sells->with($relation);
-                    }
-                }
+
+            // Always eager-load relations. Payment method filtering is handled in applySellListFilters.
+            if (! empty($with)) {
+                $sells->with($with);
             }
 
             //$business_details = $this->businessUtil->getDetails($business_id);
@@ -495,7 +489,8 @@ class SellController extends Controller
                     if (($is_ecommerce_context || (! empty($row->source) && $row->source === 'ecommerce')) && auth()->user()->can('sell.update')) {
                         $edit_url = action([\App\Http\Controllers\SellController::class, 'editEcommerceStatus'], [$row->id]);
                     }
-                    $status = '<a href="#" class="btn-modal" data-href="'.$edit_url.'" data-container=".view_modal"><span class="label '.$status_color.'">'.$shipping_statuses[$row->shipping_status].'</span></a>';
+                    $status_label = $shipping_statuses[$row->shipping_status] ?? $row->shipping_status;
+                    $status = '<a href="#" class="btn-modal" data-href="'.$edit_url.'" data-container=".view_modal"><span class="label '.$status_color.'">'.$status_label.'</span></a>';
 
                     return $status;
                 })
@@ -1904,15 +1899,21 @@ class SellController extends Controller
 
         // Ownership / commission permissions
         if (! auth()->user()->can('direct_sell.view')) {
-            $query->where(function ($q) {
-                if (auth()->user()->hasAnyPermission(['view_own_sell_only', 'access_own_shipping'])) {
-                    $q->where('transactions.created_by', request()->session()->get('user.id'));
-                }
+            $can_view_own = auth()->user()->hasAnyPermission(['view_own_sell_only', 'access_own_shipping']);
+            $can_view_commission = auth()->user()->hasAnyPermission(['view_commission_agent_sell', 'access_commission_agent_shipping']);
 
-                if (auth()->user()->hasAnyPermission(['view_commission_agent_sell', 'access_commission_agent_shipping'])) {
-                    $q->orWhere('transactions.commission_agent', request()->session()->get('user.id'));
-                }
-            });
+            // Avoid an empty WHERE group (invalid SQL) when the user has none of these permissions.
+            if ($can_view_own || $can_view_commission) {
+                $query->where(function ($q) use ($can_view_own, $can_view_commission) {
+                    if ($can_view_own) {
+                        $q->where('transactions.created_by', request()->session()->get('user.id'));
+                    }
+
+                    if ($can_view_commission) {
+                        $q->orWhere('transactions.commission_agent', request()->session()->get('user.id'));
+                    }
+                });
+            }
         }
 
         // Shipment filters
@@ -1991,12 +1992,17 @@ class SellController extends Controller
 
 
         // Date range
-//         if (! empty(request()->start_date) && ! empty(request()->end_date)) {
-//                 $start = request()->start_date . ' 00:00:00';
-//                 $end = request()->end_date . ' 23:59:59';
-//                 $query->where('transactions.transaction_date', '>=', $start)
-//                 ->where('transactions.transaction_date', '<=', $end);
-//         }
+        if (! empty(request()->start_date) && ! empty(request()->end_date)) {
+            try {
+                $start = \Carbon\Carbon::parse(request()->start_date)->startOfDay()->toDateTimeString();
+                $end = \Carbon\Carbon::parse(request()->end_date)->endOfDay()->toDateTimeString();
+
+                $query->where('transactions.transaction_date', '>=', $start)
+                    ->where('transactions.transaction_date', '<=', $end);
+            } catch (\Exception $e) {
+                // Ignore invalid date values from the client
+            }
+        }
 
         // Direct sale flag
         if (request()->has('is_direct_sale')) {

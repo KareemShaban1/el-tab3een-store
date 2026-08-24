@@ -10,7 +10,7 @@
 
     <!-- Content Header (Page header) -->
     <section class="content-header no-print">
-        <h1  class="tw-text-xl md:tw-text-3xl tw-font-bold tw-text-black">{{ $page_title }} <span id="sell_list_selected_range" class="tw-text-gray-600 tw-font-normal tw-text-base">{{ @format_date(\Carbon\Carbon::now()->subDays(29)) }} ~ {{ @format_date(\Carbon\Carbon::now()) }}</span>
+        <h1  class="tw-text-xl md:tw-text-3xl tw-font-bold tw-text-black">{{ $page_title }} <span id="sell_list_selected_range" class="tw-text-gray-600 tw-font-normal tw-text-base"></span>
         </h1>
         @if (auth()->user()->can('profit_loss_report.view') || auth()->user()->can('purchase_n_sell_report.view'))
             <div class="tw-mt-2 tw-flex tw-flex-wrap tw-gap-2">
@@ -139,7 +139,7 @@
                             <td class="footer_total_paid"></td>
                             <td class="footer_total_remaining"></td>
                             <td class="footer_total_sell_return_due"></td>
-                            <td colspan="2"></td>
+                            <td colspan="{{ ($is_ecommerce_orders ?? false) ? 3 : 2 }}"></td>
                             <td class="service_type_count"></td>
                             <td colspan="7"></td>
                         </tr>
@@ -164,9 +164,13 @@
 @section('javascript')
     <script type="text/javascript">
         $(document).ready(function() {
-            //Date range as a button
-            var startLast30 = moment().subtract(29, 'days');
-            var endLast = moment();
+            var sell_table;
+
+            function reloadSellTable() {
+                if (sell_table) {
+                    sell_table.ajax.reload();
+                }
+            }
             
             // Function to update heading with date range
             function updateDateRangeHeading(start, end) {
@@ -175,24 +179,30 @@
                     var formattedEnd = end.format(moment_date_format);
                     $('#sell_list_selected_range').text(formattedStart + ' ~ ' + formattedEnd);
                 } else {
-                    // Reset to default (last 30 days)
-                    var defaultStart = moment().subtract(29, 'days').format(moment_date_format);
-                    var defaultEnd = moment().format(moment_date_format);
-                    $('#sell_list_selected_range').text(defaultStart + ' ~ ' + defaultEnd);
+                    $('#sell_list_selected_range').text('');
                 }
             }
-            
+
+            // Do not force a default date range — latest sales can be older than 30 days.
+            // Date filter only applies when the user selects a range.
+            var datePickerSettings = $.extend({}, dateRangeSettings);
+            datePickerSettings.autoUpdateInput = false;
+
             $('#sell_list_filter_date_range').daterangepicker(
-                $.extend(true, {}, dateRangeSettings, { startDate: startLast30, endDate: endLast }),
+                datePickerSettings,
                 function(start, end) {
+                    $('#sell_list_filter_date_range').val(
+                        start.format(moment_date_format) + ' ~ ' + end.format(moment_date_format)
+                    );
                     updateDateRangeHeading(start, end);
-                    sell_table.ajax.reload();
+                    reloadSellTable();
                 }
             );
+
             $('#sell_list_filter_date_range').on('cancel.daterangepicker', function(ev, picker) {
                 $('#sell_list_filter_date_range').val('');
                 updateDateRangeHeading(null, null);
-                sell_table.ajax.reload();
+                reloadSellTable();
             });
 
             sell_table = $('#sell_table').DataTable({
@@ -205,11 +215,15 @@
                 "ajax": {
                     "url": "{{ url()->current() }}",
                     "data": function(d) {
-                        // Always send the picker's range when initialized (input can be empty on first draw).
-                        var drp = $('#sell_list_filter_date_range').data('daterangepicker');
-                        if (drp && drp.startDate && drp.endDate) {
-                            d.start_date = drp.startDate.format('YYYY-MM-DD');
-                            d.end_date = drp.endDate.format('YYYY-MM-DD');
+                        // Only send date filter when the user selected a range
+                        if ($('#sell_list_filter_date_range').val()) {
+                            var drp = $('#sell_list_filter_date_range').data('daterangepicker');
+                            if (drp && drp.startDate && drp.endDate &&
+                                drp.startDate.isValid && drp.startDate.isValid() &&
+                                drp.endDate.isValid && drp.endDate.isValid()) {
+                                d.start_date = drp.startDate.format('YYYY-MM-DD');
+                                d.end_date = drp.endDate.format('YYYY-MM-DD');
+                            }
                         }
                         d.is_direct_sale = 1;
 
@@ -426,11 +440,11 @@
             $(document).on('change',
                 '#sell_list_filter_location_id, #sell_list_filter_customer_id, #sell_list_filter_payment_status, #created_by, #sales_cmsn_agnt, #service_staffs, #shipping_status, #sell_list_filter_source, #payment_method, #ecommerce_order_status',
                 function() {
-                    sell_table.ajax.reload();
+                    reloadSellTable();
                 });
 
             $('#only_subscriptions').on('ifChanged', function(event) {
-                sell_table.ajax.reload();
+                reloadSellTable();
             });
         });
     </script>
