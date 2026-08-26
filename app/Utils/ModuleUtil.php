@@ -295,6 +295,11 @@ class ModuleUtil extends Util
      */
     public function isQuotaAvailable($type, $business_id, $total_rows = 0)
     {
+        // Superadmin can always create beyond package quota limits.
+        if (auth()->check() && auth()->user()->can('superadmin')) {
+            return true;
+        }
+
         $is_available = $this->isSuperadminInstalled();
 
         if ($is_available) {
@@ -369,9 +374,6 @@ class ModuleUtil extends Util
      */
     public function quotaExpiredResponse($type, $business_id, $redirect_url = null)
     {
-	if(auth()->user()->can('superadmin')) {
-	return true ;
-}
         if ($type == 'locations') {
             if (request()->ajax()) {
                 if (request()->wantsJson()) {
