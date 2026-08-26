@@ -27,7 +27,7 @@
             $product_cond = [];
         @endphp
     @endif
-    {!! Form::open(['url' => action('\Modules\Repair\Http\Controllers\JobSheetController@update', ['id' => $job_sheet->id]), 'method' => 'put', 'id' => 'edit_job_sheet_form', 'files' => true]) !!}
+    {!! Form::open(['url' => action('\Modules\Repair\Http\Controllers\JobSheetController@update', ['job_sheet' => $job_sheet->id]), 'method' => 'put', 'id' => 'edit_job_sheet_form', 'files' => true]) !!}
         @includeIf('repair::job_sheet.partials.scurity_modal')
         <div class="box box-solid">
             <div class="box-body">
