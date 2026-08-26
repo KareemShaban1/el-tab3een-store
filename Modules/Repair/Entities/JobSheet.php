@@ -3,7 +3,7 @@
 namespace Modules\Repair\Entities;
 
 use Illuminate\Database\Eloquent\Model;
-use App\Models\Variation;
+use App\Variation;
 
 class JobSheet extends Model
 {
