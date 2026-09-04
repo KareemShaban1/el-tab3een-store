@@ -145,7 +145,7 @@
 	function initSelect2(element, dropdownParent = $('body')) {
 		element.select2({
 	        ajax: {
-	            url: '/getProducts',
+	            url: '/products/list',
 	            dataType: 'json',
 	            delay: 250,
 	            data: function(params) {
@@ -217,7 +217,7 @@
 		element.autocomplete({
             source: function(request, response) {
                 $.getJSON(
-                    '/getProducts',
+                    '/products/list',
                     {
                         term: request.term,
                         product_types: ['single', 'variable']

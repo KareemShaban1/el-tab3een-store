@@ -49,6 +49,19 @@
                                     </div>
                                 </div>
                             </div>
+                            @if(!empty($packaging_globally_enabled))
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <br>
+                                    <div class="checkbox">
+                                        <label>
+                                        {!! Form::checkbox('enable_packaging_workflow', 1, !array_key_exists('enable_packaging_workflow', $manufacturing_settings) || !empty($manufacturing_settings['enable_packaging_workflow']), ['class' => 'input-icheck', 'id' => 'enable_packaging_workflow']); !!} @lang('manufacturing::lang.enable_packaging_workflow')
+                                        </label>
+                                        <p class="help-block">@lang('manufacturing::lang.enable_packaging_workflow_help')</p>
+                                    </div>
+                                </div>
+                            </div>
+                            @endif
                         </div>
                         
                     </div>

@@ -5,7 +5,7 @@ namespace Modules\Manufacturing\Http\Controllers;
 use App\Utils\BusinessUtil;
 use App\Utils\ModuleUtil;
 use App\Utils\TransactionUtil;
-use App\Models\Variation;
+use App\Variation;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Routing\Controller;

@@ -7,6 +7,7 @@ use App\Utils\ModuleUtil;
 use DB;
 use Illuminate\Routing\Controller;
 use Menu;
+use Modules\Manufacturing\Support\PackagingFeature;
 
 class DataController extends Controller
 {
@@ -51,8 +52,78 @@ class DataController extends Controller
                 'value' => 'manufacturing.access_production',
                 'label' => __('manufacturing::lang.access_production'),
                 'default' => false
+            ],
+            [
+                'value' => 'manufacturing.access_packaging',
+                'label' => __('manufacturing::lang.access_packaging'),
+                'default' => false
+            ],
+            [
+                'value' => 'manufacturing.manage_packaging_profiles',
+                'label' => __('manufacturing::lang.manage_packaging_profiles'),
+                'default' => false
             ]
         ];
+    }
+
+    /**
+     * Product form partial for product_usage_type when packaging is enabled.
+     */
+    public function product_form_part()
+    {
+        $business_id = session()->get('user.business_id');
+        if (! PackagingFeature::isEnabledForBusiness($business_id)) {
+            return [];
+        }
+
+        $product = null;
+        if (request()->segment(1) == 'products' && is_numeric(request()->segment(2))) {
+            $product = \App\Product::find(request()->segment(2));
+        }
+
+        return [
+            'template_path' => 'manufacturing::product.partials.product_usage_type',
+            'template_data' => [
+                'product' => $product,
+            ],
+        ];
+    }
+
+    /**
+     * Save product_usage_type from product form.
+     */
+    public function after_product_saved($data)
+    {
+        $business_id = session()->get('user.business_id');
+        if (! PackagingFeature::isEnabledForBusiness($business_id)) {
+            return $data['product'];
+        }
+
+        $product = $data['product'];
+        $request = $data['request'];
+
+        if ($request->has('product_usage_type')) {
+            $product->product_usage_type = $request->get('product_usage_type') ?: null;
+            $product->save();
+        }
+
+        return $product;
+    }
+
+    /**
+     * Hide packaging materials from POS product search when configured.
+     */
+    public function modify_product_search_query($data)
+    {
+        $business_id = $data['business_id'];
+        if (! PackagingFeature::shouldHidePackagingMaterialsInPos($business_id)) {
+            return;
+        }
+
+        $data['query']->where(function ($q) {
+            $q->whereNull('products.product_usage_type')
+                ->orWhere('products.product_usage_type', '!=', 'packaging_material');
+        });
     }
 
     /**
@@ -63,16 +134,68 @@ class DataController extends Controller
     {
         $business_id = session()->get('user.business_id');
         $module_util = new ModuleUtil();
-        $is_mfg_enabled = (boolean)$module_util->hasThePermissionInSubscription($business_id, 'manufacturing_module', 'superadmin_package');
+        $is_mfg_enabled = auth()->user()->can('superadmin')
+            || (boolean) $module_util->hasThePermissionInSubscription($business_id, 'manufacturing_module', 'superadmin_package');
 
         if ($is_mfg_enabled && (auth()->user()->can('manufacturing.access_recipe') || auth()->user()->can('manufacturing.access_production'))) {
-            Menu::modify('admin-sidebar-menu', function ($menu) {
-                // $menu->url(
-                //         action('\Modules\Manufacturing\Http\Controllers\RecipeController@index'),
-                //         __('manufacturing::lang.manufacturing'),
-                //         ['icon' => 'fa fas fa-industry', 'style' => config('app.env') == 'demo' ? 'background-color: #ff851b;' : '', 'active' => request()->segment(1) == 'manufacturing']
-                //     )
-                // ->order(21);
+            Menu::modify('admin-sidebar-menu', function ($menu) use ($business_id) {
+                $menu->dropdown(
+                    __('manufacturing::lang.manufacturing'),
+                    function ($sub) use ($business_id) {
+                        if (auth()->user()->can('manufacturing.access_recipe')) {
+                            $sub->url(
+                                action([\Modules\Manufacturing\Http\Controllers\RecipeController::class, 'index']),
+                                __('manufacturing::lang.recipe'),
+                                ['icon' => '', 'active' => request()->segment(1) == 'manufacturing' && in_array(request()->segment(2), ['recipe', 'add-ingredient'])]
+                            );
+                        }
+
+                        if (auth()->user()->can('manufacturing.access_production')) {
+                            $sub->url(
+                                action([\Modules\Manufacturing\Http\Controllers\ProductionController::class, 'index']),
+                                __('manufacturing::lang.production'),
+                                ['icon' => '', 'active' => request()->segment(2) == 'production' && empty(request()->segment(3))]
+                            );
+
+                            $sub->url(
+                                action([\Modules\Manufacturing\Http\Controllers\ProductionController::class, 'create']),
+                                __('manufacturing::lang.add_production'),
+                                ['icon' => '', 'active' => request()->segment(2) == 'production' && request()->segment(3) == 'create']
+                            );
+
+                            if (PackagingFeature::isEnabledForBusiness($business_id) && PackagingFeature::userCanAccessPackaging()) {
+                                $sub->url(
+                                    action([\Modules\Manufacturing\Http\Controllers\PackagingProfileController::class, 'index']),
+                                    __('manufacturing::lang.packaging_profiles'),
+                                    ['icon' => '', 'active' => request()->segment(2) == 'packaging-profile']
+                                );
+
+                                $sub->url(
+                                    action([\Modules\Manufacturing\Http\Controllers\PackagingProductionController::class, 'index']),
+                                    __('manufacturing::lang.packaging_production'),
+                                    ['icon' => '', 'active' => request()->segment(2) == 'packaging-production']
+                                );
+                            }
+
+                            $sub->url(
+                                action([\Modules\Manufacturing\Http\Controllers\SettingsController::class, 'index']),
+                                __('messages.settings'),
+                                ['icon' => '', 'active' => request()->segment(1) == 'manufacturing' && request()->segment(2) == 'settings']
+                            );
+
+                            $sub->url(
+                                action([\Modules\Manufacturing\Http\Controllers\ProductionController::class, 'getManufacturingReport']),
+                                __('manufacturing::lang.manufacturing_report'),
+                                ['icon' => '', 'active' => request()->segment(2) == 'report']
+                            );
+                        }
+                    },
+                    [
+                        'icon' => 'fa fas fa-industry',
+                        'style' => config('app.env') == 'demo' ? 'background-color: #ff851b;' : '',
+                        'active' => request()->segment(1) == 'manufacturing',
+                    ]
+                )->order(21);
             });
         }
     }

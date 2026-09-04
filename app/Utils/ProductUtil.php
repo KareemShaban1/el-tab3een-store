@@ -1734,6 +1734,13 @@ class ProductUtil extends Util
             $query->addSelect('pl.id as purchase_line_id', 'pl.lot_number');
         }
 
+        $module_util = new \App\Utils\ModuleUtil();
+        $module_util->getModuleData('modify_product_search_query', [
+            'query' => $query,
+            'business_id' => $business_id,
+            'location_id' => $location_id,
+        ]);
+
         $data = $query->groupBy('variations.id')
              ->orderBy('VLD.qty_available', 'desc')
              ->get();

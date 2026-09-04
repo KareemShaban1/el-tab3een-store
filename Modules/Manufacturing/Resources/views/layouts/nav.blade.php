@@ -22,6 +22,11 @@
                     @can('manufacturing.access_production')
                         <li @if(request()->segment(2) == 'production') class="active" @endif><a href="{{action('\Modules\Manufacturing\Http\Controllers\ProductionController@index')}}">@lang('manufacturing::lang.production')</a></li>
 
+                        @if(\Modules\Manufacturing\Support\PackagingFeature::isEnabledForBusiness(session()->get('user.business_id')) && \Modules\Manufacturing\Support\PackagingFeature::userCanAccessPackaging())
+                            <li @if(request()->segment(2) == 'packaging-profile') class="active" @endif><a href="{{action([\Modules\Manufacturing\Http\Controllers\PackagingProfileController::class, 'index'])}}">@lang('manufacturing::lang.packaging_profiles')</a></li>
+                            <li @if(request()->segment(2) == 'packaging-production') class="active" @endif><a href="{{action([\Modules\Manufacturing\Http\Controllers\PackagingProductionController::class, 'index'])}}">@lang('manufacturing::lang.packaging_production')</a></li>
+                        @endif
+
                         <li @if(request()->segment(1) == 'manufacturing' && request()->segment(2) == 'settings') class="active" @endif><a href="{{action('\Modules\Manufacturing\Http\Controllers\SettingsController@index')}}">@lang('messages.settings')</a></li>
 
                         <li @if(request()->segment(2) == 'report') class="active" @endif><a href="{{action('\Modules\Manufacturing\Http\Controllers\ProductionController@getManufacturingReport')}}">@lang('manufacturing::lang.manufacturing_report')</a></li>

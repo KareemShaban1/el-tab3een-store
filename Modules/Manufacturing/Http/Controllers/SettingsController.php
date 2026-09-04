@@ -8,6 +8,7 @@ use App\Utils\ModuleUtil;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Routing\Controller;
+use Modules\Manufacturing\Support\PackagingFeature;
 use Modules\Manufacturing\Utils\ManufacturingUtil;
 
 class SettingsController extends Controller
@@ -42,9 +43,10 @@ class SettingsController extends Controller
             abort(403, 'Unauthorized action.');
         }
         $manufacturing_settings = $this->mfgUtil->getSettings($business_id);
+        $packaging_globally_enabled = PackagingFeature::isGloballyEnabled();
 
         $version = System::getProperty('manufacturing_version');
-        return view('manufacturing::settings.index')->with(compact('manufacturing_settings', 'version'));
+        return view('manufacturing::settings.index')->with(compact('manufacturing_settings', 'version', 'packaging_globally_enabled'));
     }
 
     /**
@@ -65,6 +67,8 @@ class SettingsController extends Controller
             $settings['disable_editing_ingredient_qty'] = !empty($request->input('disable_editing_ingredient_qty')) ? true : false;
 
             $settings['enable_updating_product_price'] = !empty($request->input('enable_updating_product_price')) ? true : false;
+
+            $settings['enable_packaging_workflow'] = !empty($request->input('enable_packaging_workflow')) ? true : false;
             
             $business = Business::where('id', $business_id)
                                 ->update(['manufacturing_settings' => json_encode($settings)]);

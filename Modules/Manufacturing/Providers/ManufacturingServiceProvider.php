@@ -61,10 +61,15 @@ class ManufacturingServiceProvider extends ServiceProvider
     {
         $this->publishes([
             __DIR__.'/../Config/config.php' => config_path('manufacturing.php'),
+            __DIR__.'/../Config/packaging_feature.php' => config_path('manufacturing_packaging_feature.php'),
         ], 'config');
         $this->mergeConfigFrom(
             __DIR__.'/../Config/config.php',
             'manufacturing'
+        );
+        $this->mergeConfigFrom(
+            __DIR__.'/../Config/packaging_feature.php',
+            'manufacturing.packaging_feature'
         );
     }
 

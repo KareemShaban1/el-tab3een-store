@@ -18,7 +18,7 @@ use Modules\Essentials\Entities\EssentialsLeave;
 use App\Utils\TransactionUtil;
 use Illuminate\Support\Facades\View;
 use Modules\Essentials\Entities\PayrollGroup;
-use App\Models\TransactionPayment;
+use App\TransactionPayment;
 use App\Events\TransactionPaymentAdded;
 
 class PayrollController extends Controller

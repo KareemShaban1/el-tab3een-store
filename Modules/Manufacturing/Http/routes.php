@@ -15,6 +15,12 @@ Route::group(['middleware' => ['web', 'authh', 'SetSessionData', 'auth', 'langua
     Route::resource('/production', 'ProductionController');
     Route::resource('/settings', 'SettingsController', ['only' => ['index', 'store']]);
 
+    Route::resource('/packaging-profile', 'PackagingProfileController');
+    Route::get('/packaging-profile-material-row', 'PackagingProfileController@getMaterialRow');
+
+    Route::resource('/packaging-production', 'PackagingProductionController', ['except' => ['edit', 'update']]);
+    Route::get('/packaging-production-profile-details', 'PackagingProductionController@getProfileDetails');
+
     Route::get('/report', 'ProductionController@getManufacturingReport');
 
     Route::post('/update-product-prices', 'RecipeController@updateRecipeProductPrices');
