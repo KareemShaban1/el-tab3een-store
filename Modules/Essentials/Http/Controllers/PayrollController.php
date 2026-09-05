@@ -76,7 +76,9 @@ class PayrollController extends Controller
                     'dept.name as department',
                     'dsgn.name as designation',
                     'epgt.payroll_group_id'
-                ]);
+                ])
+                ->orderBy('transactions.transaction_date', 'desc')
+                ->orderBy('transactions.id', 'desc');
 
 
 
