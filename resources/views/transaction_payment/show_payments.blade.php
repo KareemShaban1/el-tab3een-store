@@ -167,6 +167,7 @@
                             || (auth()->user()->can('purchase.payments') && in_array($transaction->type, ['purchase', 'purchase_return']))
                             || (auth()->user()->can('sell.payments') && in_array($transaction->type, ['sell', 'sell_return']))
                             || ((auth()->user()->can('all_expense.access') || auth()->user()->can('view_own_expense')) && $transaction->type == 'expense')
+                            || (auth()->user()->can('essentials.add_payroll_payment') && $transaction->type == 'payroll')
                         )
                             <a href="{{ action([\App\Http\Controllers\TransactionPaymentController::class, 'addPayment'], [$transaction->id]) }}" class="tw-dw-btn tw-dw-btn-xs tw-dw-btn-outline  tw-dw-btn-primary pull-right add_payment_modal no-print"><i class="fa fa-plus" aria-hidden="true"></i> @lang("purchase.add_payment")</a>
                         @endif
@@ -206,6 +207,7 @@
                                     || (auth()->user()->can('edit_purchase_payment') && in_array($transaction->type, ['purchase', 'purchase_return']))
                                     || (auth()->user()->can('edit_sell_payment') && in_array($transaction->type, ['sell', 'sell_return']))
                                     || ((auth()->user()->can('all_expense.access') || auth()->user()->can('view_own_expense')) && $transaction->type == 'expense')
+                                    || (auth()->user()->can('essentials.edit_payroll_payment') && $transaction->type == 'payroll')
                                 )
                                     @if($payment->method != 'advance')
                                         <button type="button" class="tw-dw-btn tw-dw-btn-xs tw-dw-btn-outline  tw-dw-btn-info edit_payment" 
@@ -220,6 +222,7 @@
                                     || (auth()->user()->can('delete_purchase_payment') && in_array($transaction->type, ['purchase', 'purchase_return']))
                                     || (auth()->user()->can('delete_sell_payment') && in_array($transaction->type, ['sell', 'sell_return']))
                                     || ((auth()->user()->can('all_expense.access') || auth()->user()->can('view_own_expense')) && $transaction->type == 'expense')
+                                    || (auth()->user()->can('essentials.delete_payroll_payment') && $transaction->type == 'payroll')
                                 )
                                     &nbsp; <button type="button" class="tw-dw-btn tw-dw-btn-xs tw-dw-btn-outline  tw-dw-btn-error delete_payment" 
                                     data-href="{{ action([\App\Http\Controllers\TransactionPaymentController::class, 'destroy'], [$payment->id]) }}"

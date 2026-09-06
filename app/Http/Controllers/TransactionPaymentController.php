@@ -74,6 +74,7 @@ class TransactionPaymentController extends Controller
                 || auth()->user()->can('sell.payments')
                 || auth()->user()->can('all_expense.access')
                 || auth()->user()->can('view_own_expense')
+                || auth()->user()->can('essentials.add_payroll_payment')
             )) {
                 abort(403, 'Unauthorized action.');
             }
@@ -210,6 +211,7 @@ class TransactionPaymentController extends Controller
             && ! auth()->user()->can('edit_purchase_payment')
             && ! auth()->user()->can('edit_sell_payment')
             && ! auth()->user()->can('hms.edit_booking_payment')
+            && ! auth()->user()->can('essentials.edit_payroll_payment')
         ) {
             abort(403, 'Unauthorized action.');
         }
@@ -250,6 +252,7 @@ class TransactionPaymentController extends Controller
             && ! auth()->user()->can('all_expense.access')
             && ! auth()->user()->can('view_own_expense')
             && ! auth()->user()->can('hms.edit_booking_payment')
+            && ! auth()->user()->can('essentials.edit_payroll_payment')
         ) {
             abort(403, 'Unauthorized action.');
         }
@@ -345,6 +348,7 @@ class TransactionPaymentController extends Controller
             && ! auth()->user()->can('all_expense.access')
             && ! auth()->user()->can('view_own_expense')
             && ! auth()->user()->can('hms.delete_booking_payment')
+            && ! auth()->user()->can('essentials.delete_payroll_payment')
         ) {
             abort(403, 'Unauthorized action.');
         }
@@ -415,6 +419,7 @@ class TransactionPaymentController extends Controller
             && ! auth()->user()->can('all_expense.access')
             && ! auth()->user()->can('view_own_expense')
             && ! auth()->user()->can('hms.add_booking_payment')
+            && ! auth()->user()->can('essentials.add_payroll_payment')
         ) {
             abort(403, 'Unauthorized action.');
         }

@@ -15,6 +15,7 @@ class DatabaseSeeder extends Seeder
     {
         $this->call([BarcodesTableSeeder::class,
             PermissionsTableSeeder::class,
+            PaymentPermissionsSeeder::class,
             CurrenciesTableSeeder::class,
 			OldDummyBusinessSeeder::class,		
         ]);

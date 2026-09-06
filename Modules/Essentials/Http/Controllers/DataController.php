@@ -344,6 +344,21 @@ class DataController extends Controller
                 'default' => false
             ],
             [
+                'value' => 'essentials.add_payroll_payment',
+                'label' => __('essentials::lang.add_payroll_payment'),
+                'default' => false
+            ],
+            [
+                'value' => 'essentials.edit_payroll_payment',
+                'label' => __('essentials::lang.edit_payroll_payment'),
+                'default' => false
+            ],
+            [
+                'value' => 'essentials.delete_payroll_payment',
+                'label' => __('essentials::lang.delete_payroll_payment'),
+                'default' => false
+            ],
+            [
                 'value' => 'essentials.crud_leave_type',
                 'label' => __('essentials::lang.crud_leave_type'),
                 'default' => false

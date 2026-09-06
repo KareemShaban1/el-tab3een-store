@@ -133,7 +133,7 @@ class PayrollController extends Controller
 
                         // $html .= '<li><a href="' . action('TransactionPaymentController@show', [$row->id]) . '" class="view_payment_modal"><i class="fa fa-money"></i> ' . __("purchase.view_payments") . '</a></li>';
         
-                        if (empty($row->payroll_group_id) && $row->payment_status != "paid" && $is_admin) {
+                        if (empty($row->payroll_group_id) && $row->payment_status != "paid" && ($is_admin || auth()->user()->can('essentials.add_payroll_payment') || auth()->user()->can('superadmin'))) {
                             $html .= '<li><a href="' . action([\App\Http\Controllers\TransactionPaymentController::class, 'addPayment'], [$row->id]) . '" class="add_payment_modal"><i class="fa fa-money"></i> ' . __("purchase.add_payment") . '</a></li>';
                         }
 
