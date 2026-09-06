@@ -217,6 +217,7 @@ Route::middleware(['setData', 'auth', 'SetSessionData', 'language', 'timezone', 
     Route::resource('contacts', ContactController::class);
 
     Route::get('taxonomies-ajax-index-page', [TaxonomyController::class, 'getTaxonomyIndexPage']);
+    Route::post('taxonomies/{id}/toggle-active-in-app', [TaxonomyController::class, 'toggleActiveInApp']);
     Route::resource('taxonomies', TaxonomyController::class);
 
     Route::resource('variation-templates', VariationTemplateController::class);

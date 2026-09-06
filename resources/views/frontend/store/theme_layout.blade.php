@@ -922,6 +922,7 @@
 	function renderDynamicCategories(categories) {
 		const grid = $('dynamic-categories-grid');
 		if (!grid) return;
+		categories = sortCategoriesByOrder(categories);
 		if (!categories.length) {
 			grid.innerHTML = `<div class="cat-card"><div class="cat-name">لا توجد فئات متاحة</div></div>`;
 			resetCategoriesAutoScroll(grid);
@@ -1028,6 +1029,7 @@
 	function renderMegaMenuCategories(categories) {
 		const side = $('mega-sidebar');
 		if (!side) return;
+		categories = sortCategoriesByOrder(categories);
 		megaMenuCategories = categories;
 
 		const allRow =
@@ -1092,11 +1094,24 @@
 		if (list) list.hidden = false;
 	}
 
+	function sortCategoriesByOrder(categories) {
+		return [...(categories || [])].sort((a, b) => {
+			const ao = Number(a.order ?? a.sort_order ?? 0);
+			const bo = Number(b.order ?? b.sort_order ?? 0);
+			if (ao !== bo) return ao - bo;
+			return String(a.name || '').localeCompare(String(b.name || ''), 'ar');
+		}).map((c) => ({
+			...c,
+			sub_categories: sortCategoriesByOrder(c.sub_categories || []),
+		}));
+	}
+
 	function renderMobMenuCategories(categories) {
 		const wrap = $('mob-menu-categories');
 		if (!wrap) return;
 
 		const base = new URL(STORE_PRODUCTS_URL, window.location.origin);
+		categories = sortCategoriesByOrder(categories);
 		if (!categories.length) {
 			wrap.innerHTML =
 				`<div class="mm-item" style="pointer-events:none;color:var(--muted);">لا توجد أقسام متاحة</div>`;

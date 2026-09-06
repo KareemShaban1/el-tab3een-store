@@ -461,12 +461,12 @@ class StorefrontController extends Controller
             ->where('parent_id', 0)
             ->activeInApp()
             ->storefrontSortOrder()
-            ->select('id', 'name')
+            ->select('id', 'name', 'order', 'featured')
             ->with(['media', 'sub_categories' => function ($query) {
                 $query->where('category_type', 'product')
                     ->activeInApp()
                     ->storefrontSortOrder()
-                    ->select('id', 'name', 'parent_id');
+                    ->select('id', 'name', 'parent_id', 'order', 'featured');
             }])
             ->limit(30)
             ->get()
@@ -478,7 +478,13 @@ class StorefrontController extends Controller
                     ->where('category_id', $category->id)
                     ->count();
 
-                $sub_categories = $category->sub_categories->map(function ($sub) use ($business_id) {
+                $sub_categories = $category->sub_categories
+                    ->sortBy([
+                        ['order', 'asc'],
+                        ['name', 'asc'],
+                        ['id', 'asc'],
+                    ])
+                    ->map(function ($sub) use ($business_id) {
                     $sub_count = Product::where('business_id', $business_id)
                         ->active()
                         ->productForSales()
@@ -490,6 +496,7 @@ class StorefrontController extends Controller
                         'id' => $sub->id,
                         'name' => $sub->name,
                         'parent_id' => $sub->parent_id,
+                        'order' => (int) ($sub->order ?? 0),
                         'count' => $sub_count,
                     ];
                 })->values();
@@ -497,11 +504,18 @@ class StorefrontController extends Controller
                 return [
                     'id' => $category->id,
                     'name' => $category->name,
+                    'order' => (int) ($category->order ?? 0),
                     'count' => $count,
                     'image_url' => $category->image_url,
                     'sub_categories' => $sub_categories,
                 ];
-            });
+            })
+            ->sortBy([
+                ['order', 'desc'],
+                ['name', 'asc'],
+                ['id', 'asc'],
+            ])
+            ->values();
 
 
         return response()->json([

@@ -52,16 +52,16 @@ class Category extends Model
     }
 
     /**
-     * Featured first, then manual order, then newest (storefront category lists / home).
+     * Manual order first, then featured, then newest (storefront category lists / home).
      */
     public function scopeStorefrontSortOrder($query)
     {
         $t = $query->getModel()->getTable();
 
-        return $query->orderByDesc("{$t}.featured")
-            ->orderBy("{$t}.order")
-            ->orderByDesc("{$t}.created_at")
-            ->orderByDesc("{$t}.id");
+        return $query->orderBy("{$t}.order", 'asc')
+            ->orderByDesc("{$t}.featured")
+            ->orderBy("{$t}.name", 'asc')
+            ->orderBy("{$t}.id", 'asc');
     }
 
 	public function scopeFeatured($query)

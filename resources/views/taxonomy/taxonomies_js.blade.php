@@ -19,16 +19,20 @@
             //Category table
             if ($('#category_table').length) {
                 var category_type = $('#category_type').val();
+                var order_column_index = {{ $cat_code_enabled ? 2 : 1 }};
                 category_table = $('#category_table').DataTable({
                     processing: true,
                     serverSide: true,
                     fixedHeader:false,
                     ajax: '/taxonomies?type=' + category_type,
+                    aaSorting: [[order_column_index, 'asc']],
                     columns: [
-                        { data: 'name', name: 'name', orderable: false, searchable: true },
+                        { data: 'name', name: 'name', orderable: true, searchable: true },
                         @if($cat_code_enabled)
                             { data: 'short_code', name: 'short_code', orderable: false, searchable: true },
                         @endif
+                        { data: 'order', name: 'order', orderable: true, searchable: false },
+                        { data: 'active_in_app', name: 'active_in_app', orderable: false, searchable: false },
                         { data: 'description', name: 'description', orderable: false, searchable: true },
                         { data: 'action', name: 'action', orderable: false, searchable: false},
                     ],
@@ -41,6 +45,44 @@
         @endif
 
         initializeTaxonomyDataTable();
+
+        $(document).on('click', '.taxonomy-flag-toggle, .taxonomy-flag-toggle-wrap', function(e) {
+            e.stopPropagation();
+        });
+
+        $(document).on('change', '.taxonomy-flag-toggle', function(e) {
+            e.stopPropagation();
+            var $cb = $(this);
+            var previousChecked = !$cb.is(':checked');
+            var url = $cb.data('url');
+            if (!url) {
+                return;
+            }
+            $cb.prop('disabled', true);
+            $.ajax({
+                method: 'POST',
+                url: url,
+                dataType: 'json',
+                data: {
+                    _token: $('meta[name="csrf-token"]').attr('content'),
+                    value: $cb.is(':checked') ? 1 : 0
+                },
+                success: function(result) {
+                    $cb.prop('disabled', false);
+                    if (result.success == true) {
+                        toastr.success(result.msg);
+                    } else {
+                        $cb.prop('checked', previousChecked);
+                        toastr.error(result.msg);
+                    }
+                },
+                error: function() {
+                    $cb.prop('disabled', false);
+                    $cb.prop('checked', previousChecked);
+                    toastr.error(LANG.something_went_wrong);
+                }
+            });
+        });
     });
     $(document).on('submit', 'form#category_add_form', function(e) {
         e.preventDefault();

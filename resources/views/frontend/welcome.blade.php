@@ -86,7 +86,9 @@ window.__SSR_SERVO_CATEGORIES__ = @json($servoCategoriesForGrid);
 			</div>
 			<a href="{{ route('store.products.index') }}" class="view-all">عرض الكل ←</a>
 		</div>
-		<div class="cats-grid" id="dynamic-categories-grid"></div>
+		<div class="cats-scroll" role="region" aria-label="الفئات">
+			<div class="cats-grid" id="dynamic-categories-grid"></div>
+		</div>
 	</div>
 </section>
 

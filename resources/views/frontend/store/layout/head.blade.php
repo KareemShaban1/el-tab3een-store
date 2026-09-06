@@ -1171,7 +1171,12 @@
    CATEGORIES
    ============================================================ */
 	.cats-section {
-		background: var(--bg-soft)
+		background: var(--bg-soft);
+		overflow: visible;
+	}
+
+	.cats-section .container {
+		overflow: visible;
 	}
 
 	.cats-grid {
@@ -1195,6 +1200,19 @@
 		border-color: var(--accent);
 		transform: translateY(-6px);
 		box-shadow: var(--shadow-lg)
+	}
+
+	@media (hover: none), (pointer: coarse) {
+		.cat-card:hover,
+		.cat-card:active {
+			transform: none;
+			border-color: transparent;
+			box-shadow: var(--shadow-sm);
+		}
+
+		.cat-card:hover .cat-icon {
+			transform: none;
+		}
 	}
 
 	.cat-icon {
@@ -2721,27 +2739,55 @@
 			justify-content: center
 		}
 
+		.cats-scroll {
+			overflow-x: auto;
+			overflow-y: hidden;
+			-webkit-overflow-scrolling: touch;
+			touch-action: pan-x;
+			overscroll-behavior-x: contain;
+			margin-inline: -12px;
+			padding-inline: 12px;
+			padding-bottom: 10px;
+			scrollbar-width: none;
+			width: auto;
+			max-width: 100vw;
+		}
+
+		.cats-scroll::-webkit-scrollbar {
+			display: none;
+		}
+
 		.cats-grid {
 			display: flex;
 			flex-wrap: nowrap;
-			overflow-x: auto;
 			gap: 14px;
-			padding-bottom: 10px;
-			margin-inline: -16px;
-			padding-inline: 16px;
-			-webkit-overflow-scrolling: touch;
-			scroll-snap-type: x proximity;
-			scrollbar-width: none;
-		}
-
-		.cats-grid::-webkit-scrollbar {
-			display: none;
+			width: max-content;
+			min-width: 100%;
+			margin: 0;
+			padding: 0;
+			overflow: visible;
+			scroll-snap-type: none;
 		}
 
 		.cats-grid .cat-card {
 			flex: 0 0 132px;
+			width: 132px;
 			min-width: 132px;
+			max-width: 132px;
 			scroll-snap-align: start;
+			touch-action: pan-x;
+			-webkit-user-drag: none;
+			user-select: none;
+			transform: none;
+		}
+
+		.cats-grid .cat-card:hover,
+		.cats-grid .cat-card:active {
+			transform: none;
+		}
+
+		.cats-grid .cat-card:hover .cat-icon {
+			transform: none;
 		}
 
 		.products-grid {
@@ -2851,13 +2897,20 @@
 
 		.cats-grid {
 			gap: 12px;
-			margin-inline: -12px;
-			padding-inline: 12px;
+			margin-inline: 0;
+			padding-inline: 0;
+		}
+
+		.cats-scroll {
+			margin-inline: -8px;
+			padding-inline: 8px;
 		}
 
 		.cats-grid .cat-card {
 			flex: 0 0 118px;
+			width: 118px;
 			min-width: 118px;
+			max-width: 118px;
 			padding: 16px 10px;
 		}
 
