@@ -17,8 +17,8 @@
 		</p>
 	</a>
 
+	<!-- Sidebar Menu -->
 
-	@endif
 	{!! Menu::render('admin-sidebar-menu', 'adminltecustom') !!}
 
 	<!-- /.sidebar-menu -->
