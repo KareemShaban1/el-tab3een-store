@@ -2,11 +2,15 @@
 
 namespace App\Console\Commands;
 
+use App\System;
 use App\User;
 use App\Utils\ModuleUtil;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Menu;
 use Modules\Manufacturing\Support\PackagingFeature;
+use Nwidart\Modules\Facades\Module;
 
 class DebugUserAccess extends Command
 {
@@ -25,13 +29,28 @@ class DebugUserAccess extends Command
             return 1;
         }
 
-        // Simulate request auth so can() / ModuleUtil behave like the web app.
         Auth::login($user);
+
+        // Match web session shape used by menus / ModuleUtil.
+        session()->put('user', [
+            'id' => $user->id,
+            'surname' => $user->surname,
+            'first_name' => $user->first_name,
+            'last_name' => $user->last_name,
+            'email' => $user->email,
+            'business_id' => $user->business_id,
+            'language' => $user->language,
+        ]);
+        if ($user->business) {
+            session()->put('business', $user->business);
+        }
 
         $this->printUser($user);
         $this->printRolesAndPermissions($user);
+        $this->printModuleInstallStatus();
         $this->printSubscription($user);
         $this->printManufacturingVerdict($user);
+        $this->simulateManufacturingMenu($user);
 
         Auth::logout();
 
@@ -55,6 +74,8 @@ class DebugUserAccess extends Command
                 ['business_name', optional($user->business)->name],
                 ['deleted_at', $user->deleted_at],
                 ['created_at', $user->created_at],
+                ['server_today', now()->toDateString()],
+                ['app_timezone', config('app.timezone')],
             ]
         );
     }
@@ -65,6 +86,13 @@ class DebugUserAccess extends Command
         $roles = $user->getRoleNames()->values()->all();
         $this->line(empty($roles) ? '(no roles)' : implode(', ', $roles));
 
+        $isAdminRole = $user->hasRole('Admin#'.$user->business_id);
+        $this->line('hasRole(Admin#'.$user->business_id.'): '.($isAdminRole ? 'YES' : 'NO'));
+        if ($isAdminRole) {
+            $this->warn('NOTE: Gate::before grants ALL abilities to Admin#business_id (except backup/superadmin/manage_modules).');
+            $this->warn('That is why can(manufacturing.*) can be YES even when getAllPermissions() is almost empty.');
+        }
+
         $this->info('========== DIRECT PERMISSIONS ==========');
         $direct = $user->getDirectPermissions()->pluck('name')->sort()->values()->all();
         $this->line(empty($direct) ? '(none)' : implode("\n", $direct));
@@ -72,6 +100,17 @@ class DebugUserAccess extends Command
         $this->info('========== ALL PERMISSIONS (roles + direct) ==========');
         $all = $user->getAllPermissions()->pluck('name')->sort()->values()->all();
         $this->line(empty($all) ? '(none)' : implode("\n", $all));
+
+        // DB role permission count (truth without Gate::before)
+        foreach ($roles as $roleName) {
+            $role = \Spatie\Permission\Models\Role::where('name', $roleName)->first();
+            if (! $role) {
+                continue;
+            }
+            $count = $role->permissions()->count();
+            $mfgCount = $role->permissions()->where('name', 'like', 'manufacturing.%')->count();
+            $this->line("Role DB permissions for {$roleName}: total={$count}, manufacturing.*= {$mfgCount}");
+        }
 
         $mfgPerms = [
             'superadmin',
@@ -89,6 +128,63 @@ class DebugUserAccess extends Command
             $rows[] = [$perm, $user->can($perm) ? 'YES' : 'NO'];
         }
         $this->table(['Permission', 'can()'], $rows);
+    }
+
+    protected function printModuleInstallStatus(): void
+    {
+        $this->info('========== MANUFACTURING MODULE INSTALL STATUS ==========');
+        $this->line('THIS is what actually controls whether modifyAdminMenu() is called.');
+
+        $moduleUtil = new ModuleUtil();
+        $hasFiles = class_exists(Module::class) ? Module::has('Manufacturing') : null;
+        $statusesPath = base_path('modules_statuses.json');
+        $statusEnabled = null;
+        if (is_file($statusesPath)) {
+            $statuses = json_decode(file_get_contents($statusesPath), true) ?: [];
+            $statusEnabled = array_key_exists('Manufacturing', $statuses) ? (bool) $statuses['Manufacturing'] : null;
+        }
+        $version = null;
+        try {
+            $version = System::getProperty('manufacturing_version');
+        } catch (\Throwable $e) {
+            $version = 'ERROR: '.$e->getMessage();
+        }
+        $installed = $moduleUtil->isModuleInstalled('Manufacturing');
+
+        $this->table(
+            ['Check', 'Result'],
+            [
+                ['Module::has(Manufacturing) files', $hasFiles === null ? 'n/a' : ($hasFiles ? 'YES' : 'NO')],
+                ['modules_statuses.json Manufacturing', $statusEnabled === null ? 'missing key' : ($statusEnabled ? 'true' : 'false')],
+                ['system.manufacturing_version', $version === null || $version === '' ? 'MISSING' : (string) $version],
+                ['isModuleInstalled(Manufacturing)', $installed ? 'YES' : 'NO ← menu will NOT be registered'],
+            ]
+        );
+
+        if (! $installed) {
+            $this->error('Manufacturing is NOT installed according to ModuleUtil.');
+            $this->line('Fix: open /manufacturing/install (as platform admin) or run module install so system.manufacturing_version is set.');
+            $this->line('Or insert/update: INSERT INTO system (`key`, `value`) VALUES (\'manufacturing_version\', \'2.1\') ON DUPLICATE KEY UPDATE `value`=VALUES(`value`);');
+            $this->line('(Then run manufacturing migrations / update if needed.)');
+        }
+
+        // Show related system keys
+        try {
+            $keys = DB::table('system')
+                ->where('key', 'like', '%manufacturing%')
+                ->orWhere('key', 'like', '%_version')
+                ->orderBy('key')
+                ->get(['key', 'value']);
+            if ($keys->isNotEmpty()) {
+                $this->info('--- system table version-like keys ---');
+                $this->table(
+                    ['key', 'value'],
+                    $keys->map(fn ($r) => [$r->key, $r->value])->all()
+                );
+            }
+        } catch (\Throwable $e) {
+            $this->warn('Could not read system table: '.$e->getMessage());
+        }
     }
 
     protected function printSubscription(User $user): void
@@ -121,7 +217,7 @@ class DebugUserAccess extends Command
         $active = \Modules\Superadmin\Entities\Subscription::active_subscription($businessId);
         if (empty($active)) {
             $this->error('NO ACTIVE APPROVED SUBSCRIPTION for business_id='.$businessId);
-            $this->line('Checked: start_date <= today, end_date >= today, status=approved');
+            $this->line('Checked: start_date <= today ('.now()->toDateString().'), end_date >= today, status=approved');
 
             $latest = \Modules\Superadmin\Entities\Subscription::where('business_id', $businessId)
                 ->orderByDesc('id')
@@ -214,6 +310,7 @@ class DebugUserAccess extends Command
         $mfgInSub = $businessId
             ? (bool) $moduleUtil->hasThePermissionInSubscription($businessId, 'manufacturing_module', 'superadmin_package')
             : false;
+        $moduleInstalled = $moduleUtil->isModuleInstalled('Manufacturing');
 
         $isMfgEnabled = $isSuperadmin || $mfgInSub;
         $canRecipe = $user->can('manufacturing.access_recipe');
@@ -223,11 +320,12 @@ class DebugUserAccess extends Command
 
         $parentMenu = $isMfgEnabled;
         $anyChild = $canRecipe || $canProduction;
-        $wouldSeeUsefulMenu = $parentMenu && $anyChild;
+        $wouldSeeUsefulMenu = $moduleInstalled && $parentMenu && $anyChild;
 
         $this->table(
             ['Check', 'Result'],
             [
+                ['isModuleInstalled(Manufacturing)', $moduleInstalled ? 'YES' : 'NO ← CRITICAL'],
                 ['user.can(superadmin)', $isSuperadmin ? 'YES' : 'NO'],
                 ['subscription manufacturing_module', $mfgInSub ? 'YES' : 'NO'],
                 ['$is_mfg_enabled (parent menu gate)', $isMfgEnabled ? 'YES → parent can be added' : 'NO → menu NOT added'],
@@ -242,15 +340,73 @@ class DebugUserAccess extends Command
 
         if (! $wouldSeeUsefulMenu) {
             $this->warn('Fix hints:');
+            if (! $moduleInstalled) {
+                $this->line('1) Install Manufacturing module so system.manufacturing_version exists (menus are skipped until then).');
+            }
             if (! $isMfgEnabled) {
-                $this->line('- Enable manufacturing_module on the business active subscription package (Superadmin → packages / subscription).');
+                $this->line('2) Enable manufacturing_module on the business active subscription package.');
             }
             if (! $canRecipe && ! $canProduction) {
-                $this->line('- Assign role permissions: manufacturing.access_recipe and/or manufacturing.access_production, then have the user re-login.');
+                $this->line('3) Assign manufacturing.access_recipe and/or manufacturing.access_production (or use Admin role).');
             }
-        } else {
-            $this->info('Gates look OK. If still missing in UI: clear permission cache, hard refresh, confirm same business_id session.');
-            $this->line('Optional: php artisan permission:cache-reset');
+        }
+    }
+
+    protected function simulateManufacturingMenu(User $user): void
+    {
+        $this->info('========== SIMULATE modifyAdminMenu() ==========');
+
+        $moduleUtil = new ModuleUtil();
+        if (! $moduleUtil->isModuleInstalled('Manufacturing')) {
+            $this->error('Skipped: Manufacturing not installed → getModuleData("modifyAdminMenu") will never call it.');
+
+            return;
+        }
+
+        if (! class_exists(\Modules\Manufacturing\Http\Controllers\DataController::class)) {
+            $this->error('DataController class missing on server.');
+
+            return;
+        }
+
+        try {
+            // Fresh menu like middleware does (create then modify).
+            Menu::create('admin-sidebar-menu', function ($menu) {
+                $menu->url('#', 'HOME_PLACEHOLDER', ['icon' => '']);
+            });
+
+            (new \Modules\Manufacturing\Http\Controllers\DataController())->modifyAdminMenu();
+
+            $builder = Menu::instance('admin-sidebar-menu');
+            $titles = [];
+            if ($builder && method_exists($builder, 'getItems')) {
+                foreach ($builder->getItems() as $item) {
+                    $titles[] = $item->title.(count($item->getChilds()) ? ' (children: '.count($item->getChilds()).')' : '');
+                }
+            } elseif ($builder && property_exists($builder, 'items')) {
+                foreach ($builder->items as $item) {
+                    $childCount = method_exists($item, 'getChilds') ? count($item->getChilds()) : 0;
+                    $titles[] = $item->title.($childCount ? " (children: {$childCount})" : '');
+                }
+            }
+
+            if (empty($titles)) {
+                $this->warn('Menu instance exists but could not list items (API mismatch). No exception thrown.');
+            } else {
+                $this->line('Menu titles after Manufacturing modifyAdminMenu:');
+                foreach ($titles as $t) {
+                    $this->line(' - '.$t);
+                }
+            }
+
+            $mfgTitle = __('manufacturing::lang.manufacturing');
+            $found = collect($titles)->contains(function ($t) use ($mfgTitle) {
+                return strpos($t, $mfgTitle) !== false || stripos($t, 'manufactur') !== false;
+            });
+            $this->line('Manufacturing title present: '.($found ? 'YES' : 'NO'));
+        } catch (\Throwable $e) {
+            $this->error('modifyAdminMenu threw: '.$e->getMessage());
+            $this->line($e->getFile().':'.$e->getLine());
         }
     }
 }

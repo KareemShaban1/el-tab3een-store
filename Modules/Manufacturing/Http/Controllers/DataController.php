@@ -132,13 +132,13 @@ class DataController extends Controller
      */
     public function modifyAdminMenu()
     {
-        $business_id = session()->get('user.business_id');
+        $business_id = session()->get('user.business_id') ?? optional(auth()->user())->business_id;
         $module_util = new ModuleUtil();
         $is_mfg_enabled = auth()->user()->can('superadmin')
             || (boolean) $module_util->hasThePermissionInSubscription($business_id, 'manufacturing_module', 'superadmin_package');
 
-                  if ($is_mfg_enabled ) {  
-		Menu::modify('admin-sidebar-menu', function ($menu) use ($business_id) {
+        if ($is_mfg_enabled) {
+            Menu::modify('admin-sidebar-menu', function ($menu) use ($business_id) {
                 $menu->dropdown(
                     __('manufacturing::lang.manufacturing'),
                     function ($sub) use ($business_id) {
