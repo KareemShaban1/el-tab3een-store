@@ -17,14 +17,7 @@
 		</p>
 	</a>
 
-	<!-- Sidebar Menu -->
-	@if(!empty($__admin_sidebar_menu_titles) && (config('app.debug') || request()->boolean('debug_menu')))
-	<!-- ADMIN_SIDEBAR_TITLES: {{ implode(' | ', $__admin_sidebar_menu_titles) }} -->
-	<div class="tw-p-2 tw-text-xs tw-bg-yellow-100 tw-text-yellow-900 tw-border-b tw-border-yellow-300"
-		style="white-space:normal;word-break:break-word;">
-		<strong>Sidebar debug</strong><br>
-		{{ implode(' | ', $__admin_sidebar_menu_titles) }}
-	</div>
+
 	@endif
 	{!! Menu::render('admin-sidebar-menu', 'adminltecustom') !!}
 
