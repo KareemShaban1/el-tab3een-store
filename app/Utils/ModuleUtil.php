@@ -79,10 +79,22 @@ class ModuleUtil extends Util
                 if (class_exists($class)) {
                     $class_object = new $class();
                     if (method_exists($class_object, $function_name)) {
-                        if (! empty($arguments)) {
-                            $data[$module['name']] = call_user_func([$class_object, $function_name], $arguments);
-                        } else {
-                            $data[$module['name']] = call_user_func([$class_object, $function_name]);
+                        try {
+                            if (! empty($arguments)) {
+                                $data[$module['name']] = call_user_func([$class_object, $function_name], $arguments);
+                            } else {
+                                $data[$module['name']] = call_user_func([$class_object, $function_name]);
+                            }
+                        } catch (\Throwable $e) {
+                            \Log::emergency('ModuleUtil::getModuleData failed', [
+                                'module' => $module['name'] ?? null,
+                                'function' => $function_name,
+                                'message' => $e->getMessage(),
+                                'file' => $e->getFile(),
+                                'line' => $e->getLine(),
+                            ]);
+                            // Continue so one broken module does not remove later menus (e.g. Manufacturing).
+                            $data[$module['name']] = null;
                         }
                     }
                 }

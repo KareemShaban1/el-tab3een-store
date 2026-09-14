@@ -354,7 +354,7 @@ class DebugUserAccess extends Command
 
     protected function simulateManufacturingMenu(User $user): void
     {
-        $this->info('========== SIMULATE modifyAdminMenu() ==========');
+        $this->info('========== SIMULATE FULL SIDEBAR MODULE MENUS ==========');
 
         $moduleUtil = new ModuleUtil();
         if (! $moduleUtil->isModuleInstalled('Manufacturing')) {
@@ -363,37 +363,29 @@ class DebugUserAccess extends Command
             return;
         }
 
-        if (! class_exists(\Modules\Manufacturing\Http\Controllers\DataController::class)) {
-            $this->error('DataController class missing on server.');
-
-            return;
-        }
-
         try {
-            // Fresh menu like middleware does (create then modify).
             Menu::create('admin-sidebar-menu', function ($menu) {
-                $menu->url('#', 'HOME_PLACEHOLDER', ['icon' => '']);
+                $menu->url('#', 'HOME_PLACEHOLDER', ['icon' => ''])->order(5);
+                $menu->url('#', 'PRODUCTS_PLACEHOLDER', ['icon' => ''])->order(20);
+                $menu->url('#', 'PURCHASES_PLACEHOLDER', ['icon' => ''])->order(25);
             });
 
-            (new \Modules\Manufacturing\Http\Controllers\DataController())->modifyAdminMenu();
+            // Same call path as AdminSidebarMenu middleware (all modules).
+            $moduleUtil->getModuleData('modifyAdminMenu');
 
             $builder = Menu::instance('admin-sidebar-menu');
             $titles = [];
             if ($builder && method_exists($builder, 'getItems')) {
                 foreach ($builder->getItems() as $item) {
-                    $titles[] = $item->title.(count($item->getChilds()) ? ' (children: '.count($item->getChilds()).')' : '');
-                }
-            } elseif ($builder && property_exists($builder, 'items')) {
-                foreach ($builder->items as $item) {
-                    $childCount = method_exists($item, 'getChilds') ? count($item->getChilds()) : 0;
-                    $titles[] = $item->title.($childCount ? " (children: {$childCount})" : '');
+                    $childCount = count($item->getChilds());
+                    $titles[] = trim($item->title).($childCount ? " (children: {$childCount})" : '');
                 }
             }
 
+            $this->line('Menu titles after full getModuleData(modifyAdminMenu):');
             if (empty($titles)) {
-                $this->warn('Menu instance exists but could not list items (API mismatch). No exception thrown.');
+                $this->warn('(could not list items)');
             } else {
-                $this->line('Menu titles after Manufacturing modifyAdminMenu:');
                 foreach ($titles as $t) {
                     $this->line(' - '.$t);
                 }
@@ -401,11 +393,18 @@ class DebugUserAccess extends Command
 
             $mfgTitle = __('manufacturing::lang.manufacturing');
             $found = collect($titles)->contains(function ($t) use ($mfgTitle) {
-                return strpos($t, $mfgTitle) !== false || stripos($t, 'manufactur') !== false;
+                return strpos($t, (string) $mfgTitle) !== false
+                    || stripos($t, 'manufactur') !== false
+                    || strpos($t, 'تصنيع') !== false;
             });
-            $this->line('Manufacturing title present: '.($found ? 'YES' : 'NO'));
+            $this->line('Manufacturing/تصنيع title present: '.($found ? 'YES' : 'NO'));
+            $this->line('Arabic label to look for in UI: تصنيع');
+            $this->line('Direct URLs to test while logged in as this user:');
+            $this->line('  /manufacturing/recipe');
+            $this->line('  /manufacturing/production');
+            $this->line('If URLs work but sidebar missing: check laravel.log for ModuleUtil::getModuleData failed');
         } catch (\Throwable $e) {
-            $this->error('modifyAdminMenu threw: '.$e->getMessage());
+            $this->error('Full menu simulation threw: '.$e->getMessage());
             $this->line($e->getFile().':'.$e->getLine());
         }
     }
