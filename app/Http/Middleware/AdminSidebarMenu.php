@@ -963,6 +963,21 @@ $is_superadmin = auth()->user()->can('superadmin');
         $moduleUtil = new ModuleUtil;
         $moduleUtil->getModuleData('modifyAdminMenu');
 
+        // Optional: view-source debug via ?debug_menu=1
+        try {
+            $titles = [];
+            $builder = \Menu::instance('admin-sidebar-menu');
+            if ($builder && method_exists($builder, 'getItems')) {
+                foreach ($builder->getItems() as $item) {
+                    $childCount = method_exists($item, 'getChilds') ? count($item->getChilds()) : 0;
+                    $titles[] = trim((string) $item->title).($childCount ? "({$childCount})" : '');
+                }
+            }
+            view()->share('__admin_sidebar_menu_titles', $titles);
+        } catch (\Throwable $e) {
+            view()->share('__admin_sidebar_menu_titles', ['ERROR: '.$e->getMessage()]);
+        }
+
         return $next($request);
     }
 }
