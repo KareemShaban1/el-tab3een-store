@@ -111,7 +111,8 @@ class RecipeController extends Controller
                     //Recipe price is dynamically calculated from each ingredients
                     $price = $this->mfgUtil->getRecipeTotal($row);
 
-                    $unit_cost = $price / $row->total_quantity;
+                    $qty = (float) ($row->total_quantity ?? 0);
+                    $unit_cost = $qty > 0 ? ($price / $qty) : 0;
 
                     return '<span class="display_currency unit_cost" data-unit_cost="' . $unit_cost . '" data-currency_symbol="true">' . $unit_cost . '</span>';
                 })

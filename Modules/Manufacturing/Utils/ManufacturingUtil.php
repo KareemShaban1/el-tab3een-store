@@ -59,7 +59,7 @@ class ManufacturingUtil extends Util
             if (!empty($recipe)) {
                 $recipe_base_unit_multiplier = !empty($recipe->sub_unit) ? $recipe->sub_unit->base_unit_multiplier : 1;
                 $total_recipe_qty = !empty($recipe_base_unit_multiplier) ? $recipe->total_quantity * $recipe_base_unit_multiplier : $recipe->total_quantity;
-                $unit_qty = $unit_qty / $total_recipe_qty;
+                $unit_qty = ((float) $total_recipe_qty > 0) ? ($unit_qty / $total_recipe_qty) : 0;
             }
             $total_price = $variation->dpp_inc_tax * $line_total_quantity * $multiplier;
             $waste_percent = !empty($ingredient_variation->waste_percent) ? $ingredient_variation->waste_percent : 0;

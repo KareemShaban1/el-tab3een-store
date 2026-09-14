@@ -198,6 +198,26 @@ class DebugUserAccess extends Command
             return;
         }
 
+        $businessTz = optional($user->business)->time_zone ?: config('app.timezone');
+        $appTz = config('app.timezone');
+        $todayApp = now($appTz)->toDateString();
+        $todayBusiness = now($businessTz)->toDateString();
+
+        $this->table(
+            ['Field', 'Value'],
+            [
+                ['app.timezone (CLI default)', $appTz],
+                ['business.time_zone (used in web middleware)', $businessTz],
+                ['today in app TZ', $todayApp],
+                ['today in business TZ (WEB)', $todayBusiness],
+            ]
+        );
+
+        if ($todayApp !== $todayBusiness) {
+            $this->error('DATE MISMATCH: CLI and browser can disagree on whether a subscription is active.');
+            $this->warn('AdminSidebarMenu runs AFTER Timezone middleware → uses business.time_zone.');
+        }
+
         $moduleUtil = new ModuleUtil();
         $superadminInstalled = $moduleUtil->isSuperadminInstalled();
         $this->line('Superadmin module installed: '.($superadminInstalled ? 'YES' : 'NO'));
@@ -214,9 +234,28 @@ class DebugUserAccess extends Command
             return;
         }
 
+        // Show active under BOTH timezones (this is the usual CLI-vs-web trap).
+        foreach ([
+            'app TZ' => $appTz,
+            'business TZ (web)' => $businessTz,
+        ] as $label => $tz) {
+            $today = now($tz)->toDateString();
+            $active = \Modules\Superadmin\Entities\Subscription::where('business_id', $businessId)
+                ->whereDate('start_date', '<=', $today)
+                ->whereDate('end_date', '>=', $today)
+                ->approved()
+                ->first();
+
+            $this->line("Active subscription under {$label} (today={$today}): ".($active ? 'YES id='.$active->id : 'NO'));
+        }
+
+        // Restore default Carbon timezone for the rest of the command.
+        date_default_timezone_set($appTz);
+        config(['app.timezone' => $appTz]);
+
         $active = \Modules\Superadmin\Entities\Subscription::active_subscription($businessId);
         if (empty($active)) {
-            $this->error('NO ACTIVE APPROVED SUBSCRIPTION for business_id='.$businessId);
+            $this->error('NO ACTIVE APPROVED SUBSCRIPTION for business_id='.$businessId.' under current PHP timezone '.config('app.timezone'));
             $this->line('Checked: start_date <= today ('.now()->toDateString().'), end_date >= today, status=approved');
 
             $latest = \Modules\Superadmin\Entities\Subscription::where('business_id', $businessId)
@@ -295,7 +334,7 @@ class DebugUserAccess extends Command
             $this->table(['Module key', 'Raw', 'Status'], $modRows);
         }
 
-        $mfgSub = $moduleUtil->hasThePermissionInSubscription($businessId, 'manufacturing_module', 'superadmin_package');
+        $mfgSub = $moduleUtil->hasThePermissionInSubscription($businessId, 'manufacturing_module');
         $this->line('hasThePermissionInSubscription(manufacturing_module): '.($mfgSub ? 'YES' : 'NO'));
     }
 
@@ -308,7 +347,7 @@ class DebugUserAccess extends Command
 
         $isSuperadmin = $user->can('superadmin');
         $mfgInSub = $businessId
-            ? (bool) $moduleUtil->hasThePermissionInSubscription($businessId, 'manufacturing_module', 'superadmin_package')
+            ? (bool) $moduleUtil->hasThePermissionInSubscription($businessId, 'manufacturing_module')
             : false;
         $moduleInstalled = $moduleUtil->isModuleInstalled('Manufacturing');
 

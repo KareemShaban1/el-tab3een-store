@@ -135,7 +135,7 @@ class DataController extends Controller
         $business_id = session()->get('user.business_id') ?? optional(auth()->user())->business_id;
         $module_util = new ModuleUtil();
         $is_mfg_enabled = auth()->user()->can('superadmin')
-            || (boolean) $module_util->hasThePermissionInSubscription($business_id, 'manufacturing_module', 'superadmin_package');
+            || (boolean) $module_util->hasThePermissionInSubscription($business_id, 'manufacturing_module');
 
         if ($is_mfg_enabled) {
             Menu::modify('admin-sidebar-menu', function ($menu) use ($business_id) {
