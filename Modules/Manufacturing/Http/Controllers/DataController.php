@@ -137,9 +137,8 @@ class DataController extends Controller
         $is_mfg_enabled = auth()->user()->can('superadmin')
             || (boolean) $module_util->hasThePermissionInSubscription($business_id, 'manufacturing_module', 'superadmin_package');
 
-//         if ($is_mfg_enabled && (auth()->user()->can('manufacturing.access_recipe') || auth()->user()->can('manufacturing.access_production'))) {
                   if ($is_mfg_enabled ) {  
-	Menu::modify('admin-sidebar-menu', function ($menu) use ($business_id) {
+		Menu::modify('admin-sidebar-menu', function ($menu) use ($business_id) {
                 $menu->dropdown(
                     __('manufacturing::lang.manufacturing'),
                     function ($sub) use ($business_id) {
