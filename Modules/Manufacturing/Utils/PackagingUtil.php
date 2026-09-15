@@ -2,7 +2,7 @@
 
 namespace Modules\Manufacturing\Utils;
 
-use App\Models\Variation;
+use App\Variation;
 use Modules\Manufacturing\Entities\MfgPackagingProfile;
 use Modules\Manufacturing\Support\PackagingFeature;
 

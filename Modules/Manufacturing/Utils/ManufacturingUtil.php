@@ -3,9 +3,9 @@ namespace Modules\Manufacturing\Utils;
 
 use App\Business;
 use App\Transaction;
-use App\Models\TransactionSellLinesPurchaseLines;
+use App\TransactionSellLinesPurchaseLines;
 use App\Utils\Util;
-use App\Models\Variation;
+use App\Variation;
 use DB;
 use Modules\Manufacturing\Entities\MfgRecipeIngredient;
 
