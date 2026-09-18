@@ -66,10 +66,13 @@
                     @endif
                 </div>
                 <div class="col-md-6">
-                    <strong>@lang('lang_v1.quantity'):</strong>
+                    <strong>@lang('manufacturing::lang.production_quantity'):</strong>
                     {{@format_quantity($quantity)}} {{$unit_name}}<br>
                     <strong>@lang('manufacturing::lang.waste_units'):</strong>
-                    {{@format_quantity($quantity_wasted)}} {{$unit_name}}
+                    {{@format_quantity($quantity_wasted)}} {{$unit_name}}<br>
+                    <strong>@lang('manufacturing::lang.final_quantity'):</strong>
+                    {{@format_quantity(max(0, $quantity - $quantity_wasted))}} {{$unit_name}}
+                    <br><small class="text-muted">@lang('manufacturing::lang.final_quantity_stock_tooltip')</small>
                 </div>
             </div>
             <div class="row">

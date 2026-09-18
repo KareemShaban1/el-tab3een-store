@@ -185,18 +185,24 @@ class ProductionController extends Controller
                                 ->with(['product'])
                                 ->first();
             $final_total = $request->input('final_total');
-            $quantity = $request->input('quantity');
+            $production_qty = $this->productUtil->num_uf($request->input('quantity'));
             $waste_units = $this->productUtil->num_uf($request->input('mfg_wasted_units'));
-            $uf_qty = $this->productUtil->num_uf($quantity);
-            if (!empty($waste_units)) {
-                $new_qty = $uf_qty - $waste_units;
-                $uf_qty = $new_qty;
-                $quantity = $this->productUtil->num_f($new_qty);
+            if ($waste_units < 0) {
+                $waste_units = 0;
             }
+
+            // Prefer submitted final_quantity (production qty - waste); this is what is added to stock.
+            $uf_qty = $request->filled('final_quantity')
+                ? $this->productUtil->num_uf($request->input('final_quantity'))
+                : ($production_qty - $waste_units);
+            if ($uf_qty < 0) {
+                $uf_qty = 0;
+            }
+            $quantity = $this->productUtil->num_f($uf_qty);
 
             $final_total_uf = $this->productUtil->num_uf($final_total);
 
-            $unit_purchase_line_total = $final_total_uf / $uf_qty;
+            $unit_purchase_line_total = $uf_qty > 0 ? ($final_total_uf / $uf_qty) : 0;
 
             $unit_purchase_line_total_f = $this->productUtil->num_f($unit_purchase_line_total);
 
@@ -578,18 +584,24 @@ class ProductionController extends Controller
                                 ->with(['product'])
                                 ->first();
             $final_total = $request->input('final_total');
-            $quantity = $request->input('quantity');
+            $production_qty = $this->productUtil->num_uf($request->input('quantity'));
             $waste_units = $this->productUtil->num_uf($request->input('mfg_wasted_units'));
-            $uf_qty = $this->productUtil->num_uf($quantity);
-            if (!empty($waste_units)) {
-                $new_qty = $uf_qty - $waste_units;
-                $uf_qty = $new_qty;
-                $quantity = $this->productUtil->num_f($new_qty);
+            if ($waste_units < 0) {
+                $waste_units = 0;
             }
+
+            // Prefer submitted final_quantity (production qty - waste); this is what is added to stock.
+            $uf_qty = $request->filled('final_quantity')
+                ? $this->productUtil->num_uf($request->input('final_quantity'))
+                : ($production_qty - $waste_units);
+            if ($uf_qty < 0) {
+                $uf_qty = 0;
+            }
+            $quantity = $this->productUtil->num_f($uf_qty);
 
             $final_total_uf = $this->productUtil->num_uf($final_total);
 
-            $unit_purchase_line_total = $final_total_uf / $uf_qty;
+            $unit_purchase_line_total = $uf_qty > 0 ? ($final_total_uf / $uf_qty) : 0;
 
             $unit_purchase_line_total_f = $this->productUtil->num_f($unit_purchase_line_total);
 

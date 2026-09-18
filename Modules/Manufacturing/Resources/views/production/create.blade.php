@@ -56,10 +56,20 @@
 			
 			<div class="col-sm-3">
 				<div class="form-group">
-					{!! Form::label('recipe_quantity', __('lang_v1.quantity').':*') !!}
+					{!! Form::label('recipe_quantity', __('manufacturing::lang.production_quantity').':*') !!}
 					<div class="input-group" id="recipe_quantity_input">
 						{!! Form::text('quantity', 1, ['class' => 'form-control input_number input_quantity', 'id' => 'recipe_quantity', 'required', 'data-rule-notEmpty' => 'true', 'data-rule-notEqualToWastedQuantity' => 'true']); !!}
 						<span class="input-group-addon" id="unit_html"></span>
+					</div>
+				</div>
+			</div>
+			<div class="col-sm-3">
+				<div class="form-group">
+					{!! Form::label('final_quantity', __('manufacturing::lang.final_quantity').':') !!}
+					@show_tooltip(__('manufacturing::lang.final_quantity_stock_tooltip'))
+					<div class="input-group">
+						{!! Form::text('final_quantity', 1, ['class' => 'form-control input_number input_quantity', 'id' => 'final_quantity', 'readonly']); !!}
+						<span class="input-group-addon" id="final_quantity_unit_html"></span>
 					</div>
 				</div>
 			</div>

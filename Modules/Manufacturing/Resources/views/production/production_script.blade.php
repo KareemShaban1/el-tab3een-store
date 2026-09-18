@@ -43,6 +43,10 @@
 	                }
 	                __write_number($('#recipe_quantity'), result.recipe.total_quantity);
 	                $('#unit_html').html(result.unit_html);
+	                $('#final_quantity_unit_html').html(result.is_sub_unit ? '' : result.unit_name);
+	                if (!result.is_sub_unit) {
+	                	$('#final_quantity_unit_html').text(result.unit_name);
+	                }
 	                $('#wasted_units_text').text(result.unit_name);
 
                     var mfg_wasted_units = __calculate_amount('percentage', $('#waste_percent').val(), result.recipe.total_quantity);
@@ -51,17 +55,23 @@
                     $('#mfg_production_cost_type').val(result.recipe.production_cost_type);
 
 	                __currency_convert_recursively($('#enter_ingredients_table'));
+                    updateFinalQuantity();
                     calculateRecipeTotal();
 	            },
 	        });
 		} else {
 			$('#enter_ingredients_table').html('');
+			updateFinalQuantity();
 	        calculateRecipeTotal();
 		}
 	});
 
 	$(document).on('change', '#production_cost, select.sub_unit, input.mfg_waste_percent, #mfg_production_cost_type', function(){
 		calculateRecipeTotal();
+	});
+
+	$(document).on('change keyup', '#recipe_quantity, #mfg_wasted_units', function(){
+		updateFinalQuantity();
 	});
 
     $(document).on('change', '#recipe_quantity, #sub_unit_id', function(){
@@ -73,6 +83,8 @@
                 .find(':selected')
                 .data('unit_name');
             $('#wasted_units_text').text(unit_name);
+            $('#final_quantity_unit_html').text(unit_name);
+            updateFinalQuantity();
 	});
 
 	$(document).on('change', '.total_quantities', function(){
@@ -102,12 +114,35 @@
     }
 
     /**
+     * Final quantity added to finished product stock =
+     * production quantity - wasted units
+     */
+    function updateFinalQuantity() {
+        var production_qty = __read_number($('#recipe_quantity'));
+        var waste_qty = __read_number($('#mfg_wasted_units'));
+        if (isNaN(production_qty)) {
+            production_qty = 0;
+        }
+        if (isNaN(waste_qty) || waste_qty < 0) {
+            waste_qty = 0;
+        }
+
+        var final_qty = production_qty - waste_qty;
+        if (final_qty < 0 || isNaN(final_qty) || !isFinite(final_qty)) {
+            final_qty = 0;
+        }
+
+        __write_number($('#final_quantity'), final_qty, false, __mfg_qty_precision());
+    }
+
+    /**
      * Scale ingredient rows from the quantities loaded with the recipe,
      * instead of relying on tiny unit_quantity values that round to 0.
      */
     function scaleIngredientQuantities() {
         var $table = $('#ingredients_for_unit_recipe_table');
         if ($table.length === 0) {
+            updateFinalQuantity();
             calculateRecipeTotal();
             return;
         }
@@ -119,6 +154,7 @@
 
         var mfg_wasted_units = __calculate_amount('percentage', $('#waste_percent').val(), recipe_quantity);
         __write_number($('#mfg_wasted_units'), mfg_wasted_units);
+        updateFinalQuantity();
 
         var current_multiplier = __mfg_recipe_unit_multiplier();
         var base_recipe_qty = parseFloat($table.attr('data-base-recipe-quantity'));
