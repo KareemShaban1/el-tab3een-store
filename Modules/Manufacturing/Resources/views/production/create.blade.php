@@ -58,7 +58,7 @@
 				<div class="form-group">
 					{!! Form::label('recipe_quantity', __('lang_v1.quantity').':*') !!}
 					<div class="input-group" id="recipe_quantity_input">
-						{!! Form::text('quantity', 1, ['class' => 'form-control input_number', 'id' => 'recipe_quantity', 'required', 'data-rule-notEmpty' => 'true', 'data-rule-notEqualToWastedQuantity' => 'true']); !!}
+						{!! Form::text('quantity', 1, ['class' => 'form-control input_number input_quantity', 'id' => 'recipe_quantity', 'required', 'data-rule-notEmpty' => 'true', 'data-rule-notEqualToWastedQuantity' => 'true']); !!}
 						<span class="input-group-addon" id="unit_html"></span>
 					</div>
 				</div>

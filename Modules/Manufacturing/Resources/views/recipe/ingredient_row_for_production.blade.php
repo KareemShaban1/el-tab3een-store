@@ -3,7 +3,7 @@
 		{{$ingredient['full_name']}}
 		<input type="hidden" class="ingredient_price" value="{{$ingredient['dpp_inc_tax']}}">
 		<input type="hidden" name="ingredients[{{$ingredient['id']}}][variation_id]"  class="ingredient_id" value="{{$ingredient['variation_id']}}">
-		<input type="hidden" class="unit_quantity" value="{{$ingredient['unit_quantity']}}">
+		<input type="hidden" class="unit_quantity" value="{{$ingredient['unit_quantity']}}" data-unit_quantity="{{$ingredient['unit_quantity']}}">
 	</td>
 	<td>
 		@php
@@ -23,7 +23,7 @@
 			<input 
 			type="text" 
 			data-min="1" 
-			class="form-control input-sm input_number mousetrap total_quantities" 
+			class="form-control input-sm input_number input_quantity mousetrap total_quantities" 
 			value="{{@format_quantity($ingredient['quantity'])}}" 
 			name="ingredients[{{$ingredient['id']}}][quantity]" 
 			data-allow-overselling="@if(empty($pos_settings['allow_overselling'])){{'false'}}@else{{'true'}}@endif"
