@@ -17,6 +17,7 @@ return [
     'finalize_tooltip' => "Once finalized all ingredient stock will be deducted & production item stock will increase and editing of production will not be allowed.",
     'unit_quantity' => 'Unit Quantity',
     'total_quantity' => 'Total Quantity',
+    'ingredients_total_quantity' => 'Ingredients Total Qty',
     'total_price' => 'Total Price',
     'waste_units' => 'Wasted Quantity',
     'production_cost' => 'Production Cost',

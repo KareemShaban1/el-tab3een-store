@@ -107,6 +107,16 @@ class RecipeController extends Controller
 
                     return $html;
                 })
+                ->addColumn('ingredients_total_quantity', function ($row) {
+                    $total_qty = 0;
+                    if (! empty($row->ingredients)) {
+                        foreach ($row->ingredients as $ingredient) {
+                            $total_qty += (float) ($ingredient->quantity ?? 0);
+                        }
+                    }
+
+                    return '<span class="display_currency" data-currency_symbol="false">' . $total_qty . '</span>';
+                })
                 ->addColumn('unit_cost', function ($row) {
                     //Recipe price is dynamically calculated from each ingredients
                     $price = $this->mfgUtil->getRecipeTotal($row);
@@ -122,7 +132,7 @@ class RecipeController extends Controller
                 ->addColumn('row_select', function ($row) {
                     return  '<input type="checkbox" class="row-select" value="' . $row->id .'">' ;
                 })
-                ->rawColumns(['action', 'recipe_total', 'total_quantity', 'unit_cost', 'row_select'])
+                ->rawColumns(['action', 'recipe_total', 'total_quantity', 'ingredients_total_quantity', 'unit_cost', 'row_select'])
                 ->make(true);
         }
 

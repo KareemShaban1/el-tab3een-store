@@ -30,11 +30,13 @@
 							@php
 								$ingredient_groups = [];
 								$ingredient_total_price = 0;
+								$total_ingredient_quantity = 0;
 							@endphp
 							@foreach($ingredients as $ingredient)
 								@php
 									$ingredient_price = $ingredient['quantity']*$ingredient['dpp_inc_tax']*$ingredient['multiplier'];
 									$ingredient_total_price += $ingredient_price;
+									$total_ingredient_quantity += $ingredient['quantity'];
 								@endphp
 								@if(empty($ingredient['mfg_ingredient_group_id']))
 									<tr>
@@ -71,6 +73,20 @@
 							@endforeach
 						</tbody>
 						<tfoot>
+							<tr class="bg-gray">
+								<td class="text-right"><strong>@lang('sale.total')</strong></td>
+								<td>
+									<strong>
+										<span class="display_currency" data-currency_symbol="false">{{$total_ingredient_quantity}}</span>
+									</strong>
+								</td>
+								<td></td>
+								<td>
+									<strong>
+										<span class="display_currency" data-currency_symbol="true">{{$ingredient_total_price}}</span>
+									</strong>
+								</td>
+							</tr>
 							<tr>
 								<td colspan="3" class="text-right"><strong>@lang('manufacturing::lang.ingredients_cost')</strong></td>
 								<td><span class="display_currency" data-currency_symbol="true">{{$ingredient_total_price}}</span></td>

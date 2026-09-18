@@ -17,6 +17,7 @@ return[
 "finalize_tooltip" => "بمجرد الانتهاء من جميع عناصر المكونات سيتم خصمها وسيزداد مخزون مواد الإنتاج ولن يُسمح بتحرير الإنتاج.",
 "unit_quantity" => "وحدة الكمية",
 "total_quantity" => "الكمية الإجمالية",
+"ingredients_total_quantity" => "إجمالي كمية المكونات",
 "total_price" => "السعر الكلي",
 "waste_units" => "الكمية المهدرة",
 "production_cost" => "تكلفة الانتاج",

@@ -28,6 +28,7 @@
                         <th>@lang( 'product.category' )</th>
                         <th>@lang( 'product.sub_category' )</th>
                         <th>@lang( 'lang_v1.quantity' )</th>
+                        <th>@lang( 'manufacturing::lang.ingredients_total_quantity' )</th>
                         <th>@lang( 'lang_v1.price' ) @show_tooltip(__('manufacturing::lang.price_updated_live'))</th>
                         <th>@lang( 'sale.unit_price' )</th>
                         <th>@lang( 'messages.action' )</th>
@@ -35,7 +36,7 @@
                 </thead>
                 <tfoot>
                     <tr>
-                        <td colspan="8">
+                        <td colspan="9">
                             <button type="button" class="btn btn-xs btn-danger" id="mass_update_product_price" >@lang('manufacturing::lang.update_product_price')</button> @show_tooltip(__('manufacturing::lang.update_product_price_help'))
                         </td>
                     </tr>

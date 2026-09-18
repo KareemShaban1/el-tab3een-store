@@ -54,7 +54,7 @@
 	        ajax: '{{action("\Modules\Manufacturing\Http\Controllers\RecipeController@index")}}',
 	        columnDefs: [
 	            {
-	                targets: [0, 5, 6, 7],
+	                targets: [0, 5, 6, 7, 8],
 	                orderable: false,
 	                searchable: false,
 	            },
@@ -66,6 +66,7 @@
 	            { data: 'category', name: 'c.name' },
 	            { data: 'sub_category', name: 'sc.name' },
 	            { data: 'total_quantity', name: 'total_quantity' },
+	            { data: 'ingredients_total_quantity', orderable: false, searchable: false },
 	            { data: 'recipe_total' },
 	            { data: 'unit_cost' },
 	            { data: 'action', name: 'action' },
