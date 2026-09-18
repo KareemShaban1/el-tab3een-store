@@ -77,6 +77,8 @@ return [
     'edit_packaging_profile' => 'Edit Packaging Profile',
     'packaging_production' => 'Packaging Production',
     'add_packaging_production' => 'Add Packaging Production',
+    'edit_packaging_production' => 'Edit Packaging Production',
+    'finalized_packaging_not_editable' => 'Finalized packaging production cannot be edited or deleted.',
     'profile_name' => 'Profile Name',
     'bulk_product' => 'Bulk Product',
     'output_product' => 'Output Product (Carton)',

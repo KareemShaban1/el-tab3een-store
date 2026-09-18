@@ -18,7 +18,7 @@ Route::group(['middleware' => ['web', 'authh', 'SetSessionData', 'auth', 'langua
     Route::resource('/packaging-profile', 'PackagingProfileController');
     Route::get('/packaging-profile-material-row', 'PackagingProfileController@getMaterialRow');
 
-    Route::resource('/packaging-production', 'PackagingProductionController', ['except' => ['edit', 'update']]);
+    Route::resource('/packaging-production', 'PackagingProductionController');
     Route::get('/packaging-production-profile-details', 'PackagingProductionController@getProfileDetails');
 
     Route::get('/report', 'ProductionController@getManufacturingReport');

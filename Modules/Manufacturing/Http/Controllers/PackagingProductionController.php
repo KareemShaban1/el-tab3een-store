@@ -97,7 +97,8 @@ class PackagingProductionController extends Controller
             return Datatables::of($productions)
                 ->addColumn('action', function ($row) {
                     $html = '<button data-href="' . action([self::class, 'show'], $row->id) . '" class="btn btn-info btn-xs btn-modal" data-container=".view_modal"><i class="fa fa-eye"></i> ' . __('messages.view') . '</button>';
-                    if ($row->mfg_is_final == 0) {
+                    if ((int) $row->mfg_is_final === 0) {
+                        $html .= ' <a href="' . action([self::class, 'edit'], $row->id) . '" class="btn btn-primary btn-xs"><i class="fa fa-edit"></i> ' . __('messages.edit') . '</a>';
                         $html .= ' <button data-href="' . action([self::class, 'destroy'], [$row->id]) . '" class="delete-packaging-production btn btn-xs btn-danger"><i class="fa fa-trash"></i> ' . __('messages.delete') . '</button>';
                     }
                     return $html;
@@ -358,6 +359,223 @@ class PackagingProductionController extends Controller
             ->with(compact('production', 'production_sell', 'profile'));
     }
 
+    public function edit($id)
+    {
+        $business_id = request()->session()->get('user.business_id');
+        $this->authorizePackaging($business_id);
+
+        $production = Transaction::where('business_id', $business_id)
+            ->where('type', 'production_purchase')
+            ->where('mfg_stage', 'packaging')
+            ->findOrFail($id);
+
+        if ((int) $production->mfg_is_final === 1) {
+            return redirect()->action([self::class, 'index'])->with('status', [
+                'success' => 0,
+                'msg' => __('manufacturing::lang.finalized_packaging_not_editable'),
+            ]);
+        }
+
+        $business_locations = BusinessLocation::forDropdown($business_id);
+        $profile_dropdown = MfgPackagingProfile::forDropdown($business_id);
+
+        return view('manufacturing::packaging_production.edit')
+            ->with(compact('production', 'business_locations', 'profile_dropdown'));
+    }
+
+    public function update(Request $request, $id)
+    {
+        $business_id = $request->session()->get('user.business_id');
+        $this->authorizePackaging($business_id);
+
+        try {
+            $transaction = Transaction::where('business_id', $business_id)
+                ->where('type', 'production_purchase')
+                ->where('mfg_stage', 'packaging')
+                ->findOrFail($id);
+
+            if ((int) $transaction->mfg_is_final === 1) {
+                return redirect()->action([self::class, 'index'])->with('status', [
+                    'success' => 0,
+                    'msg' => __('manufacturing::lang.finalized_packaging_not_editable'),
+                ]);
+            }
+
+            $request->validate([
+                'transaction_date' => 'required',
+                'location_id' => 'required',
+                'packaging_profile_id' => 'required|integer',
+                'containers_count' => 'required|numeric|min:1',
+                'final_total' => 'required',
+            ]);
+
+            $profile = MfgPackagingProfile::where('business_id', $business_id)
+                ->with('materials')
+                ->findOrFail($request->input('packaging_profile_id'));
+
+            $containers_count = $this->productUtil->num_uf($request->input('containers_count'));
+            $validation_errors = $this->packagingUtil->validatePackagingInput($profile, $containers_count);
+
+            if (! empty($validation_errors)) {
+                return redirect()->back()->withInput()->with('status', [
+                    'success' => 0,
+                    'msg' => implode(' ', $validation_errors),
+                ]);
+            }
+
+            $shortages = $this->packagingUtil->checkStockAvailability($profile, $request->input('location_id'), $containers_count);
+            $is_final = ! empty($request->input('finalize')) ? 1 : 0;
+
+            if ($is_final && ! empty($shortages)) {
+                return redirect()->back()->withInput()->with('status', [
+                    'success' => 0,
+                    'msg' => __('manufacturing::lang.insufficient_stock_for_packaging'),
+                ]);
+            }
+
+            $calc = $this->packagingUtil->calculatePackaging($profile, $containers_count);
+            $manufacturing_settings = $this->mfgUtil->getSettings($business_id);
+
+            $transaction_data = $request->only(['ref_no', 'transaction_date', 'location_id', 'final_total']);
+            $transaction_data['status'] = $is_final ? 'received' : 'pending';
+            $transaction_data['payment_status'] = 'due';
+            $transaction_data['transaction_date'] = $this->productUtil->uf_date($transaction_data['transaction_date'], true);
+            $transaction_data['final_total'] = $this->productUtil->num_uf($transaction_data['final_total']);
+            $transaction_data['mfg_is_final'] = $is_final;
+            $transaction_data['mfg_packaging_profile_id'] = $profile->id;
+            $transaction_data['mfg_containers_count'] = (int) $containers_count;
+            $transaction_data['mfg_cartons_count'] = $calc['uses_carton'] ? $calc['full_cartons'] : 0;
+            $transaction_data['mfg_container_type'] = $profile->container_type;
+
+            $output_variation = Variation::where('id', $profile->output_variation_id)->with('product')->first();
+            $output_qty = $calc['output_quantity'];
+            $final_total_uf = $transaction_data['final_total'];
+            $unit_purchase_line_total = $output_qty > 0 ? $final_total_uf / $output_qty : 0;
+            $unit_purchase_line_total_f = $this->productUtil->num_f($unit_purchase_line_total);
+
+            $purchase_line_data = [
+                'variation_id' => $profile->output_variation_id,
+                'quantity' => $this->productUtil->num_f($output_qty),
+                'product_id' => $output_variation->product_id,
+                'product_unit_id' => $output_variation->product->unit_id,
+                'pp_without_discount' => $unit_purchase_line_total_f,
+                'discount_percent' => 0,
+                'purchase_price' => $unit_purchase_line_total_f,
+                'purchase_price_inc_tax' => $unit_purchase_line_total_f,
+                'item_tax' => 0,
+                'purchase_line_tax_id' => null,
+            ];
+
+            DB::beginTransaction();
+
+            $transaction->update($transaction_data);
+
+            $currency_details = $this->transactionUtil->purchaseCurrencyDetails($business_id);
+            $update_product_price = ! empty($manufacturing_settings['enable_updating_product_price']) && $is_final;
+
+            $this->productUtil->createOrUpdatePurchaseLines($transaction, [$purchase_line_data], $currency_details, $update_product_price);
+            $this->productUtil->adjustStockOverSelling($transaction);
+
+            $bulk_variation = Variation::where('id', $profile->bulk_variation_id)->with('product')->first();
+            $bulk_unit_price = $bulk_variation->dpp_inc_tax;
+
+            $sell_lines = [[
+                'product_id' => $bulk_variation->product_id,
+                'variation_id' => $bulk_variation->id,
+                'quantity' => $this->productUtil->num_f($calc['bulk_consumed']),
+                'item_tax' => 0,
+                'tax_id' => null,
+                'unit_price' => $bulk_unit_price,
+                'unit_price_inc_tax' => $bulk_unit_price,
+                'enable_stock' => $bulk_variation->product->enable_stock,
+                'product_unit_id' => $bulk_variation->product->unit_id,
+            ]];
+
+            foreach ($calc['materials'] as $material) {
+                if ($material['quantity'] <= 0) {
+                    continue;
+                }
+                $material_variation = Variation::with('product')->find($material['variation_id']);
+                $sell_lines[] = [
+                    'product_id' => $material['product_id'],
+                    'variation_id' => $material['variation_id'],
+                    'quantity' => $this->productUtil->num_f($material['quantity']),
+                    'item_tax' => 0,
+                    'tax_id' => null,
+                    'unit_price' => $material['unit_price'],
+                    'unit_price_inc_tax' => $material['unit_price'],
+                    'enable_stock' => $material['enable_stock'],
+                    'product_unit_id' => $material_variation->product->unit_id,
+                ];
+            }
+
+            $production_sell = Transaction::where('business_id', $business_id)
+                ->where('type', 'production_sell')
+                ->where('mfg_parent_production_purchase_id', $transaction->id)
+                ->with('sell_lines')
+                ->first();
+
+            $transaction_sell_data = [
+                'location_id' => $transaction->location_id,
+                'transaction_date' => $transaction->transaction_date,
+                'status' => $is_final ? 'final' : 'draft',
+                'payment_status' => 'due',
+                'final_total' => $transaction->final_total,
+            ];
+
+            if (empty($production_sell)) {
+                $transaction_sell_data = array_merge($transaction_sell_data, [
+                    'business_id' => $business_id,
+                    'created_by' => $transaction->created_by,
+                    'type' => 'production_sell',
+                    'mfg_parent_production_purchase_id' => $transaction->id,
+                ]);
+                $production_sell = Transaction::create($transaction_sell_data);
+            } else {
+                $production_sell->sell_lines()->delete();
+                $production_sell->update($transaction_sell_data);
+            }
+
+            $this->transactionUtil->createOrUpdateSellLines($production_sell, $sell_lines, $transaction->location_id);
+
+            if ($production_sell->status == 'final') {
+                foreach ($sell_lines as $sell_line) {
+                    if (! empty($sell_line['enable_stock'])) {
+                        $this->productUtil->decreaseProductQuantity(
+                            $sell_line['product_id'],
+                            $sell_line['variation_id'],
+                            $production_sell->location_id,
+                            $this->productUtil->num_uf($sell_line['quantity'])
+                        );
+                    }
+                }
+
+                $business_details = $this->businessUtil->getDetails($business_id);
+                $pos_settings = empty($business_details->pos_settings)
+                    ? $this->businessUtil->defaultPosSettings()
+                    : json_decode($business_details->pos_settings, true);
+
+                $business = [
+                    'id' => $business_id,
+                    'accounting_method' => $request->session()->get('business.accounting_method'),
+                    'location_id' => $production_sell->location_id,
+                    'pos_settings' => $pos_settings,
+                ];
+                $this->transactionUtil->mapPurchaseSell($business, $production_sell->sell_lines, 'production_purchase');
+            }
+
+            DB::commit();
+
+            $output = ['success' => 1, 'msg' => __('lang_v1.updated_success')];
+        } catch (\Exception $e) {
+            DB::rollBack();
+            \Log::emergency('File:' . $e->getFile() . ' Line:' . $e->getLine() . ' Message:' . $e->getMessage());
+            $output = ['success' => 0, 'msg' => __('messages.something_went_wrong')];
+        }
+
+        return redirect()->action([self::class, 'index'])->with('status', $output);
+    }
+
     public function destroy($id)
     {
         $business_id = request()->session()->get('user.business_id');
@@ -368,7 +586,11 @@ class PackagingProductionController extends Controller
                 ->where('type', 'production_purchase')
                 ->where('mfg_stage', 'packaging')
                 ->where('mfg_is_final', 0)
-                ->findOrFail($id);
+                ->find($id);
+
+            if (empty($transaction)) {
+                return ['success' => false, 'msg' => __('manufacturing::lang.finalized_packaging_not_editable')];
+            }
 
             Transaction::where('mfg_parent_production_purchase_id', $id)->delete();
             $transaction->delete();

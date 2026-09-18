@@ -73,6 +73,8 @@ return[
 "edit_packaging_profile" => "تعديل ملف التعبئة",
 "packaging_production" => "إنتاج التعبئة",
 "add_packaging_production" => "إضافة إنتاج تعبئة",
+"edit_packaging_production" => "تعديل إنتاج التعبئة",
+"finalized_packaging_not_editable" => "لا يمكن تعديل أو حذف إنتاج التعبئة بعد الإنهاء.",
 "profile_name" => "اسم الملف",
 "bulk_product" => "منتج الجملة",
 "output_product" => "منتج المخرجات (كرتون)",
