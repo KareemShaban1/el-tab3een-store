@@ -25,6 +25,7 @@
 			data-min="1" 
 			class="form-control input-sm input_number input_quantity mousetrap total_quantities" 
 			value="{{@format_quantity($ingredient['quantity'])}}" 
+			data-base-quantity="{{$ingredient['quantity']}}"
 			name="ingredients[{{$ingredient['id']}}][quantity]" 
 			data-allow-overselling="@if(empty($pos_settings['allow_overselling'])){{'false'}}@else{{'true'}}@endif"
 			@if($allow_decimal) 

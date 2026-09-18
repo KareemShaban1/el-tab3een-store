@@ -1,4 +1,6 @@
-<table class="table table-striped table-th-green text-center" id="ingredients_for_unit_recipe_table">
+<table class="table table-striped table-th-green text-center" id="ingredients_for_unit_recipe_table"
+	data-base-recipe-quantity="{{ !empty($recipe->total_quantity) ? $recipe->total_quantity : 1 }}"
+	data-base-recipe-multiplier="{{ !empty($recipe->sub_unit) && !empty($recipe->sub_unit->base_unit_multiplier) ? $recipe->sub_unit->base_unit_multiplier : 1 }}">
 	<thead>
 		<tr>
 			<th>@lang('manufacturing::lang.ingredient')</th>
