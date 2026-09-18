@@ -19,19 +19,19 @@
                 'label' => __('manufacturing::lang.role_label'),
                 'outer_carton' => __('manufacturing::lang.role_outer_carton'),
                 'other' => __('manufacturing::lang.role_other'),
-            ], !empty($material->material_role) ? $material->material_role : null, ['class' => 'form-control select2', 'placeholder' => __('messages.please_select')]) !!}
+            ], !empty($material->material_role) ? $material->material_role : null, ['class' => 'form-control select2 material_role', 'placeholder' => __('messages.please_select')]) !!}
         </div>
     </div>
-    <div class="col-sm-2">
+    <div class="col-sm-2 qty-per-container-wrap">
         <div class="form-group">
             {!! Form::label('materials['.$row_index.'][quantity_per_container]', __('manufacturing::lang.qty_per_container') . ':') !!}
-            {!! Form::text('materials['.$row_index.'][quantity_per_container]', !empty($material->quantity_per_container) ? $material->quantity_per_container : 1, ['class' => 'form-control input_number']) !!}
+            {!! Form::text('materials['.$row_index.'][quantity_per_container]', !empty($material->quantity_per_container) ? $material->quantity_per_container : 1, ['class' => 'form-control input_number quantity_per_container']) !!}
         </div>
     </div>
-    <div class="col-sm-2">
+    <div class="col-sm-2 qty-per-carton-wrap">
         <div class="form-group">
             {!! Form::label('materials['.$row_index.'][quantity_per_carton]', __('manufacturing::lang.qty_per_carton') . ':') !!}
-            {!! Form::text('materials['.$row_index.'][quantity_per_carton]', !empty($material->quantity_per_carton) ? $material->quantity_per_carton : null, ['class' => 'form-control input_number']) !!}
+            {!! Form::text('materials['.$row_index.'][quantity_per_carton]', !empty($material->quantity_per_carton) ? $material->quantity_per_carton : null, ['class' => 'form-control input_number quantity_per_carton']) !!}
         </div>
     </div>
     <div class="col-sm-2">

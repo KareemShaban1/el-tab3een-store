@@ -51,7 +51,10 @@
                 data: { row_index: material_row_index },
                 success: function(result) {
                     $('#materials_container').append(result);
-                    initProductSelect($('#materials_container .material-row:last .material_variation'));
+                    var $newRow = $('#materials_container .material-row:last');
+                    initProductSelect($newRow.find('.material_variation'));
+                    $newRow.find('.material_role').select2();
+                    toggleMaterialQtyFields($newRow);
                     material_row_index++;
                 }
             });
@@ -59,6 +62,39 @@
 
         $(document).on('click', '.remove-material-row', function() {
             $(this).closest('.material-row').remove();
+        });
+
+        // Bottle/cap/label → qty per container only; outer carton → qty per carton only
+        function toggleMaterialQtyFields($row) {
+            var role = $row.find('.material_role').val();
+            var $perContainer = $row.find('.qty-per-container-wrap');
+            var $perCarton = $row.find('.qty-per-carton-wrap');
+
+            if (role === 'outer_carton') {
+                $perContainer.hide();
+                $perCarton.show();
+                if (!$row.find('.quantity_per_carton').val()) {
+                    $row.find('.quantity_per_carton').val(1);
+                }
+            } else if (['container', 'closure', 'label'].indexOf(role) !== -1) {
+                $perContainer.show();
+                $perCarton.hide();
+                $row.find('.quantity_per_carton').val('');
+                if (!$row.find('.quantity_per_container').val()) {
+                    $row.find('.quantity_per_container').val(1);
+                }
+            } else {
+                $perContainer.show();
+                $perCarton.show();
+            }
+        }
+
+        $('#materials_container .material-row').each(function() {
+            toggleMaterialQtyFields($(this));
+        });
+
+        $(document).on('change', '.material_role', function() {
+            toggleMaterialQtyFields($(this).closest('.material-row'));
         });
     });
 </script>

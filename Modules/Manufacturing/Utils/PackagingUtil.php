@@ -29,13 +29,7 @@ class PackagingUtil extends ManufacturingUtil
         $profile->load(['materials.variation.product', 'materials.variation.product_variation', 'materials.subUnit']);
 
         foreach ($profile->materials as $material) {
-            $qty = 0;
-            if (! empty($material->quantity_per_container)) {
-                $qty += $containers_count * (float) $material->quantity_per_container;
-            }
-            if (! empty($material->quantity_per_carton)) {
-                $qty += $full_cartons * (float) $material->quantity_per_carton;
-            }
+            $qty = $this->materialRequiredQuantity($material, $containers_count, $full_cartons);
 
             $variation = $material->variation;
             $materials[] = [
@@ -62,6 +56,39 @@ class PackagingUtil extends ManufacturingUtil
             'units_per_carton' => $units_per_carton,
             'materials' => $materials,
         ];
+    }
+
+    /**
+     * Bottle/cap/label scale with containers only.
+     * Outer carton scales with full cartons only.
+     * Other roles use whichever qty fields are set (no double-count if both filled: prefer per-container).
+     */
+    protected function materialRequiredQuantity($material, $containers_count, $full_cartons)
+    {
+        $role = $material->material_role;
+        $per_container = ! empty($material->quantity_per_container) ? (float) $material->quantity_per_container : 0;
+        $per_carton = ! empty($material->quantity_per_carton) ? (float) $material->quantity_per_carton : 0;
+
+        if (in_array($role, ['container', 'closure', 'label'], true)) {
+            return $containers_count * ($per_container > 0 ? $per_container : 1);
+        }
+
+        if ($role === 'outer_carton') {
+            $rate = $per_carton > 0 ? $per_carton : ($per_container > 0 ? $per_container : 1);
+
+            return $full_cartons * $rate;
+        }
+
+        // role "other" / unset: use one scale only to avoid double-counting
+        if ($per_container > 0) {
+            return $containers_count * $per_container;
+        }
+
+        if ($per_carton > 0) {
+            return $full_cartons * $per_carton;
+        }
+
+        return 0;
     }
 
     public function validatePackagingInput(MfgPackagingProfile $profile, $containers_count)
