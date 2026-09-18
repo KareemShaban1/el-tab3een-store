@@ -41,7 +41,7 @@ return[
 "total_production" => "إجمالي الإنتاج",
 "waste_percent" => "نسبة الهدر",
 "final_quantity" => "الكمية النهائية",
-"final_quantity_stock_tooltip" => "الكمية المضافة لمخزون المنتج النهائي = كمية الإنتاج − الكمية المهدرة",
+"final_quantity_stock_tooltip" => "الكمية المضافة لمخزون المنتج النهائي = إجمالي الكمية النهائية في جدول المكونات − الكمية المهدرة",
 "production_quantity" => "كمية الإنتاج",
 "input_quantity" => "كمية المدخلات",
 "final_quantity_tooltip" => "(كمية المدخلات) - (نسبة الهدر)",

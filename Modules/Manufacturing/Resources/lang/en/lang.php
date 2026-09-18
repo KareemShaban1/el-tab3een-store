@@ -41,7 +41,7 @@ return [
     'total_production' => 'Total Production',
     'waste_percent' => 'Wastage Percent',
     'final_quantity' => 'Final Quantity',
-    'final_quantity_stock_tooltip' => 'Quantity added to finished product stock = Production Quantity − Wasted Quantity',
+    'final_quantity_stock_tooltip' => 'Quantity added to finished product stock = Ingredients table Final quantity total − Wasted Quantity',
     'production_quantity' => 'Production Quantity',
     'input_quantity' => 'Input Quantity',
     'final_quantity_tooltip' => '(Input Quantity) - (Wastage Percent)',

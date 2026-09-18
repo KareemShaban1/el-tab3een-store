@@ -115,19 +115,24 @@
 
     /**
      * Final quantity added to finished product stock =
-     * production quantity - wasted units
+     * ingredients table footer "Final quantity" total − wasted units
      */
     function updateFinalQuantity() {
-        var production_qty = __read_number($('#recipe_quantity'));
-        var waste_qty = __read_number($('#mfg_wasted_units'));
-        if (isNaN(production_qty)) {
-            production_qty = 0;
+        var table_total_qty = 0;
+
+        if ($('#footer_total_final_quantity').length) {
+            table_total_qty = __number_uf($('#footer_total_final_quantity').text());
         }
+        if (isNaN(table_total_qty) || table_total_qty < 0) {
+            table_total_qty = 0;
+        }
+
+        var waste_qty = __read_number($('#mfg_wasted_units'));
         if (isNaN(waste_qty) || waste_qty < 0) {
             waste_qty = 0;
         }
 
-        var final_qty = production_qty - waste_qty;
+        var final_qty = table_total_qty - waste_qty;
         if (final_qty < 0 || isNaN(final_qty) || !isFinite(final_qty)) {
             final_qty = 0;
         }
@@ -256,6 +261,10 @@
         $('#footer_total_input_quantity').text(__number_f(total_input_quantity, false, false, qty_precision));
         $('#footer_total_final_quantity').text(__number_f(total_final_quantity, false, false, qty_precision));
         $('#total_ingredient_price').text(__currency_trans_from_en(total_ingredients_cost, true));
+
+        // Keep Final Quantity in sync with footer final total − waste
+        updateFinalQuantity();
+
         var production_cost = __read_number($('#production_cost'));
         var production_cost_type = $('#mfg_production_cost_type').val();
         if (production_cost_type == 'percentage') {
