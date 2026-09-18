@@ -1,5 +1,8 @@
 @if(!empty($details))
 @component('components.widget', ['class' => 'box-solid', 'title' => __('manufacturing::lang.packaging_calculation')])
+@php
+    $uses_carton = !empty($details['profile']->uses_carton);
+@endphp
 <div class="row">
     <div class="col-sm-4">
         <p><strong>@lang('manufacturing::lang.bulk_product'):</strong> {{ $details['bulk_label'] }}</p>
@@ -7,10 +10,23 @@
     </div>
     <div class="col-sm-4">
         <p><strong>@lang('manufacturing::lang.output_product'):</strong> {{ $details['output_label'] }}</p>
-        <p><strong>@lang('manufacturing::lang.current_carton_stock'):</strong> <span class="display_currency" data-currency_symbol="false">{{ $details['output_stock'] }}</span></p>
+        <p>
+            <strong>
+                @if($uses_carton)
+                    @lang('manufacturing::lang.current_carton_stock')
+                @else
+                    @lang('manufacturing::lang.current_output_stock')
+                @endif:
+            </strong>
+            <span class="display_currency" data-currency_symbol="false">{{ $details['output_stock'] }}</span>
+        </p>
     </div>
     <div class="col-sm-4">
-        <p><strong>@lang('manufacturing::lang.units_per_carton'):</strong> {{ $details['profile']->units_per_carton }}</p>
+        @if($uses_carton)
+            <p><strong>@lang('manufacturing::lang.units_per_carton'):</strong> {{ $details['profile']->units_per_carton }}</p>
+        @else
+            <p><strong>@lang('manufacturing::lang.packaging_mode'):</strong> @lang('manufacturing::lang.containers_only')</p>
+        @endif
         <p><strong>@lang('manufacturing::lang.container_type'):</strong> @lang('manufacturing::lang.' . $details['profile']->container_type)</p>
     </div>
 </div>
@@ -18,14 +34,20 @@
 @if(!empty($details['calculation']))
     <hr>
     <div class="row">
-        <div class="col-sm-3">
-            <p><strong>@lang('manufacturing::lang.cartons'):</strong> {{ $details['calculation']['full_cartons'] }}</p>
-        </div>
+        @if($uses_carton)
+            <div class="col-sm-3">
+                <p><strong>@lang('manufacturing::lang.cartons'):</strong> {{ $details['calculation']['full_cartons'] }}</p>
+            </div>
+            <div class="col-sm-3">
+                <p><strong>@lang('manufacturing::lang.leftover_containers'):</strong> {{ $details['calculation']['leftover_containers'] }}</p>
+            </div>
+        @else
+            <div class="col-sm-3">
+                <p><strong>@lang('manufacturing::lang.output_quantity'):</strong> <span class="display_currency" data-currency_symbol="false">{{ $details['calculation']['output_quantity'] }}</span></p>
+            </div>
+        @endif
         <div class="col-sm-3">
             <p><strong>@lang('manufacturing::lang.bulk_consumed'):</strong> <span class="display_currency" data-currency_symbol="false">{{ $details['calculation']['bulk_consumed'] }}</span></p>
-        </div>
-        <div class="col-sm-3">
-            <p><strong>@lang('manufacturing::lang.leftover_containers'):</strong> {{ $details['calculation']['leftover_containers'] }}</p>
         </div>
     </div>
 
@@ -44,6 +66,7 @@
                 <td><span class="display_currency" data-currency_symbol="false">{{ $details['bulk_stock'] }}</span></td>
             </tr>
             @foreach($details['calculation']['materials'] as $material)
+                @continue($material['quantity'] <= 0)
                 <tr @if(!empty($material['available']) && $material['available'] < $material['quantity']) class="bg-danger" @endif>
                     <td>{{ $material['full_name'] }}</td>
                     <td><span class="display_currency" data-currency_symbol="false">{{ $material['quantity'] }}</span></td>

@@ -16,7 +16,16 @@
                 <p><strong>@lang('manufacturing::lang.container_type'):</strong> @lang('manufacturing::lang.' . $profile->container_type)</p>
             </div>
             <div class="col-sm-6">
-                <p><strong>@lang('manufacturing::lang.units_per_carton'):</strong> {{ $profile->units_per_carton }}</p>
+                <p><strong>@lang('manufacturing::lang.packaging_mode'):</strong>
+                    @if($profile->usesCarton())
+                        @lang('manufacturing::lang.pack_into_cartons')
+                    @else
+                        @lang('manufacturing::lang.containers_only')
+                    @endif
+                </p>
+                @if($profile->usesCarton())
+                    <p><strong>@lang('manufacturing::lang.units_per_carton'):</strong> {{ $profile->units_per_carton }}</p>
+                @endif
                 <p><strong>@lang('manufacturing::lang.bulk_qty_per_container'):</strong> {{ $profile->bulk_qty_per_container }}</p>
                 <p><strong>@lang('manufacturing::lang.waste_percent'):</strong> {{ $profile->waste_percent ?? 0 }}%</p>
             </div>

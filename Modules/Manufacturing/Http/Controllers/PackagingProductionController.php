@@ -207,7 +207,7 @@ class PackagingProductionController extends Controller
             $transaction_data['mfg_stage'] = 'packaging';
             $transaction_data['mfg_packaging_profile_id'] = $profile->id;
             $transaction_data['mfg_containers_count'] = (int) $containers_count;
-            $transaction_data['mfg_cartons_count'] = $calc['full_cartons'];
+            $transaction_data['mfg_cartons_count'] = $calc['uses_carton'] ? $calc['full_cartons'] : 0;
             $transaction_data['mfg_container_type'] = $profile->container_type;
 
             if (! empty($request->input('mfg_parent_production_purchase_id'))) {
@@ -221,14 +221,14 @@ class PackagingProductionController extends Controller
             }
 
             $output_variation = Variation::where('id', $profile->output_variation_id)->with('product')->first();
-            $carton_qty = $calc['full_cartons'];
+            $output_qty = $calc['output_quantity'];
             $final_total_uf = $transaction_data['final_total'];
-            $unit_purchase_line_total = $carton_qty > 0 ? $final_total_uf / $carton_qty : 0;
+            $unit_purchase_line_total = $output_qty > 0 ? $final_total_uf / $output_qty : 0;
             $unit_purchase_line_total_f = $this->productUtil->num_f($unit_purchase_line_total);
 
             $purchase_line_data = [
                 'variation_id' => $profile->output_variation_id,
-                'quantity' => $this->productUtil->num_f($carton_qty),
+                'quantity' => $this->productUtil->num_f($output_qty),
                 'product_id' => $output_variation->product_id,
                 'product_unit_id' => $output_variation->product->unit_id,
                 'pp_without_discount' => $unit_purchase_line_total_f,

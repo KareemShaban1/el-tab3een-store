@@ -96,9 +96,11 @@ class PackagingProfileController extends Controller
                 'bulk_variation_id' => 'required|integer',
                 'output_variation_id' => 'required|integer|different:bulk_variation_id',
                 'container_type' => 'required|in:bottle,bag',
-                'units_per_carton' => 'required|integer|min:1',
+                'units_per_carton' => 'nullable|integer|min:1|required_if:uses_carton,1',
                 'bulk_qty_per_container' => 'required|numeric|min:0.0001',
             ]);
+
+            $uses_carton = ! empty($request->input('uses_carton')) ? 1 : 0;
 
             DB::beginTransaction();
 
@@ -109,14 +111,15 @@ class PackagingProfileController extends Controller
                 'output_variation_id' => $request->input('output_variation_id'),
                 'container_type' => $request->input('container_type'),
                 'container_volume' => $request->input('container_volume'),
-                'units_per_carton' => $request->input('units_per_carton'),
+                'uses_carton' => $uses_carton,
+                'units_per_carton' => $uses_carton ? (int) $request->input('units_per_carton') : 0,
                 'bulk_qty_per_container' => $request->input('bulk_qty_per_container'),
                 'waste_percent' => $request->input('waste_percent', 0),
                 'is_active' => ! empty($request->input('is_active')) ? 1 : 0,
                 'instructions' => $request->input('instructions'),
             ]);
 
-            $this->syncMaterials($profile, $request->input('materials', []));
+            $this->syncMaterials($profile, $request->input('materials', []), $uses_carton);
 
             DB::commit();
 
@@ -165,11 +168,12 @@ class PackagingProfileController extends Controller
                 'bulk_variation_id' => 'required|integer',
                 'output_variation_id' => 'required|integer|different:bulk_variation_id',
                 'container_type' => 'required|in:bottle,bag',
-                'units_per_carton' => 'required|integer|min:1',
+                'units_per_carton' => 'nullable|integer|min:1|required_if:uses_carton,1',
                 'bulk_qty_per_container' => 'required|numeric|min:0.0001',
             ]);
 
             $profile = MfgPackagingProfile::where('business_id', $business_id)->findOrFail($id);
+            $uses_carton = ! empty($request->input('uses_carton')) ? 1 : 0;
 
             DB::beginTransaction();
 
@@ -179,7 +183,8 @@ class PackagingProfileController extends Controller
                 'output_variation_id' => $request->input('output_variation_id'),
                 'container_type' => $request->input('container_type'),
                 'container_volume' => $request->input('container_volume'),
-                'units_per_carton' => $request->input('units_per_carton'),
+                'uses_carton' => $uses_carton,
+                'units_per_carton' => $uses_carton ? (int) $request->input('units_per_carton') : 0,
                 'bulk_qty_per_container' => $request->input('bulk_qty_per_container'),
                 'waste_percent' => $request->input('waste_percent', 0),
                 'is_active' => ! empty($request->input('is_active')) ? 1 : 0,
@@ -187,7 +192,7 @@ class PackagingProfileController extends Controller
             ]);
 
             MfgPackagingMaterial::where('packaging_profile_id', $profile->id)->delete();
-            $this->syncMaterials($profile, $request->input('materials', []));
+            $this->syncMaterials($profile, $request->input('materials', []), $uses_carton);
 
             DB::commit();
 
@@ -242,10 +247,15 @@ class PackagingProfileController extends Controller
             ->render();
     }
 
-    protected function syncMaterials(MfgPackagingProfile $profile, array $materials)
+    protected function syncMaterials(MfgPackagingProfile $profile, array $materials, $uses_carton = true)
     {
         foreach ($materials as $material) {
             if (empty($material['variation_id'])) {
+                continue;
+            }
+
+            $role = $material['material_role'] ?? null;
+            if (! $uses_carton && $role === 'outer_carton') {
                 continue;
             }
 
@@ -253,8 +263,8 @@ class PackagingProfileController extends Controller
                 'packaging_profile_id' => $profile->id,
                 'variation_id' => $material['variation_id'],
                 'quantity_per_container' => $material['quantity_per_container'] ?? null,
-                'quantity_per_carton' => $material['quantity_per_carton'] ?? null,
-                'material_role' => $material['material_role'] ?? null,
+                'quantity_per_carton' => $uses_carton ? ($material['quantity_per_carton'] ?? null) : null,
+                'material_role' => $role,
                 'sub_unit_id' => $material['sub_unit_id'] ?? null,
             ]);
         }

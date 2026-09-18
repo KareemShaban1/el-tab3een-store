@@ -14,11 +14,15 @@ class PackagingUtil extends ManufacturingUtil
     public function calculatePackaging(MfgPackagingProfile $profile, $containers_count)
     {
         $containers_count = (float) $containers_count;
-        $units_per_carton = (int) $profile->units_per_carton;
+        $uses_carton = $profile->usesCarton();
+        $units_per_carton = $uses_carton ? (int) $profile->units_per_carton : 0;
         $waste_percent = (float) ($profile->waste_percent ?? 0);
 
         $full_cartons = $units_per_carton > 0 ? (int) floor($containers_count / $units_per_carton) : 0;
         $leftover_containers = $units_per_carton > 0 ? (int) ($containers_count % $units_per_carton) : 0;
+
+        // Carton mode: stock output = full cartons. Container-only: stock output = bottles/bags filled.
+        $output_quantity = $uses_carton ? $full_cartons : $containers_count;
 
         $bulk_consumed = $containers_count * (float) $profile->bulk_qty_per_container;
         if ($waste_percent > 0) {
@@ -29,7 +33,7 @@ class PackagingUtil extends ManufacturingUtil
         $profile->load(['materials.variation.product', 'materials.variation.product_variation', 'materials.subUnit']);
 
         foreach ($profile->materials as $material) {
-            $qty = $this->materialRequiredQuantity($material, $containers_count, $full_cartons);
+            $qty = $this->materialRequiredQuantity($material, $containers_count, $full_cartons, $uses_carton);
 
             $variation = $material->variation;
             $materials[] = [
@@ -49,6 +53,8 @@ class PackagingUtil extends ManufacturingUtil
             'containers_count' => $containers_count,
             'full_cartons' => $full_cartons,
             'leftover_containers' => $leftover_containers,
+            'output_quantity' => $output_quantity,
+            'uses_carton' => $uses_carton,
             'bulk_consumed' => $bulk_consumed,
             'bulk_variation_id' => $profile->bulk_variation_id,
             'output_variation_id' => $profile->output_variation_id,
@@ -60,10 +66,10 @@ class PackagingUtil extends ManufacturingUtil
 
     /**
      * Bottle/cap/label scale with containers only.
-     * Outer carton scales with full cartons only.
+     * Outer carton scales with full cartons only (skipped in container-only profiles).
      * Other roles use whichever qty fields are set (no double-count if both filled: prefer per-container).
      */
-    protected function materialRequiredQuantity($material, $containers_count, $full_cartons)
+    protected function materialRequiredQuantity($material, $containers_count, $full_cartons, $uses_carton = true)
     {
         $role = $material->material_role;
         $per_container = ! empty($material->quantity_per_container) ? (float) $material->quantity_per_container : 0;
@@ -74,6 +80,9 @@ class PackagingUtil extends ManufacturingUtil
         }
 
         if ($role === 'outer_carton') {
+            if (! $uses_carton) {
+                return 0;
+            }
             $rate = $per_carton > 0 ? $per_carton : ($per_container > 0 ? $per_container : 1);
 
             return $full_cartons * $rate;
@@ -84,7 +93,7 @@ class PackagingUtil extends ManufacturingUtil
             return $containers_count * $per_container;
         }
 
-        if ($per_carton > 0) {
+        if ($uses_carton && $per_carton > 0) {
             return $full_cartons * $per_carton;
         }
 
@@ -100,10 +109,21 @@ class PackagingUtil extends ManufacturingUtil
             $errors[] = __('manufacturing::lang.containers_must_be_greater_than_zero');
         }
 
+        // Container-only profiles: any positive container count is valid
+        if (! $profile->usesCarton()) {
+            return $errors;
+        }
+
         $policy = PackagingFeature::partialCartonPolicy();
         $units_per_carton = (int) $profile->units_per_carton;
 
-        if ($policy === 'strict' && $units_per_carton > 0 && ((int) $containers_count % $units_per_carton) !== 0) {
+        if ($units_per_carton <= 0) {
+            $errors[] = __('manufacturing::lang.units_per_carton_required');
+
+            return $errors;
+        }
+
+        if ($policy === 'strict' && ((int) $containers_count % $units_per_carton) !== 0) {
             $errors[] = __('manufacturing::lang.containers_must_be_multiple_of_carton', ['units' => $units_per_carton]);
         }
 

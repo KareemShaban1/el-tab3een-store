@@ -42,8 +42,18 @@
     </div>
     <div class="col-sm-3">
         <div class="form-group">
-            {!! Form::label('units_per_carton', __('manufacturing::lang.units_per_carton') . ':*') !!}
-            {!! Form::number('units_per_carton', !empty($profile) ? $profile->units_per_carton : 12, ['class' => 'form-control', 'min' => 1, 'required']) !!}
+            <br>
+            <label>
+                {!! Form::checkbox('uses_carton', 1, empty($profile) || !empty($profile->uses_carton), ['class' => 'input-icheck', 'id' => 'uses_carton']) !!}
+                @lang('manufacturing::lang.uses_carton')
+            </label>
+            <p class="help-block">@lang('manufacturing::lang.uses_carton_help')</p>
+        </div>
+    </div>
+    <div class="col-sm-3 units-per-carton-wrap">
+        <div class="form-group">
+            {!! Form::label('units_per_carton', __('manufacturing::lang.units_per_carton') . ':') !!}
+            {!! Form::number('units_per_carton', !empty($profile) ? $profile->units_per_carton : 12, ['class' => 'form-control', 'min' => 1, 'id' => 'units_per_carton']) !!}
         </div>
     </div>
     <div class="col-sm-3">

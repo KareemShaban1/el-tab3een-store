@@ -9,6 +9,21 @@ class MfgPackagingProfile extends Model
 {
     protected $guarded = ['id'];
 
+    protected $casts = [
+        'uses_carton' => 'boolean',
+        'is_active' => 'boolean',
+    ];
+
+    /**
+     * Whether this profile packs containers into outer cartons.
+     * When false, finished output is containers/bottles only.
+     */
+    public function usesCarton(): bool
+    {
+        // Default true for legacy rows without the column hydrated
+        return (bool) ($this->uses_carton ?? true);
+    }
+
     public function bulkVariation()
     {
         return $this->belongsTo(\App\Variation::class, 'bulk_variation_id');

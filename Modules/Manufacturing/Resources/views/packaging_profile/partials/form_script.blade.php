@@ -54,7 +54,7 @@
                     var $newRow = $('#materials_container .material-row:last');
                     initProductSelect($newRow.find('.material_variation'));
                     $newRow.find('.material_role').select2();
-                    toggleMaterialQtyFields($newRow);
+                    toggleCartonProfileFields();
                     material_row_index++;
                 }
             });
@@ -65,18 +65,49 @@
         });
 
         // Bottle/cap/label → qty per container only; outer carton → qty per carton only
+        function usesCarton() {
+            return $('#uses_carton').is(':checked');
+        }
+
+        function toggleCartonProfileFields() {
+            var enabled = usesCarton();
+            $('.units-per-carton-wrap').toggle(enabled);
+            if (!enabled) {
+                $('#units_per_carton').val('');
+            } else if (!$('#units_per_carton').val()) {
+                $('#units_per_carton').val(12);
+            }
+
+            $('#materials_container .material-row').each(function() {
+                var $row = $(this);
+                var $role = $row.find('.material_role');
+                var $outerOpt = $role.find('option[value="outer_carton"]');
+                if (enabled) {
+                    $outerOpt.prop('disabled', false);
+                } else {
+                    if ($role.val() === 'outer_carton') {
+                        $role.val('container').trigger('change');
+                    }
+                    $outerOpt.prop('disabled', true);
+                }
+                $role.trigger('change.select2');
+                toggleMaterialQtyFields($row);
+            });
+        }
+
         function toggleMaterialQtyFields($row) {
             var role = $row.find('.material_role').val();
             var $perContainer = $row.find('.qty-per-container-wrap');
             var $perCarton = $row.find('.qty-per-carton-wrap');
+            var cartonMode = usesCarton();
 
-            if (role === 'outer_carton') {
+            if (role === 'outer_carton' && cartonMode) {
                 $perContainer.hide();
                 $perCarton.show();
                 if (!$row.find('.quantity_per_carton').val()) {
                     $row.find('.quantity_per_carton').val(1);
                 }
-            } else if (['container', 'closure', 'label'].indexOf(role) !== -1) {
+            } else if (['container', 'closure', 'label'].indexOf(role) !== -1 || !cartonMode) {
                 $perContainer.show();
                 $perCarton.hide();
                 $row.find('.quantity_per_carton').val('');
@@ -85,9 +116,15 @@
                 }
             } else {
                 $perContainer.show();
-                $perCarton.show();
+                $perCarton.toggle(cartonMode);
             }
         }
+
+        toggleCartonProfileFields();
+
+        $('#uses_carton').on('ifChanged change', function() {
+            toggleCartonProfileFields();
+        });
 
         $('#materials_container .material-row').each(function() {
             toggleMaterialQtyFields($(this));
