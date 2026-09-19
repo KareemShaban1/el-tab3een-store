@@ -114,7 +114,9 @@
             }
 
             var waste_applied = (finalize && waste > 0) ? waste : 0;
-            var carton_part = uses_carton ? (' ÷ ' + __number_f(units_per_carton)) : '';
+            var carton_part = uses_carton
+                ? @json(__('manufacturing::lang.final_qty_carton_part_live')).replace(':units', __number_f(units_per_carton))
+                : '';
 
             $('#packaging_bulk_required').text(__number_f(bulk_required));
             $('#packaging_bulk_after_waste').text(__number_f(bulk_after));
