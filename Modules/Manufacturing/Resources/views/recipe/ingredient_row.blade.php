@@ -34,12 +34,14 @@
 	</td>
 	<td>
 		@php
-			$has_sub_units = !empty($ingredient->sub_units) && count((array) $ingredient->sub_units) > 0;
+			// Copy off Eloquent dynamic props — offset/reset on $model->sub_units causes ViewException
+			$sub_units = !empty($ingredient->sub_units) ? (array) $ingredient->sub_units : [];
+			$has_sub_units = count($sub_units) > 0;
 			$allow_decimal = isset($ingredient->allow_decimal) ? (int) $ingredient->allow_decimal : 1;
-			if ($has_sub_units && !empty($ingredient->sub_unit_id) && !empty($ingredient->sub_units[$ingredient->sub_unit_id])) {
-				$allow_decimal = (int) $ingredient->sub_units[$ingredient->sub_unit_id]['allow_decimal'];
+			if ($has_sub_units && !empty($ingredient->sub_unit_id) && isset($sub_units[$ingredient->sub_unit_id])) {
+				$allow_decimal = (int) ($sub_units[$ingredient->sub_unit_id]['allow_decimal'] ?? 1);
 			} elseif ($has_sub_units) {
-				$first_unit = reset($ingredient->sub_units);
+				$first_unit = reset($sub_units);
 				$allow_decimal = (int) ($first_unit['allow_decimal'] ?? 1);
 			}
 		@endphp
@@ -53,7 +55,7 @@
 			<span class="@if(!$has_sub_units) input-group-addon @endif">
 				@if($has_sub_units)
 					<select name="ingredients[{{$row_index}}][sub_unit_id]" class="form-control input-sm row_sub_unit_id">
-						@foreach($ingredient->sub_units as $key => $value)
+						@foreach($sub_units as $key => $value)
 							<option 
 								value="{{$key}}"
 								data-multiplier="{{$value['multiplier']}}"
