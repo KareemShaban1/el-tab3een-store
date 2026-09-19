@@ -66,7 +66,8 @@ class PackagingUtil extends ManufacturingUtil
     }
 
     /**
-     * On finalize only: waste (bulk units) increases bulk deduction and reduces finished output.
+     * On finalize only: waste (bulk units) is added to bulk deduction.
+     * Finished output is never reduced by waste.
      */
     public function applyFinalizeWaste(array $calc, MfgPackagingProfile $profile, $waste_qty, $is_final)
     {
@@ -75,23 +76,9 @@ class PackagingUtil extends ManufacturingUtil
         $calc['bulk_to_deduct'] = (float) $calc['bulk_consumed'];
         $calc['final_output_quantity'] = (float) $calc['output_quantity'];
 
-        if (! $is_final || $waste_qty <= 0) {
-            return $calc;
+        if ($is_final && $waste_qty > 0) {
+            $calc['bulk_to_deduct'] = (float) $calc['bulk_consumed'] + $waste_qty;
         }
-
-        $calc['bulk_to_deduct'] = (float) $calc['bulk_consumed'] + $waste_qty;
-
-        $per = (float) $profile->bulk_qty_per_container;
-        $wasted_containers = $per > 0 ? ($waste_qty / $per) : 0;
-
-        if (! empty($calc['uses_carton'])) {
-            $upc = max(1, (int) $calc['units_per_carton']);
-            $wasted_output = $wasted_containers / $upc;
-        } else {
-            $wasted_output = $wasted_containers;
-        }
-
-        $calc['final_output_quantity'] = max(0, (float) $calc['output_quantity'] - $wasted_output);
 
         return $calc;
     }

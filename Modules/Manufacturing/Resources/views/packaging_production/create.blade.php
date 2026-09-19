@@ -101,45 +101,15 @@
 
             var bulk_consumed = parseFloat($waste.data('bulk-consumed')) || 0;
             var bulk_available = parseFloat($waste.data('bulk-available')) || 0;
-            var output_quantity = parseFloat($waste.data('output-quantity')) || 0;
-            var bulk_per = parseFloat($waste.data('bulk-per-container')) || 0;
-            var uses_carton = parseInt($waste.data('uses-carton'), 10) === 1;
-            var units_per_carton = parseFloat($waste.data('units-per-carton')) || 1;
-
-            var bulk_required = bulk_consumed;
-            var final_output = output_quantity;
-            var bulk_after = bulk_available - bulk_consumed;
-
-            if (finalize && waste > 0) {
-                bulk_required = bulk_consumed + waste;
-                bulk_after = bulk_available - bulk_required;
-                var wasted_containers = bulk_per > 0 ? (waste / bulk_per) : 0;
-                var wasted_output = uses_carton ? (wasted_containers / Math.max(1, units_per_carton)) : wasted_containers;
-                final_output = Math.max(0, output_quantity - wasted_output);
-            }
-
             var waste_applied = (finalize && waste > 0) ? waste : 0;
-            var carton_part = uses_carton
-                ? @json(__('manufacturing::lang.final_qty_carton_part_live')).replace(':units', __number_f(units_per_carton))
-                : '';
+            var bulk_required = bulk_consumed + waste_applied;
+            var bulk_after = bulk_available - waste_applied;
 
             $('#packaging_bulk_required').text(__number_f(bulk_required));
             $('#packaging_bulk_after_waste').text(__number_f(bulk_after));
-            $('#packaging_output_after_waste').text(__number_f(final_output));
-            $('#packaging_final_qty_label').text(__number_f(final_output));
-
-            $('#packaging_output_formula').text(
-                @json(__('manufacturing::lang.final_qty_formula_live'))
-                    .replace(':output', __number_f(output_quantity))
-                    .replace(':waste', __number_f(waste_applied))
-                    .replace(':bulk_per', __number_f(bulk_per))
-                    .replace(':carton_part', carton_part)
-                    .replace(':result', __number_f(final_output))
-            );
             $('#packaging_bulk_formula').text(
                 @json(__('manufacturing::lang.bulk_after_waste_formula_live'))
                     .replace(':available', __number_f(bulk_available))
-                    .replace(':consumed', __number_f(bulk_consumed))
                     .replace(':waste', __number_f(waste_applied))
                     .replace(':result', __number_f(bulk_after))
             );
