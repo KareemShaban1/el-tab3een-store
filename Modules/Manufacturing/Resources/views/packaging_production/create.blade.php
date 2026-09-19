@@ -118,11 +118,29 @@
                 final_output = Math.max(0, output_quantity - wasted_output);
             }
 
+            var waste_applied = (finalize && waste > 0) ? waste : 0;
+            var carton_part = uses_carton ? (' ÷ ' + __number_f(units_per_carton)) : '';
+
             $('#packaging_bulk_required').text(__number_f(bulk_required));
             $('#packaging_bulk_after_waste').text(__number_f(bulk_after));
             $('#packaging_output_after_waste').text(__number_f(final_output));
             $('#packaging_final_qty_label').text(__number_f(final_output));
-            $('.packaging-waste-preview').toggleClass('hide', !(finalize && waste > 0));
+
+            $('#packaging_output_formula').text(
+                @json(__('manufacturing::lang.final_qty_formula_live'))
+                    .replace(':output', __number_f(output_quantity))
+                    .replace(':waste', __number_f(waste_applied))
+                    .replace(':bulk_per', __number_f(bulk_per))
+                    .replace(':carton_part', carton_part)
+                    .replace(':result', __number_f(final_output))
+            );
+            $('#packaging_bulk_formula').text(
+                @json(__('manufacturing::lang.bulk_after_waste_formula_live'))
+                    .replace(':available', __number_f(bulk_available))
+                    .replace(':consumed', __number_f(bulk_consumed))
+                    .replace(':waste', __number_f(waste_applied))
+                    .replace(':result', __number_f(bulk_after))
+            );
         }
 
         function loadProfileDetails() {

@@ -35,10 +35,20 @@
         <p>
             <strong>@lang('manufacturing::lang.final_quantity_after_waste'):</strong>
             <span class="display_currency label label-primary" style="font-size:14px;" data-currency_symbol="false" id="packaging_output_after_waste">{{ $output_quantity }}</span>
+            <br>
+            <small class="text-muted" id="packaging_output_formula">
+                @if($uses_carton)
+                    @lang('manufacturing::lang.final_qty_formula_carton')
+                @else
+                    @lang('manufacturing::lang.final_qty_formula_container')
+                @endif
+            </small>
         </p>
-        <p class="text-muted packaging-waste-preview hide">
+        <p>
             <strong>@lang('manufacturing::lang.bulk_after_waste'):</strong>
-            <span id="packaging_bulk_after_waste" class="display_currency" data-currency_symbol="false">{{ $details['bulk_stock'] }}</span>
+            <span id="packaging_bulk_after_waste" class="display_currency label label-default" style="font-size:14px;" data-currency_symbol="false">{{ $details['bulk_stock'] - $bulk_consumed }}</span>
+            <br>
+            <small class="text-muted" id="packaging_bulk_formula">@lang('manufacturing::lang.bulk_after_waste_formula')</small>
         </p>
     </div>
     <div class="col-sm-4">
