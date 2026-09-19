@@ -23,6 +23,7 @@ return[
 "packaging_waste_help" => "كمية الجملة المهدرة. تُطبَّق فقط عند تفعيل الإنهاء: يُخصم هدر إضافي من الجملة وتُقلَّل كمية المنتج النهائي.",
 "bulk_after_waste" => "الجملة المتبقية بعد الهدر",
 "final_output_after_waste" => "المخرجات النهائية بعد الهدر",
+"final_quantity_after_waste" => "الكمية النهائية بعد الهدر",
 "production_cost" => "تكلفة الانتاج",
 "production_details" => "تفاصيل الإنتاج",
 "product_details" => "تفاصيل المنتج",
@@ -80,7 +81,7 @@ return[
 "finalized_packaging_not_editable" => "لا يمكن تعديل أو حذف إنتاج التعبئة بعد الإنهاء.",
 "profile_name" => "اسم الملف",
 "bulk_product" => "منتج الجملة",
-"output_product" => "منتج المخرجات (كرتون)",
+"output_product" => "منتج المخرجات (كرتون أو زجاجة)",
 "container_type" => "نوع الحاوية",
 "bottle" => "زجاجة",
 "bag" => "كيس",
@@ -137,5 +138,5 @@ return[
 "usage_raw_ingredient" => "مادة خام (مدخل الوصفة)",
 "usage_bulk_finished" => "منتج جملة (مخرجات الطبخ)",
 "usage_packaging_material" => "مادة تعبئة (زجاجة، غطاء، كرتون…)",
-"usage_packaged_finished" => "منتج معبأ (كرتون للبيع)",
+"usage_packaged_finished" => "منتج معبأ ( كرتون أو زجاجة للبيع)",
 ];

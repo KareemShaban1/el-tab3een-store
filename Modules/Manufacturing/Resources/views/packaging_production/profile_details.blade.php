@@ -32,6 +32,10 @@
             ]) !!}
             <p class="help-block">@lang('manufacturing::lang.packaging_waste_help')</p>
         </div>
+        <p>
+            <strong>@lang('manufacturing::lang.final_quantity_after_waste'):</strong>
+            <span class="display_currency label label-primary" style="font-size:14px;" data-currency_symbol="false" id="packaging_output_after_waste">{{ $output_quantity }}</span>
+        </p>
         <p class="text-muted packaging-waste-preview hide">
             <strong>@lang('manufacturing::lang.bulk_after_waste'):</strong>
             <span id="packaging_bulk_after_waste" class="display_currency" data-currency_symbol="false">{{ $details['bulk_stock'] }}</span>
@@ -48,10 +52,6 @@
                 @endif:
             </strong>
             <span class="display_currency" data-currency_symbol="false">{{ $details['output_stock'] }}</span>
-        </p>
-        <p class="text-muted packaging-waste-preview hide">
-            <strong>@lang('manufacturing::lang.final_output_after_waste'):</strong>
-            <span id="packaging_output_after_waste" class="display_currency" data-currency_symbol="false">{{ $output_quantity }}</span>
         </p>
     </div>
     <div class="col-sm-4">
@@ -81,6 +81,12 @@
         @endif
         <div class="col-sm-3">
             <p><strong>@lang('manufacturing::lang.bulk_consumed'):</strong> <span class="display_currency" data-currency_symbol="false" id="packaging_bulk_consumed" data-orig-value="{{ $details['calculation']['bulk_consumed'] }}">{{ $details['calculation']['bulk_consumed'] }}</span></p>
+        </div>
+        <div class="col-sm-3">
+            <p>
+                <strong>@lang('manufacturing::lang.final_quantity_after_waste'):</strong>
+                <span class="display_currency label label-success" style="font-size:14px;" data-currency_symbol="false" id="packaging_final_qty_label">{{ $details['calculation']['output_quantity'] }}</span>
+            </p>
         </div>
     </div>
 

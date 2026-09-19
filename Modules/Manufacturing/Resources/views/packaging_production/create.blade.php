@@ -121,6 +121,7 @@
             $('#packaging_bulk_required').text(__number_f(bulk_required));
             $('#packaging_bulk_after_waste').text(__number_f(bulk_after));
             $('#packaging_output_after_waste').text(__number_f(final_output));
+            $('#packaging_final_qty_label').text(__number_f(final_output));
             $('.packaging-waste-preview').toggleClass('hide', !(finalize && waste > 0));
         }
 

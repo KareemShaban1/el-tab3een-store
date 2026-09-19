@@ -23,6 +23,7 @@ return [
     'packaging_waste_help' => 'Bulk quantity wasted. Applied only when Finalize is checked: extra bulk is deducted and finished output is reduced.',
     'bulk_after_waste' => 'Bulk remaining after waste',
     'final_output_after_waste' => 'Finished output after waste',
+    'final_quantity_after_waste' => 'Final quantity after waste',
     'production_cost' => 'Production Cost',
     'production_details' => 'Production Details',
     'product_details' => 'Product Details',
