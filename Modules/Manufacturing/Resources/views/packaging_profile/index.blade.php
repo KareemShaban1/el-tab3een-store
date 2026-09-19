@@ -59,6 +59,7 @@
 
         $(document).on('click', '.delete-packaging-profile', function(e) {
             e.preventDefault();
+            var href = $(this).attr('data-href');
             swal({
                 title: LANG.sure,
                 icon: 'warning',
@@ -66,7 +67,6 @@
                 dangerMode: true,
             }).then(function(willDelete) {
                 if (willDelete) {
-                    var href = $(e.currentTarget).data('href');
                     $.ajax({
                         method: 'DELETE',
                         url: href,

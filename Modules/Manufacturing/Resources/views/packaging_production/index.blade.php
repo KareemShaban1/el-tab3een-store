@@ -62,6 +62,7 @@
 
         $(document).on('click', '.delete-packaging-production', function(e) {
             e.preventDefault();
+            var href = $(this).attr('data-href');
             swal({
                 title: LANG.sure,
                 icon: 'warning',
@@ -71,7 +72,7 @@
                 if (willDelete) {
                     $.ajax({
                         method: 'DELETE',
-                        url: $(e.currentTarget).data('href'),
+                        url: href,
                         dataType: 'json',
                         success: function(result) {
                             if (result.success) {

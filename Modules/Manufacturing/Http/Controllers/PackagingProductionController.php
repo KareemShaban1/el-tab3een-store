@@ -99,7 +99,7 @@ class PackagingProductionController extends Controller
                     $html = '<button data-href="' . action([self::class, 'show'], $row->id) . '" class="btn btn-info btn-xs btn-modal" data-container=".view_modal"><i class="fa fa-eye"></i> ' . __('messages.view') . '</button>';
                     if ((int) $row->mfg_is_final === 0) {
                         $html .= ' <a href="' . action([self::class, 'edit'], $row->id) . '" class="btn btn-primary btn-xs"><i class="fa fa-edit"></i> ' . __('messages.edit') . '</a>';
-                        $html .= ' <button data-href="' . action([self::class, 'destroy'], [$row->id]) . '" class="delete-packaging-production btn btn-xs btn-danger"><i class="fa fa-trash"></i> ' . __('messages.delete') . '</button>';
+                        $html .= ' <button data-href="' . action([self::class, 'destroy'], ['packaging_production' => $row->id]) . '" class="delete-packaging-production btn btn-xs btn-danger"><i class="fa fa-trash"></i> ' . __('messages.delete') . '</button>';
                     }
                     return $html;
                 })
