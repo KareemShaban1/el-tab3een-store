@@ -35,7 +35,7 @@
         <div class="col-sm-4">
           <div class="form-group">
             {!! Form::label('unit_id', __('product.unit') . ':*') !!}
-              {!! Form::select('unit_id', $units, null, ['class' => 'form-control select2', 'required']); !!}
+              {!! Form::select('unit_id', $units, null, ['class' => 'form-control select2', 'required', 'placeholder' => __('messages.please_select')]); !!}
           </div>
         </div>
 

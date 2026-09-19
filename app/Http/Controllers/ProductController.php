@@ -416,7 +416,7 @@ class ProductController extends Controller
         $categories = Category::forDropdown($business_id, 'product');
 
         $brands = Brands::forDropdown($business_id);
-        $units = Unit::forDropdown($business_id, true);
+        $units = Unit::forDropdown($business_id);
 
         $tax_dropdown = TaxRate::forBusinessDropdown($business_id, true, true);
         $taxes = $tax_dropdown['tax_rates'];
@@ -684,8 +684,14 @@ class ProductController extends Controller
 
         $default_profit_percent = request()->session()->get('business.default_profit_percent');
 
-        //Get units.
-        $units = Unit::forDropdown($business_id, true);
+        //Get units (base units only). Include current product unit if it was saved as a sub-unit.
+        $units = Unit::forDropdown($business_id);
+        if (! empty($product->unit_id) && ! $units->has($product->unit_id)) {
+            $current_unit = Unit::withTrashed()->find($product->unit_id);
+            if (! empty($current_unit)) {
+                $units->put($current_unit->id, $current_unit->actual_name . ' (' . $current_unit->short_name . ')');
+            }
+        }
         $sub_units = $this->productUtil->getSubUnits($business_id, $product->unit_id, true);
 
         //Get all business locations
@@ -1557,7 +1563,7 @@ class ProductController extends Controller
         $business_id = request()->session()->get('user.business_id');
         $categories = Category::forDropdown($business_id, 'product');
         $brands = Brands::forDropdown($business_id);
-        $units = Unit::forDropdown($business_id, true);
+        $units = Unit::forDropdown($business_id);
 
         $tax_dropdown = TaxRate::forBusinessDropdown($business_id, true, true);
         $taxes = $tax_dropdown['tax_rates'];
