@@ -306,10 +306,18 @@ class RecipeController extends Controller
         $ingredient = Variation::with('product', 'product_variation', 'product.unit')
                             ->findOrFail($variation_id);
 
-        $sub_units = $this->moduleUtil->getSubUnits($business_id, $ingredient->product->unit->id);
+        // Include base unit + sub-units (e.g. Kg + Gram) so recipe qty can be entered in grams
+        $sub_units = $this->moduleUtil->getSubUnits(
+            $business_id,
+            $ingredient->product->unit->id,
+            true,
+            $ingredient->product_id
+        );
 
         $ingredient->unit = $ingredient->product->unit->short_name;
         $ingredient->sub_units = $sub_units;
+        $ingredient->allow_decimal = $ingredient->product->unit->allow_decimal;
+        $ingredient->multiplier = 1;
 
         $row_index = request()->input('row_index');
 
@@ -376,10 +384,19 @@ class RecipeController extends Controller
                     continue;
                 }
                 
-                $ingredient_sub_units = $this->transactionUtil->getSubUnits($business_id, $ingredient->variation->product->unit->id);
+                $ingredient_sub_units = $this->transactionUtil->getSubUnits(
+                    $business_id,
+                    $ingredient->variation->product->unit->id,
+                    true,
+                    $ingredient->variation->product_id
+                );
                 $multiplier = !empty($ingredient->sub_unit_id) ? $ingredient->sub_unit->base_unit_multiplier : 1;
                 if (empty($multiplier)) {
                     $multiplier = 1;
+                }
+                $allow_decimal = $ingredient->variation->product->unit->allow_decimal;
+                if (!empty($ingredient->sub_unit_id) && !empty($ingredient_sub_units[$ingredient->sub_unit_id])) {
+                    $allow_decimal = $ingredient_sub_units[$ingredient->sub_unit_id]['allow_decimal'];
                 }
                 $temp = [
                     'id' => $ingredient->variation->id,
@@ -388,6 +405,7 @@ class RecipeController extends Controller
                     'multiplier' => $multiplier,
                     'sub_units' => $ingredient_sub_units,
                     'sub_unit_id' => $ingredient->sub_unit_id,
+                    'allow_decimal' => $allow_decimal,
                     'unit' => $ingredient->variation->product->unit->short_name,
                     'full_name' => $ingredient->variation->full_name,
                     'waste_percent' => !empty($ingredient->waste_percent) ? $ingredient->waste_percent : 0,

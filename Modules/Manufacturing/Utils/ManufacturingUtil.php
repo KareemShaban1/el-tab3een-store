@@ -37,7 +37,7 @@ class ManufacturingUtil extends Util
         foreach ($ingredient_variations as $ingredient_variation) {
             $variation = $ingredient_variation->variation;
             //If base unit has sub_units get details
-            $sub_units = $this->getSubUnits($business_id, $variation->product->unit->id);
+            $sub_units = $this->getSubUnits($business_id, $variation->product->unit->id, true, $variation->product_id);
             $unit_name = $variation->product->unit->short_name;
             $is_sub_unit = false;
             $sub_unit_id = null;

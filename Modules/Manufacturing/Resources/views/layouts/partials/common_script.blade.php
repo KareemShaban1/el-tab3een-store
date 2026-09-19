@@ -87,6 +87,20 @@
 	});
 
 	$(document).on('change', '.quantity, .row_sub_unit_id, #total_quantity, #extra_cost, #sub_unit_id, #production_cost_type', function(){
+		if ($(this).hasClass('row_sub_unit_id')) {
+			var $qty = $(this).closest('tr').find('.quantity');
+			var allow_decimal = parseInt($(this).find(':selected').data('allow_decimal'), 10);
+			if (isNaN(allow_decimal)) {
+				allow_decimal = 1;
+			}
+			$qty.attr('data-decimal', allow_decimal);
+			if (!allow_decimal) {
+				var qty_val = __read_number($qty);
+				if (qty_val % 1 !== 0) {
+					__write_number($qty, Math.round(qty_val));
+				}
+			}
+		}
 		calculateRecipeTotal();
 	});
 
