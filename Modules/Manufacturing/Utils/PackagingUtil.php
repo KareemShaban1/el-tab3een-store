@@ -60,8 +60,40 @@ class PackagingUtil extends ManufacturingUtil
             'output_variation_id' => $profile->output_variation_id,
             'container_type' => $profile->container_type,
             'units_per_carton' => $units_per_carton,
+            'bulk_qty_per_container' => (float) $profile->bulk_qty_per_container,
             'materials' => $materials,
         ];
+    }
+
+    /**
+     * On finalize only: waste (bulk units) increases bulk deduction and reduces finished output.
+     */
+    public function applyFinalizeWaste(array $calc, MfgPackagingProfile $profile, $waste_qty, $is_final)
+    {
+        $waste_qty = max(0, (float) $waste_qty);
+        $calc['waste_quantity'] = $waste_qty;
+        $calc['bulk_to_deduct'] = (float) $calc['bulk_consumed'];
+        $calc['final_output_quantity'] = (float) $calc['output_quantity'];
+
+        if (! $is_final || $waste_qty <= 0) {
+            return $calc;
+        }
+
+        $calc['bulk_to_deduct'] = (float) $calc['bulk_consumed'] + $waste_qty;
+
+        $per = (float) $profile->bulk_qty_per_container;
+        $wasted_containers = $per > 0 ? ($waste_qty / $per) : 0;
+
+        if (! empty($calc['uses_carton'])) {
+            $upc = max(1, (int) $calc['units_per_carton']);
+            $wasted_output = $wasted_containers / $upc;
+        } else {
+            $wasted_output = $wasted_containers;
+        }
+
+        $calc['final_output_quantity'] = max(0, (float) $calc['output_quantity'] - $wasted_output);
+
+        return $calc;
     }
 
     /**
@@ -150,16 +182,22 @@ class PackagingUtil extends ManufacturingUtil
         return ! empty($vld) ? (float) $vld->qty_available : 0;
     }
 
-    public function checkStockAvailability(MfgPackagingProfile $profile, $location_id, $containers_count)
+    public function checkStockAvailability(MfgPackagingProfile $profile, $location_id, $containers_count, $waste_qty = 0, $is_final = false)
     {
-        $calc = $this->calculatePackaging($profile, $containers_count);
+        $calc = $this->applyFinalizeWaste(
+            $this->calculatePackaging($profile, $containers_count),
+            $profile,
+            $waste_qty,
+            $is_final
+        );
         $shortages = [];
 
         $bulk_available = $this->getAvailableStock($calc['bulk_variation_id'], $location_id);
-        if ($bulk_available < $calc['bulk_consumed']) {
+        $bulk_required = $is_final ? $calc['bulk_to_deduct'] : $calc['bulk_consumed'];
+        if ($bulk_available < $bulk_required) {
             $shortages[] = [
                 'name' => __('manufacturing::lang.bulk_sauce'),
-                'required' => $calc['bulk_consumed'],
+                'required' => $bulk_required,
                 'available' => $bulk_available,
             ];
         }

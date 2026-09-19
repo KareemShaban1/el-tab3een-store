@@ -2,11 +2,40 @@
 @component('components.widget', ['class' => 'box-solid', 'title' => __('manufacturing::lang.packaging_calculation')])
 @php
     $uses_carton = !empty($details['profile']->uses_carton);
+    $bulk_consumed = !empty($details['calculation']) ? $details['calculation']['bulk_consumed'] : 0;
+    $output_quantity = !empty($details['calculation']) ? $details['calculation']['output_quantity'] : 0;
+    $bulk_qty_per_container = !empty($details['calculation']['bulk_qty_per_container'])
+        ? $details['calculation']['bulk_qty_per_container']
+        : (float) $details['profile']->bulk_qty_per_container;
+    $units_per_carton = !empty($details['calculation']['units_per_carton'])
+        ? $details['calculation']['units_per_carton']
+        : (int) $details['profile']->units_per_carton;
 @endphp
 <div class="row">
     <div class="col-sm-4">
         <p><strong>@lang('manufacturing::lang.bulk_product'):</strong> {{ $details['bulk_label'] }}</p>
-        <p><strong>@lang('manufacturing::lang.available_stock'):</strong> <span class="display_currency" data-currency_symbol="false">{{ $details['bulk_stock'] }}</span></p>
+        <p>
+            <strong>@lang('manufacturing::lang.available_stock'):</strong>
+            <span class="display_currency" data-currency_symbol="false" id="packaging_bulk_available" data-orig-value="{{ $details['bulk_stock'] }}">{{ $details['bulk_stock'] }}</span>
+        </p>
+        <div class="form-group">
+            {!! Form::label('waste_quantity', __('manufacturing::lang.waste_units') . ':') !!}
+            {!! Form::text('waste_quantity', old('waste_quantity', 0), [
+                'class' => 'form-control input_number',
+                'id' => 'waste_quantity',
+                'data-bulk-consumed' => $bulk_consumed,
+                'data-bulk-available' => $details['bulk_stock'],
+                'data-output-quantity' => $output_quantity,
+                'data-bulk-per-container' => $bulk_qty_per_container,
+                'data-units-per-carton' => $units_per_carton,
+                'data-uses-carton' => $uses_carton ? 1 : 0,
+            ]) !!}
+            <p class="help-block">@lang('manufacturing::lang.packaging_waste_help')</p>
+        </div>
+        <p class="text-muted packaging-waste-preview hide">
+            <strong>@lang('manufacturing::lang.bulk_after_waste'):</strong>
+            <span id="packaging_bulk_after_waste" class="display_currency" data-currency_symbol="false">{{ $details['bulk_stock'] }}</span>
+        </p>
     </div>
     <div class="col-sm-4">
         <p><strong>@lang('manufacturing::lang.output_product'):</strong> {{ $details['output_label'] }}</p>
@@ -19,6 +48,10 @@
                 @endif:
             </strong>
             <span class="display_currency" data-currency_symbol="false">{{ $details['output_stock'] }}</span>
+        </p>
+        <p class="text-muted packaging-waste-preview hide">
+            <strong>@lang('manufacturing::lang.final_output_after_waste'):</strong>
+            <span id="packaging_output_after_waste" class="display_currency" data-currency_symbol="false">{{ $output_quantity }}</span>
         </p>
     </div>
     <div class="col-sm-4">
@@ -43,11 +76,11 @@
             </div>
         @else
             <div class="col-sm-3">
-                <p><strong>@lang('manufacturing::lang.output_quantity'):</strong> <span class="display_currency" data-currency_symbol="false">{{ $details['calculation']['output_quantity'] }}</span></p>
+                <p><strong>@lang('manufacturing::lang.output_quantity'):</strong> <span class="display_currency" data-currency_symbol="false" id="packaging_output_quantity">{{ $details['calculation']['output_quantity'] }}</span></p>
             </div>
         @endif
         <div class="col-sm-3">
-            <p><strong>@lang('manufacturing::lang.bulk_consumed'):</strong> <span class="display_currency" data-currency_symbol="false">{{ $details['calculation']['bulk_consumed'] }}</span></p>
+            <p><strong>@lang('manufacturing::lang.bulk_consumed'):</strong> <span class="display_currency" data-currency_symbol="false" id="packaging_bulk_consumed" data-orig-value="{{ $details['calculation']['bulk_consumed'] }}">{{ $details['calculation']['bulk_consumed'] }}</span></p>
         </div>
     </div>
 
@@ -62,7 +95,7 @@
         <tbody>
             <tr>
                 <td>{{ $details['bulk_label'] }}</td>
-                <td><span class="display_currency" data-currency_symbol="false">{{ $details['calculation']['bulk_consumed'] }}</span></td>
+                <td><span class="display_currency" data-currency_symbol="false" id="packaging_bulk_required">{{ $details['calculation']['bulk_consumed'] }}</span></td>
                 <td><span class="display_currency" data-currency_symbol="false">{{ $details['bulk_stock'] }}</span></td>
             </tr>
             @foreach($details['calculation']['materials'] as $material)

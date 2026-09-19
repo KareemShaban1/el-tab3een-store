@@ -80,10 +80,53 @@
 @section('javascript')
 <script type="text/javascript">
     $(document).ready(function() {
+        var saved_waste_quantity = @json(old('waste_quantity', $production->mfg_wasted_units ?? 0));
+
+        function updatePackagingWastePreview() {
+            var $waste = $('#waste_quantity');
+            if (!$waste.length) {
+                return;
+            }
+
+            var finalize = $('#finalize').is(':checked');
+            var waste = __read_number($waste) || 0;
+            if (waste < 0) {
+                waste = 0;
+            }
+
+            var bulk_consumed = parseFloat($waste.data('bulk-consumed')) || 0;
+            var bulk_available = parseFloat($waste.data('bulk-available')) || 0;
+            var output_quantity = parseFloat($waste.data('output-quantity')) || 0;
+            var bulk_per = parseFloat($waste.data('bulk-per-container')) || 0;
+            var uses_carton = parseInt($waste.data('uses-carton'), 10) === 1;
+            var units_per_carton = parseFloat($waste.data('units-per-carton')) || 1;
+
+            var bulk_required = bulk_consumed;
+            var final_output = output_quantity;
+            var bulk_after = bulk_available - bulk_consumed;
+
+            if (finalize && waste > 0) {
+                bulk_required = bulk_consumed + waste;
+                bulk_after = bulk_available - bulk_required;
+                var wasted_containers = bulk_per > 0 ? (waste / bulk_per) : 0;
+                var wasted_output = uses_carton ? (wasted_containers / Math.max(1, units_per_carton)) : wasted_containers;
+                final_output = Math.max(0, output_quantity - wasted_output);
+            }
+
+            $('#packaging_bulk_required').text(__number_f(bulk_required));
+            $('#packaging_bulk_after_waste').text(__number_f(bulk_after));
+            $('#packaging_output_after_waste').text(__number_f(final_output));
+            $('.packaging-waste-preview').toggleClass('hide', !(finalize && waste > 0));
+        }
+
         function loadProfileDetails() {
             var profile_id = $('#packaging_profile_id').val();
             var location_id = $('#location_id').val();
             var containers_count = $('#containers_count').val();
+
+            if ($('#waste_quantity').length) {
+                saved_waste_quantity = $('#waste_quantity').val();
+            }
 
             if (!profile_id || !location_id) {
                 $('#profile_details_container').html('');
@@ -99,7 +142,11 @@
                 },
                 success: function(result) {
                     $('#profile_details_container').html(result);
+                    if (saved_waste_quantity !== undefined && saved_waste_quantity !== null && saved_waste_quantity !== '') {
+                        $('#waste_quantity').val(saved_waste_quantity);
+                    }
                     __currency_convert_recursively($('#profile_details_container'));
+                    updatePackagingWastePreview();
                 }
             });
         }
@@ -107,6 +154,9 @@
         $('#packaging_profile_id, #location_id, #containers_count').on('change keyup', function() {
             loadProfileDetails();
         });
+
+        $(document).on('change keyup', '#waste_quantity', updatePackagingWastePreview);
+        $('#finalize').on('ifChanged change', updatePackagingWastePreview);
 
         loadProfileDetails();
     });

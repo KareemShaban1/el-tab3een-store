@@ -14,6 +14,7 @@
                 <div class="col-sm-6">
                     <p><strong>@lang('manufacturing::lang.containers'):</strong> {{ $production->mfg_containers_count }} @lang('manufacturing::lang.' . ($production->mfg_container_type == 'bag' ? 'bags' : 'bottles'))</p>
                     <p><strong>@lang('manufacturing::lang.cartons'):</strong> {{ $production->mfg_cartons_count }}</p>
+                    <p><strong>@lang('manufacturing::lang.waste_units'):</strong> <span class="display_currency" data-currency_symbol="false">{{ $production->mfg_wasted_units ?? 0 }}</span></p>
                     <p><strong>@lang('sale.total'):</strong> <span class="display_currency" data-currency_symbol="true">{{ $production->final_total }}</span></p>
                 </div>
             </div>

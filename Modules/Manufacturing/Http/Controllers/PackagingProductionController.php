@@ -173,6 +173,10 @@ class PackagingProductionController extends Controller
                 ->findOrFail($request->input('packaging_profile_id'));
 
             $containers_count = $this->productUtil->num_uf($request->input('containers_count'));
+            $waste_qty = $this->productUtil->num_uf($request->input('waste_quantity', 0));
+            if ($waste_qty < 0) {
+                $waste_qty = 0;
+            }
             $validation_errors = $this->packagingUtil->validatePackagingInput($profile, $containers_count);
 
             if (! empty($validation_errors)) {
@@ -182,8 +186,14 @@ class PackagingProductionController extends Controller
                 ]);
             }
 
-            $shortages = $this->packagingUtil->checkStockAvailability($profile, $request->input('location_id'), $containers_count);
             $is_final = ! empty($request->input('finalize')) ? 1 : 0;
+            $shortages = $this->packagingUtil->checkStockAvailability(
+                $profile,
+                $request->input('location_id'),
+                $containers_count,
+                $waste_qty,
+                (bool) $is_final
+            );
 
             if ($is_final && ! empty($shortages)) {
                 return redirect()->back()->withInput()->with('status', [
@@ -192,7 +202,12 @@ class PackagingProductionController extends Controller
                 ]);
             }
 
-            $calc = $this->packagingUtil->calculatePackaging($profile, $containers_count);
+            $calc = $this->packagingUtil->applyFinalizeWaste(
+                $this->packagingUtil->calculatePackaging($profile, $containers_count),
+                $profile,
+                $waste_qty,
+                (bool) $is_final
+            );
             $manufacturing_settings = $this->mfgUtil->getSettings($business_id);
             $user_id = $request->session()->get('user.id');
 
@@ -205,6 +220,7 @@ class PackagingProductionController extends Controller
             $transaction_data['transaction_date'] = $this->productUtil->uf_date($transaction_data['transaction_date'], true);
             $transaction_data['final_total'] = $this->productUtil->num_uf($transaction_data['final_total']);
             $transaction_data['mfg_is_final'] = $is_final;
+            $transaction_data['mfg_wasted_units'] = $waste_qty;
             $transaction_data['mfg_stage'] = 'packaging';
             $transaction_data['mfg_packaging_profile_id'] = $profile->id;
             $transaction_data['mfg_containers_count'] = (int) $containers_count;
@@ -222,7 +238,7 @@ class PackagingProductionController extends Controller
             }
 
             $output_variation = Variation::where('id', $profile->output_variation_id)->with('product')->first();
-            $output_qty = $calc['output_quantity'];
+            $output_qty = $calc['final_output_quantity'];
             $final_total_uf = $transaction_data['final_total'];
             $unit_purchase_line_total = $output_qty > 0 ? $final_total_uf / $output_qty : 0;
             $unit_purchase_line_total_f = $this->productUtil->num_f($unit_purchase_line_total);
@@ -252,11 +268,12 @@ class PackagingProductionController extends Controller
 
             $bulk_variation = Variation::where('id', $profile->bulk_variation_id)->with('product')->first();
             $bulk_unit_price = $bulk_variation->dpp_inc_tax;
+            $bulk_line_qty = $is_final ? $calc['bulk_to_deduct'] : $calc['bulk_consumed'];
 
             $sell_lines = [[
                 'product_id' => $bulk_variation->product_id,
                 'variation_id' => $bulk_variation->id,
-                'quantity' => $this->productUtil->num_f($calc['bulk_consumed']),
+                'quantity' => $this->productUtil->num_f($bulk_line_qty),
                 'item_tax' => 0,
                 'tax_id' => null,
                 'unit_price' => $bulk_unit_price,
@@ -414,6 +431,10 @@ class PackagingProductionController extends Controller
                 ->findOrFail($request->input('packaging_profile_id'));
 
             $containers_count = $this->productUtil->num_uf($request->input('containers_count'));
+            $waste_qty = $this->productUtil->num_uf($request->input('waste_quantity', 0));
+            if ($waste_qty < 0) {
+                $waste_qty = 0;
+            }
             $validation_errors = $this->packagingUtil->validatePackagingInput($profile, $containers_count);
 
             if (! empty($validation_errors)) {
@@ -423,8 +444,14 @@ class PackagingProductionController extends Controller
                 ]);
             }
 
-            $shortages = $this->packagingUtil->checkStockAvailability($profile, $request->input('location_id'), $containers_count);
             $is_final = ! empty($request->input('finalize')) ? 1 : 0;
+            $shortages = $this->packagingUtil->checkStockAvailability(
+                $profile,
+                $request->input('location_id'),
+                $containers_count,
+                $waste_qty,
+                (bool) $is_final
+            );
 
             if ($is_final && ! empty($shortages)) {
                 return redirect()->back()->withInput()->with('status', [
@@ -433,7 +460,12 @@ class PackagingProductionController extends Controller
                 ]);
             }
 
-            $calc = $this->packagingUtil->calculatePackaging($profile, $containers_count);
+            $calc = $this->packagingUtil->applyFinalizeWaste(
+                $this->packagingUtil->calculatePackaging($profile, $containers_count),
+                $profile,
+                $waste_qty,
+                (bool) $is_final
+            );
             $manufacturing_settings = $this->mfgUtil->getSettings($business_id);
 
             $transaction_data = $request->only(['ref_no', 'transaction_date', 'location_id', 'final_total']);
@@ -442,13 +474,14 @@ class PackagingProductionController extends Controller
             $transaction_data['transaction_date'] = $this->productUtil->uf_date($transaction_data['transaction_date'], true);
             $transaction_data['final_total'] = $this->productUtil->num_uf($transaction_data['final_total']);
             $transaction_data['mfg_is_final'] = $is_final;
+            $transaction_data['mfg_wasted_units'] = $waste_qty;
             $transaction_data['mfg_packaging_profile_id'] = $profile->id;
             $transaction_data['mfg_containers_count'] = (int) $containers_count;
             $transaction_data['mfg_cartons_count'] = $calc['uses_carton'] ? $calc['full_cartons'] : 0;
             $transaction_data['mfg_container_type'] = $profile->container_type;
 
             $output_variation = Variation::where('id', $profile->output_variation_id)->with('product')->first();
-            $output_qty = $calc['output_quantity'];
+            $output_qty = $calc['final_output_quantity'];
             $final_total_uf = $transaction_data['final_total'];
             $unit_purchase_line_total = $output_qty > 0 ? $final_total_uf / $output_qty : 0;
             $unit_purchase_line_total_f = $this->productUtil->num_f($unit_purchase_line_total);
@@ -478,11 +511,12 @@ class PackagingProductionController extends Controller
 
             $bulk_variation = Variation::where('id', $profile->bulk_variation_id)->with('product')->first();
             $bulk_unit_price = $bulk_variation->dpp_inc_tax;
+            $bulk_line_qty = $is_final ? $calc['bulk_to_deduct'] : $calc['bulk_consumed'];
 
             $sell_lines = [[
                 'product_id' => $bulk_variation->product_id,
                 'variation_id' => $bulk_variation->id,
-                'quantity' => $this->productUtil->num_f($calc['bulk_consumed']),
+                'quantity' => $this->productUtil->num_f($bulk_line_qty),
                 'item_tax' => 0,
                 'tax_id' => null,
                 'unit_price' => $bulk_unit_price,
