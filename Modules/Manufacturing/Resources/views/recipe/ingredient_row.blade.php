@@ -58,10 +58,10 @@
 						@foreach($sub_units as $key => $value)
 							<option 
 								value="{{$key}}"
-								data-multiplier="{{$value['multiplier']}}"
+								data-multiplier="{{ (float) $value['multiplier'] }}"
 								data-allow_decimal="{{$value['allow_decimal']}}"
 								@if(
-									(!empty($ingredient->sub_unit_id) && $key == $ingredient->sub_unit_id)
+									(!empty($ingredient->sub_unit_id) && (int) $key === (int) $ingredient->sub_unit_id)
 									|| (empty($ingredient->sub_unit_id) && (float) $value['multiplier'] == 1)
 								)
 									selected

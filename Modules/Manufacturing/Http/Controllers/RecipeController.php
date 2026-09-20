@@ -111,7 +111,14 @@ class RecipeController extends Controller
                     $total_qty = 0;
                     if (! empty($row->ingredients)) {
                         foreach ($row->ingredients as $ingredient) {
-                            $total_qty += (float) ($ingredient->quantity ?? 0);
+                            $mult = 1;
+                            if (! empty($ingredient->sub_unit) && ! empty($ingredient->sub_unit->base_unit_multiplier)) {
+                                $mult = (float) $ingredient->sub_unit->base_unit_multiplier;
+                                if ($mult <= 0) {
+                                    $mult = 1;
+                                }
+                            }
+                            $total_qty += (float) ($ingredient->quantity ?? 0) * $mult;
                         }
                     }
 
@@ -122,6 +129,9 @@ class RecipeController extends Controller
                     $price = $this->mfgUtil->getRecipeTotal($row);
 
                     $qty = (float) ($row->total_quantity ?? 0);
+                    if (! empty($row->sub_unit) && ! empty($row->sub_unit->base_unit_multiplier)) {
+                        $qty *= (float) $row->sub_unit->base_unit_multiplier;
+                    }
                     $unit_cost = $qty > 0 ? ($price / $qty) : 0;
 
                     return '<span class="display_currency unit_cost" data-unit_cost="' . $unit_cost . '" data-currency_symbol="true">' . $unit_cost . '</span>';
@@ -388,20 +398,31 @@ class RecipeController extends Controller
                     $ingredient->variation->product->unit->id,
                     true
                 );
-                $multiplier = 1;
-                if (!empty($ingredient->sub_unit) && !empty($ingredient->sub_unit->base_unit_multiplier)) {
-                    $multiplier = $ingredient->sub_unit->base_unit_multiplier;
-                } elseif (!empty($ingredient->sub_unit_id) && !empty($ingredient_sub_units[$ingredient->sub_unit_id]['multiplier'])) {
-                    $multiplier = $ingredient_sub_units[$ingredient->sub_unit_id]['multiplier'];
+
+                // Keep saved sub-unit in the list (e.g. Gram) so totals use its multiplier
+                if (!empty($ingredient->sub_unit_id) && empty($ingredient_sub_units[$ingredient->sub_unit_id]) && !empty($ingredient->sub_unit)) {
+                    $ingredient_sub_units[$ingredient->sub_unit->id] = [
+                        'name' => $ingredient->sub_unit->actual_name,
+                        'multiplier' => !empty($ingredient->sub_unit->base_unit_multiplier)
+                            ? (float) $ingredient->sub_unit->base_unit_multiplier
+                            : 1,
+                        'allow_decimal' => $ingredient->sub_unit->allow_decimal,
+                    ];
                 }
-                if (empty($multiplier)) {
+
+                $multiplier = 1;
+                if (!empty($ingredient->sub_unit_id) && !empty($ingredient_sub_units[$ingredient->sub_unit_id]['multiplier'])) {
+                    $multiplier = (float) $ingredient_sub_units[$ingredient->sub_unit_id]['multiplier'];
+                } elseif (!empty($ingredient->sub_unit) && !empty($ingredient->sub_unit->base_unit_multiplier)) {
+                    $multiplier = (float) $ingredient->sub_unit->base_unit_multiplier;
+                }
+                if ($multiplier <= 0) {
                     $multiplier = 1;
                 }
                 $allow_decimal = $ingredient->variation->product->unit->allow_decimal;
                 if (!empty($ingredient->sub_unit_id) && !empty($ingredient_sub_units[$ingredient->sub_unit_id])) {
                     $allow_decimal = $ingredient_sub_units[$ingredient->sub_unit_id]['allow_decimal'];
                 }
-                // Drop stale sub_unit_id if the unit no longer exists
                 $sub_unit_id = (!empty($ingredient->sub_unit_id) && !empty($ingredient_sub_units[$ingredient->sub_unit_id]))
                     ? $ingredient->sub_unit_id
                     : null;
@@ -427,7 +448,7 @@ class RecipeController extends Controller
             }
         }
 
-        $sub_units = $this->moduleUtil->getSubUnits($business_id, $variation->unit_id);
+        $sub_units = $this->moduleUtil->getSubUnits($business_id, $variation->unit_id, true);
 
         $unit_html = !empty($sub_units) ? $sub_units : $variation->unit_name;
 

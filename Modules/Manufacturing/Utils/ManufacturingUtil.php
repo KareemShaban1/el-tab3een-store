@@ -245,12 +245,14 @@ class ManufacturingUtil extends Util
         $price = 0;
         foreach ($row->ingredients as $ingredient) {
             if (!empty($ingredient->variation)) {
-                $ingredient_total = $ingredient->variation->dpp_inc_tax * $ingredient->quantity;
-                if (!empty($ingredient->sub_unit)) {
-                    $multiplier = !empty($ingredient->sub_unit->base_unit_multiplier) ? $ingredient->sub_unit->base_unit_multiplier : 1;
-                    $ingredient_total = $ingredient_total * $multiplier;
+                $multiplier = 1;
+                if (!empty($ingredient->sub_unit) && !empty($ingredient->sub_unit->base_unit_multiplier)) {
+                    $multiplier = (float) $ingredient->sub_unit->base_unit_multiplier;
+                    if ($multiplier <= 0) {
+                        $multiplier = 1;
+                    }
                 }
-                $price += $ingredient_total;
+                $price += $ingredient->variation->dpp_inc_tax * $ingredient->quantity * $multiplier;
             }
         }
 

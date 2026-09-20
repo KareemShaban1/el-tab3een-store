@@ -86,14 +86,49 @@
 		__currency_convert_recursively($('.view_modal'));
 	});
 
+	$(document).on('focus', '.row_sub_unit_id', function() {
+		var raw = $(this).find(':selected').attr('data-multiplier');
+		if (raw === undefined || raw === null || raw === '') {
+			raw = $(this).find(':selected').data('multiplier');
+		}
+		var prev = parseFloat(raw);
+		$(this).data('prev-multiplier', (!isNaN(prev) && prev > 0) ? prev : 1);
+	});
+
 	$(document).on('change', '.quantity, .row_sub_unit_id, #total_quantity, #extra_cost, #sub_unit_id, #production_cost_type', function(){
 		if ($(this).hasClass('row_sub_unit_id')) {
-			var $qty = $(this).closest('tr').find('.quantity');
-			var allow_decimal = parseInt($(this).find(':selected').data('allow_decimal'), 10);
+			var $row = $(this).closest('tr');
+			var $qty = $row.find('.quantity');
+			var $opt = $(this).find(':selected');
+			var allow_decimal = parseInt($opt.attr('data-allow_decimal'), 10);
+			if (isNaN(allow_decimal)) {
+				allow_decimal = parseInt($opt.data('allow_decimal'), 10);
+			}
 			if (isNaN(allow_decimal)) {
 				allow_decimal = 1;
 			}
-			$qty.attr('data-decimal', allow_decimal);
+			$qty.attr('data-decimal', allow_decimal ? 1 : 0);
+
+			var raw = $opt.attr('data-multiplier');
+			if (raw === undefined || raw === null || raw === '') {
+				raw = $opt.data('multiplier');
+			}
+			var new_multiplier = parseFloat(raw);
+			if (isNaN(new_multiplier) || new_multiplier <= 0) {
+				new_multiplier = 1;
+			}
+			var prev_multiplier = parseFloat($(this).data('prev-multiplier'));
+			if (isNaN(prev_multiplier) || prev_multiplier <= 0) {
+				prev_multiplier = 1;
+			}
+			// Keep same base qty when switching e.g. kg ↔ gram
+			var current_qty = __read_number($qty);
+			if (!isNaN(current_qty)) {
+				var base_qty = current_qty * prev_multiplier;
+				__write_number($qty, base_qty / new_multiplier);
+			}
+			$(this).data('prev-multiplier', new_multiplier);
+
 			if (!allow_decimal) {
 				var qty_val = __read_number($qty);
 				if (qty_val % 1 !== 0) {
