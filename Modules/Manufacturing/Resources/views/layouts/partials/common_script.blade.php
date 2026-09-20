@@ -129,11 +129,15 @@
     		var quantity = __read_number($(this).find('.quantity'));
     		var multiplier = 1;
     		if ($(this).find('.row_sub_unit_id').length) {
-    			multiplier = parseFloat(
-		            $(this).find('.row_sub_unit_id')
-		                .find(':selected')
-		                .data('multiplier')
-		        	);
+    			var $opt = $(this).find('.row_sub_unit_id').find(':selected');
+    			var raw = $opt.attr('data-multiplier');
+    			if (raw === undefined || raw === null || raw === '') {
+    				raw = $opt.data('multiplier');
+    			}
+    			multiplier = parseFloat(raw);
+    			if (isNaN(multiplier) || multiplier <= 0) {
+    				multiplier = 1;
+    			}
     		}
 
     		var line_total = line_unit_price * quantity * multiplier;

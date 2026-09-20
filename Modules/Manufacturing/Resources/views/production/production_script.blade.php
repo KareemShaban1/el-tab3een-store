@@ -105,7 +105,12 @@
     function __mfg_recipe_unit_multiplier() {
         var multiplier = 1;
         if ($('#sub_unit_id').length) {
-            var selected_multiplier = parseFloat($('#sub_unit_id').find(':selected').data('multiplier'));
+            var $opt = $('#sub_unit_id').find(':selected');
+            var raw = $opt.attr('data-multiplier');
+            if (raw === undefined || raw === null || raw === '') {
+                raw = $opt.data('multiplier');
+            }
+            var selected_multiplier = parseFloat(raw);
             if (!isNaN(selected_multiplier) && selected_multiplier > 0) {
                 multiplier = selected_multiplier;
             }
@@ -195,8 +200,8 @@
                 if (isNaN(line_unit_quantity)) {
                     line_unit_quantity = 0;
                 }
-                var line_multiplier = __getUnitMultiplier($(this));
-                if (!line_multiplier || isNaN(line_multiplier) || line_multiplier === 0) {
+                var line_multiplier = __mfg_getLineMultiplier($(this));
+                if (isNaN(line_multiplier) || line_multiplier <= 0) {
                     line_multiplier = 1;
                 }
                 base_quantity = (base_recipe_qty * base_recipe_multiplier * line_unit_quantity) / line_multiplier;
@@ -213,6 +218,24 @@
         calculateRecipeTotal();
     }
 
+    function __mfg_getLineMultiplier($row) {
+        var $select = $row.find('select.sub_unit');
+        if (!$select.length) {
+            return 1;
+        }
+        var $opt = $select.find(':selected');
+        // Prefer attr — jQuery .data() can mis-handle small decimals like 0.001
+        var raw = $opt.attr('data-multiplier');
+        if (raw === undefined || raw === null || raw === '') {
+            raw = $opt.data('multiplier');
+        }
+        var multiplier = parseFloat(raw);
+        if (isNaN(multiplier) || multiplier <= 0) {
+            return 1;
+        }
+        return multiplier;
+    }
+
 	function calculateRecipeTotal() {
 		var recipe_quantity = __read_number($('#recipe_quantity'));
         var multiplier = __mfg_recipe_unit_multiplier();
@@ -227,14 +250,12 @@
             if ($(this).find('.ingredient_price').length > 0) {
                 var line_unit_price = parseFloat($(this).find('.ingredient_price').val()) || 0;
                 var line_total_quantity = __read_number($(this).find('.total_quantities'));
-                var line_multiplier = __getUnitMultiplier($(this));
-                if (!line_multiplier || isNaN(line_multiplier) || line_multiplier === 0) {
-                    line_multiplier = 1;
-                }
+                var line_multiplier = __mfg_getLineMultiplier($(this));
                 var line_waste_percent = __read_number($(this).find('.mfg_waste_percent'));
 
                 var line_final_quantity = __substract_percent(line_total_quantity, line_waste_percent);
 
+                // dpp is per base unit (e.g. kg); qty may be in sub-unit (e.g. gram = 0.001 kg)
                 var line_total = line_unit_price * line_total_quantity * line_multiplier;
                 $(this).find('span.ingredient_total_price').text(__currency_trans_from_en(line_total, true));
                 $(this).find('span.row_final_quantity').text(
@@ -253,8 +274,9 @@
                 $(this).find('.row_unit_text').text(line_unit_name);
 
                 total_ingredients_cost += line_total;
-                total_input_quantity += line_total_quantity;
-                total_final_quantity += line_final_quantity;
+                // Sum in base units so g/kg are not mixed as equal
+                total_input_quantity += line_total_quantity * line_multiplier;
+                total_final_quantity += line_final_quantity * line_multiplier;
             }
         });
 
@@ -279,42 +301,69 @@
         __write_number($('#total'), total_ingredients_cost);
     }
 
+    $(document).on('focus', 'select.sub_unit', function() {
+        $(this).data('prev-multiplier', __mfg_getLineMultiplier($(this).closest('tr')));
+    });
+
     $(document).on('change', 'select.sub_unit', function() {
         var tr = $(this).closest('tr');
         var selected_option = $(this).find(':selected');
-        var multiplier = parseFloat(selected_option.data('multiplier'));
-        var allow_decimal = parseInt(selected_option.data('allow_decimal'));
+        var multiplier = __mfg_getLineMultiplier(tr);
+        var allow_decimal = parseInt(selected_option.attr('data-allow_decimal'), 10);
+        if (isNaN(allow_decimal)) {
+            allow_decimal = parseInt(selected_option.data('allow_decimal'), 10);
+        }
 
         var qty_element = tr.find('input.total_quantities');
-        var base_max_avlbl = qty_element.data('qty_available');
+        var prev_multiplier = parseFloat($(this).data('prev-multiplier'));
+        if (isNaN(prev_multiplier) || prev_multiplier <= 0) {
+            prev_multiplier = 1;
+        }
+        // Keep same base qty when switching e.g. kg ↔ gram
+        var current_qty = __read_number(qty_element);
+        if (!isNaN(current_qty) && multiplier > 0) {
+            var base_qty = current_qty * prev_multiplier;
+            var new_qty = base_qty / multiplier;
+            __write_number(qty_element, new_qty, false, __mfg_qty_precision());
+        }
+        $(this).data('prev-multiplier', multiplier);
+
+        var base_max_avlbl = qty_element.attr('data-qty_available');
+        if (base_max_avlbl === undefined) {
+            base_max_avlbl = qty_element.data('qty_available');
+        }
         var error_msg_line = 'pos_max_qty_error';
 
-        qty_element.attr('data-decimal', allow_decimal);
+        qty_element.attr('data-decimal', allow_decimal ? 1 : 0);
         var abs_digit = true;
         if (allow_decimal) {
             abs_digit = false;
         }
-        qty_element.rules('add', {
-            abs_digit: abs_digit,
-        });
+        if (qty_element.rules) {
+            qty_element.rules('add', {
+                abs_digit: abs_digit,
+            });
+        }
 
         if (base_max_avlbl) {
             var max_avlbl = parseFloat(base_max_avlbl) / multiplier;
             var formated_max_avlbl = __number_f(max_avlbl);
-            var unit_name = selected_option.data('unit_name');
+            var unit_name = selected_option.attr('data-unit_name') || selected_option.data('unit_name');
             var max_err_msg = __translate(error_msg_line, {
                 max_val: formated_max_avlbl,
                 unit_name: unit_name,
             });
             qty_element.attr('data-rule-max-value', max_avlbl);
             qty_element.attr('data-msg-max-value', max_err_msg);
-            qty_element.rules('add', {
-                'max-value': max_avlbl,
-                messages: {
-                    'max-value': max_err_msg,
-                },
-            });
-            qty_element.trigger('change');
+            if (qty_element.rules) {
+                qty_element.rules('add', {
+                    'max-value': max_avlbl,
+                    messages: {
+                        'max-value': max_err_msg,
+                    },
+                });
+            }
         }
+        calculateRecipeTotal();
     });
 </script>

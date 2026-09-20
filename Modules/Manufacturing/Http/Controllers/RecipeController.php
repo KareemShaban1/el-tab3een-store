@@ -306,12 +306,11 @@ class RecipeController extends Controller
         $ingredient = Variation::with('product', 'product_variation', 'product.unit')
                             ->findOrFail($variation_id);
 
-        // Include base unit + sub-units (e.g. Kg + Gram) so recipe qty can be entered in grams
+        // Include base + all sub-units (e.g. Kg + Gram) without product-related filter
         $sub_units = $this->moduleUtil->getSubUnits(
             $business_id,
             $ingredient->product->unit->id,
-            true,
-            $ingredient->product_id
+            true
         );
 
         $ingredient->unit = $ingredient->product->unit->short_name;
@@ -387,8 +386,7 @@ class RecipeController extends Controller
                 $ingredient_sub_units = $this->transactionUtil->getSubUnits(
                     $business_id,
                     $ingredient->variation->product->unit->id,
-                    true,
-                    $ingredient->variation->product_id
+                    true
                 );
                 $multiplier = 1;
                 if (!empty($ingredient->sub_unit) && !empty($ingredient->sub_unit->base_unit_multiplier)) {

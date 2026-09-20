@@ -274,7 +274,13 @@ class ProductionController extends Controller
 
                 $line_sub_unit_id = !empty($ingredient_quantities[$variation_details['id']]['sub_unit_id']) ?
                                 $ingredient_quantities[$variation_details['id']]['sub_unit_id'] : null;
-                $line_multiplier = !empty($line_sub_unit_id) ? $variation_details['sub_units'][$line_sub_unit_id]['multiplier'] : 1;
+                $line_multiplier = 1;
+                if (!empty($line_sub_unit_id) && !empty($variation_details['sub_units'][$line_sub_unit_id]['multiplier'])) {
+                    $line_multiplier = (float) $variation_details['sub_units'][$line_sub_unit_id]['multiplier'];
+                    if ($line_multiplier <= 0) {
+                        $line_multiplier = 1;
+                    }
+                }
 
                 $mfg_waste_percent = !empty($ingredient_quantities[$variation_details['id']]['mfg_waste_percent']) ? $this->productUtil->num_uf($ingredient_quantities[$variation_details['id']]['mfg_waste_percent']) : 0;
 

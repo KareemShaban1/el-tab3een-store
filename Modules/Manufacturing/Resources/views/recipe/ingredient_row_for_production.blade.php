@@ -60,9 +60,9 @@
 						<option 
 							value="{{$key}}" 
 							data-allow_decimal="{{$value['allow_decimal']}}"
-							data-multiplier="{{$value['multiplier']}}"
+							data-multiplier="{{ (float) $value['multiplier'] }}"
 							data-unit_name="{{$value['name']}}"
-							@if($ingredient['sub_unit_id'] == $key) selected @endif>{{$value['name']}}</option>
+							@if(!empty($ingredient['sub_unit_id']) && (int)$ingredient['sub_unit_id'] === (int)$key) selected @endif>{{$value['name']}}</option>
 					@endforeach
 				</select>
 
