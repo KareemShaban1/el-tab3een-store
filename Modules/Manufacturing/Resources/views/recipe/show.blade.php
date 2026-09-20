@@ -34,9 +34,13 @@
 							@endphp
 							@foreach($ingredients as $ingredient)
 								@php
-									$ingredient_price = $ingredient['quantity']*$ingredient['dpp_inc_tax']*$ingredient['multiplier'];
+									$line_multiplier = !empty($ingredient['multiplier']) ? (float) $ingredient['multiplier'] : 1;
+									if ($line_multiplier <= 0) {
+										$line_multiplier = 1;
+									}
+									$ingredient_price = $ingredient['quantity'] * $ingredient['dpp_inc_tax'] * $line_multiplier;
 									$ingredient_total_price += $ingredient_price;
-									$total_ingredient_quantity += $ingredient['quantity'];
+									$total_ingredient_quantity += (float) $ingredient['quantity'] * $line_multiplier;
 								@endphp
 								@if(empty($ingredient['mfg_ingredient_group_id']))
 									<tr>
@@ -61,13 +65,20 @@
 								</tr>
 								
 								@foreach($ingredient_group as $ingredient)
+									@php
+										$group_multiplier = !empty($ingredient['multiplier']) ? (float) $ingredient['multiplier'] : 1;
+										if ($group_multiplier <= 0) {
+											$group_multiplier = 1;
+										}
+										$group_ingredient_price = $ingredient['quantity'] * $ingredient['dpp_inc_tax'] * $group_multiplier;
+									@endphp
 									<tr>
 										<td>
 											{{$ingredient['full_name']}}
 										</td>
 										<td><span class="display_currency" data-currency_symbol="false">{{$ingredient['quantity']}}</span> {{$ingredient['unit']}}</td>
 										<td><span class="display_currency" data-currency_symbol="false">{{$ingredient['waste_percent']}}</span>%</td>
-										<td><span class="display_currency" data-currency_symbol="true">{{$ingredient['quantity']*$ingredient['dpp_inc_tax']*$ingredient['multiplier']}}</span></td>
+										<td><span class="display_currency" data-currency_symbol="true">{{$group_ingredient_price}}</span></td>
 									</tr>
 								@endforeach
 							@endforeach
@@ -107,9 +118,13 @@
       				<span ></span>{{@num_format($recipe->extra_cost)}} @if($recipe->production_cost_type == 'percentage') % @elseif ($recipe->production_cost_type == 'per_unit') (@lang('manufacturing::lang.per_unit')) @endif <br>
       				@php
       					$final_price = $ingredient_total_price;
-      					if(!empty($recipe->extra_cost)) {
-      						$final_price = $final_price + ($final_price * $recipe->extra_cost / 100);
+      					$production_cost = (float) ($recipe->extra_cost ?? 0);
+      					if ($recipe->production_cost_type == 'percentage') {
+      						$production_cost = ($ingredient_total_price * $production_cost) / 100;
+      					} elseif ($recipe->production_cost_type == 'per_unit') {
+      						$production_cost = $production_cost * (float) ($recipe->total_quantity ?? 0);
       					}
+      					$final_price += $production_cost;
       				@endphp
       				<strong>@lang('sale.total'):</strong>
       				<span class="display_currency" data-currency_symbol="true">{{$final_price}}</span>
