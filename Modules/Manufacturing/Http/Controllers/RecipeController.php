@@ -390,7 +390,12 @@ class RecipeController extends Controller
                     true,
                     $ingredient->variation->product_id
                 );
-                $multiplier = !empty($ingredient->sub_unit_id) ? $ingredient->sub_unit->base_unit_multiplier : 1;
+                $multiplier = 1;
+                if (!empty($ingredient->sub_unit) && !empty($ingredient->sub_unit->base_unit_multiplier)) {
+                    $multiplier = $ingredient->sub_unit->base_unit_multiplier;
+                } elseif (!empty($ingredient->sub_unit_id) && !empty($ingredient_sub_units[$ingredient->sub_unit_id]['multiplier'])) {
+                    $multiplier = $ingredient_sub_units[$ingredient->sub_unit_id]['multiplier'];
+                }
                 if (empty($multiplier)) {
                     $multiplier = 1;
                 }
@@ -398,13 +403,17 @@ class RecipeController extends Controller
                 if (!empty($ingredient->sub_unit_id) && !empty($ingredient_sub_units[$ingredient->sub_unit_id])) {
                     $allow_decimal = $ingredient_sub_units[$ingredient->sub_unit_id]['allow_decimal'];
                 }
+                // Drop stale sub_unit_id if the unit no longer exists
+                $sub_unit_id = (!empty($ingredient->sub_unit_id) && !empty($ingredient_sub_units[$ingredient->sub_unit_id]))
+                    ? $ingredient->sub_unit_id
+                    : null;
                 $temp = [
                     'id' => $ingredient->variation->id,
                     'dpp_inc_tax' => $ingredient->variation->dpp_inc_tax,
                     'quantity' => $ingredient->quantity,
                     'multiplier' => $multiplier,
                     'sub_units' => $ingredient_sub_units,
-                    'sub_unit_id' => $ingredient->sub_unit_id,
+                    'sub_unit_id' => $sub_unit_id,
                     'allow_decimal' => $allow_decimal,
                     'unit' => $ingredient->variation->product->unit->short_name,
                     'full_name' => $ingredient->variation->full_name,
@@ -536,7 +545,7 @@ class RecipeController extends Controller
                     $unit_price = $unit_prices[$recipe->id];
 
                     //Calculate unit price in base unit
-                    if (!empty($recipe->sub_unit->base_unit_multiplier)) {
+                    if (!empty($recipe->sub_unit) && !empty($recipe->sub_unit->base_unit_multiplier)) {
                         $unit_price = $unit_price / $recipe->sub_unit->base_unit_multiplier;
                     }
 
