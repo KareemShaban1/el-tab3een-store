@@ -22,7 +22,7 @@ return [
     'waste_units' => 'Wasted Quantity',
     'packaging_waste_help' => 'Bulk quantity wasted. Applied only when Finalize is checked (extra bulk deducted). Finished output is not reduced.',
     'bulk_after_waste' => 'Bulk remaining after waste',
-    'bulk_after_waste_formula' => 'Formula: available − consumed − waste (waste only if Finalize)',
+    'bulk_after_waste_formula' => 'Formula: available − consumed − waste',
     'bulk_after_waste_formula_live' => 'Formula: available (:available) − consumed (:consumed) − waste (:waste) = :result',
     'production_cost' => 'Production Cost',
     'production_details' => 'Production Details',

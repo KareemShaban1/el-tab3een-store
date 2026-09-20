@@ -22,7 +22,7 @@ return[
 "waste_units" => "الكمية المهدرة",
 "packaging_waste_help" => "كمية الجملة المهدرة. تُطبَّق فقط عند تفعيل الإنهاء (خصم إضافي من الجملة). لا تُقلَّل كمية المنتج النهائي.",
 "bulk_after_waste" => "الجملة المتبقية بعد الهدر",
-"bulk_after_waste_formula" => "المعادلة: المتاح − المستهلك − الهدر (الهدر فقط عند الإنهاء)",
+"bulk_after_waste_formula" => "المعادلة: المتاح − المستهلك − الهدر",
 "bulk_after_waste_formula_live" => "المعادلة: المتاح (:available) − المستهلك (:consumed) − الهدر (:waste) = :result",
 "production_cost" => "تكلفة الانتاج",
 "production_details" => "تفاصيل الإنتاج",

@@ -93,18 +93,23 @@
                 return;
             }
 
-            var finalize = $('#finalize').is(':checked');
-            var waste = __read_number($waste) || 0;
-            if (waste < 0) {
+            var waste = __read_number($waste);
+            if (isNaN(waste) || waste < 0) {
                 waste = 0;
             }
 
-            var bulk_consumed = parseFloat($waste.data('bulk-consumed')) || 0;
-            var bulk_available = parseFloat($waste.data('bulk-available')) || 0;
-            var waste_applied = (finalize && waste > 0) ? waste : 0;
-            var bulk_required = bulk_consumed + waste_applied;
-            // Bulk remaining = available − consumed − waste
-            var bulk_after = bulk_available - bulk_consumed - waste_applied;
+            var bulk_consumed = parseFloat($waste.attr('data-bulk-consumed'));
+            if (isNaN(bulk_consumed)) {
+                bulk_consumed = 0;
+            }
+            var bulk_available = parseFloat($waste.attr('data-bulk-available'));
+            if (isNaN(bulk_available)) {
+                bulk_available = 0;
+            }
+
+            // Preview always: available − consumed − waste
+            var bulk_required = bulk_consumed + waste;
+            var bulk_after = bulk_available - bulk_consumed - waste;
 
             $('#packaging_bulk_required').text(__number_f(bulk_required));
             $('#packaging_bulk_after_waste').text(__number_f(bulk_after));
@@ -112,7 +117,7 @@
                 @json(__('manufacturing::lang.bulk_after_waste_formula_live'))
                     .replace(':available', __number_f(bulk_available))
                     .replace(':consumed', __number_f(bulk_consumed))
-                    .replace(':waste', __number_f(waste_applied))
+                    .replace(':waste', __number_f(waste))
                     .replace(':result', __number_f(bulk_after))
             );
         }
@@ -153,7 +158,7 @@
             loadProfileDetails();
         });
 
-        $(document).on('change keyup', '#waste_quantity', updatePackagingWastePreview);
+        $(document).on('change keyup input', '#waste_quantity', updatePackagingWastePreview);
         $('#finalize').on('ifChanged change', updatePackagingWastePreview);
 
         loadProfileDetails();
