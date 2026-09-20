@@ -103,13 +103,15 @@
             var bulk_available = parseFloat($waste.data('bulk-available')) || 0;
             var waste_applied = (finalize && waste > 0) ? waste : 0;
             var bulk_required = bulk_consumed + waste_applied;
-            var bulk_after = bulk_available - waste_applied;
+            // Bulk remaining = available − consumed − waste
+            var bulk_after = bulk_available - bulk_consumed - waste_applied;
 
             $('#packaging_bulk_required').text(__number_f(bulk_required));
             $('#packaging_bulk_after_waste').text(__number_f(bulk_after));
             $('#packaging_bulk_formula').text(
                 @json(__('manufacturing::lang.bulk_after_waste_formula_live'))
                     .replace(':available', __number_f(bulk_available))
+                    .replace(':consumed', __number_f(bulk_consumed))
                     .replace(':waste', __number_f(waste_applied))
                     .replace(':result', __number_f(bulk_after))
             );

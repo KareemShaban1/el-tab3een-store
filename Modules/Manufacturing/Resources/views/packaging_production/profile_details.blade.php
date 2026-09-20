@@ -2,14 +2,16 @@
 @component('components.widget', ['class' => 'box-solid', 'title' => __('manufacturing::lang.packaging_calculation')])
 @php
     $uses_carton = !empty($details['profile']->uses_carton);
-    $bulk_consumed = !empty($details['calculation']) ? $details['calculation']['bulk_consumed'] : 0;
+    $bulk_consumed = !empty($details['calculation']) ? (float) $details['calculation']['bulk_consumed'] : 0;
+    $bulk_available = (float) $details['bulk_stock'];
+    $bulk_remaining = $bulk_available - $bulk_consumed;
 @endphp
 <div class="row">
     <div class="col-sm-4">
         <p><strong>@lang('manufacturing::lang.bulk_product'):</strong> {{ $details['bulk_label'] }}</p>
         <p>
             <strong>@lang('manufacturing::lang.available_stock'):</strong>
-            <span class="display_currency" data-currency_symbol="false" id="packaging_bulk_available" data-orig-value="{{ $details['bulk_stock'] }}">{{ $details['bulk_stock'] }}</span>
+            <span class="display_currency" data-currency_symbol="false" id="packaging_bulk_available" data-orig-value="{{ $bulk_available }}">{{ $bulk_available }}</span>
         </p>
         <div class="form-group">
             {!! Form::label('waste_quantity', __('manufacturing::lang.waste_units') . ':') !!}
@@ -17,13 +19,13 @@
                 'class' => 'form-control input_number',
                 'id' => 'waste_quantity',
                 'data-bulk-consumed' => $bulk_consumed,
-                'data-bulk-available' => $details['bulk_stock'],
+                'data-bulk-available' => $bulk_available,
             ]) !!}
             <p class="help-block">@lang('manufacturing::lang.packaging_waste_help')</p>
         </div>
         <p>
             <strong>@lang('manufacturing::lang.bulk_after_waste'):</strong>
-            <span id="packaging_bulk_after_waste" class="display_currency label label-default" style="font-size:14px;" data-currency_symbol="false">{{ $details['bulk_stock'] }}</span>
+            <span id="packaging_bulk_after_waste" class="display_currency label label-default" style="font-size:14px;" data-currency_symbol="false">{{ $bulk_remaining }}</span>
             <br>
             <small class="text-muted" id="packaging_bulk_formula">@lang('manufacturing::lang.bulk_after_waste_formula')</small>
         </p>
