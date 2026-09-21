@@ -4,6 +4,17 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Storefront business
+    |--------------------------------------------------------------------------
+    |
+    | Only this business sees storefront admin UI (active_in_app on products,
+    | locations fees, Tab3een/Servo orders, hero banners, store pages).
+    |
+    */
+    'business_id' => (int) env('STOREFRONT_BUSINESS_ID', 0),
+
+    /*
+    |--------------------------------------------------------------------------
     | Tab3een catalog API
     |--------------------------------------------------------------------------
     |

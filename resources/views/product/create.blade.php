@@ -235,6 +235,7 @@
             </div>
         </div>
 
+        @if(is_storefront_business())
         <div class="col-sm-4">
             <div class="form-group">
                 <br>
@@ -243,6 +244,7 @@
                 </label> @show_tooltip(__('lang_v1.tooltip_active_in_app'))
             </div>
         </div>
+        @endif
 
         <div class="col-sm-4">
             <div class="form-group">

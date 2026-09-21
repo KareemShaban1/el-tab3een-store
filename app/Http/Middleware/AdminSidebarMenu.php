@@ -424,7 +424,7 @@ $is_superadmin = auth()->user()->can('superadmin');
                 )->order(30);
             }
 
-            if ($is_admin || auth()->user()->can('locations_fees.access')) {
+            if (is_storefront_business() && ($is_admin || auth()->user()->can('locations_fees.access'))) {
                 $menu->url(
                     action([\App\Http\Controllers\LocationsFees\LocationFeeController::class, 'index']),
                     __('locations_fees.locations_fees'),
@@ -432,7 +432,7 @@ $is_superadmin = auth()->user()->can('superadmin');
                 )->order(26);
             }
 
-            if ($is_admin || auth()->user()->hasAnyPermission(['sell.view', 'direct_sell.view', 'view_own_sell_only', 'view_commission_agent_sell'])) {
+            if (is_storefront_business() && ($is_admin || auth()->user()->hasAnyPermission(['sell.view', 'direct_sell.view', 'view_own_sell_only', 'view_commission_agent_sell']))) {
                 $storeOrderNotificationUtil = app(StoreOrderNotificationUtil::class);
                 $store_order_counts = $storeOrderNotificationUtil->getSidebarCounts(auth()->user());
                 $tab3een_badge = $storeOrderNotificationUtil->sidebarBadgeHtml($store_order_counts['tab3een'], 'sidebar-tab3een-orders-badge');

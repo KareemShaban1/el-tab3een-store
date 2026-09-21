@@ -71,6 +71,7 @@ class ProductController extends Controller
         $business_id = request()->session()->get('user.business_id');
         $selling_price_group_count = SellingPriceGroup::countSellingPriceGroups($business_id);
         $is_woocommerce = $this->moduleUtil->isModuleInstalled('Woocommerce');
+        $show_active_in_app = is_storefront_business($business_id);
 
         if (request()->ajax()) {
             //Filter by location
@@ -297,7 +298,11 @@ class ProductController extends Controller
                         ? '<span class="label bg-gray">'.__('lang_v1.inactive').'</span>'
                         : '<span class="label label-success">'.__('lang_v1.active').'</span>';
                 })
-                ->editColumn('active_in_app', function ($row) {
+                ->editColumn('active_in_app', function ($row) use ($show_active_in_app) {
+                    if (! $show_active_in_app) {
+                        return '';
+                    }
+
                     if (auth()->user()->can('product.update')) {
                         $on = (bool) ($row->active_in_app ?? false);
                         $checked = $on ? 'checked' : '';
@@ -502,7 +507,9 @@ class ProductController extends Controller
 
             $product_details['enable_stock'] = (! empty($request->input('enable_stock')) && $request->input('enable_stock') == 1) ? 1 : 0;
             $product_details['not_for_selling'] = (! empty($request->input('not_for_selling')) && $request->input('not_for_selling') == 1) ? 1 : 0;
-            $product_details['active_in_app'] = (! empty($request->input('active_in_app')) && $request->input('active_in_app') == 1) ? 1 : 0;
+            if (is_storefront_business($business_id)) {
+                $product_details['active_in_app'] = (! empty($request->input('active_in_app')) && $request->input('active_in_app') == 1) ? 1 : 0;
+            }
             $product_details['featured'] = (! empty($request->input('featured')) && $request->input('featured') == 1) ? 1 : 0;
             $product_details['order'] = $request->input('order') !== null && $request->input('order') !== '' ? (int) $request->input('order') : 0;
 
@@ -791,7 +798,9 @@ class ProductController extends Controller
             }
 
             $product->not_for_selling = (! empty($request->input('not_for_selling')) && $request->input('not_for_selling') == 1) ? 1 : 0;
-            $product->active_in_app = (! empty($request->input('active_in_app')) && $request->input('active_in_app') == 1) ? 1 : 0;
+            if (is_storefront_business($business_id)) {
+                $product->active_in_app = (! empty($request->input('active_in_app')) && $request->input('active_in_app') == 1) ? 1 : 0;
+            }
             $product->featured = (! empty($request->input('featured')) && $request->input('featured') == 1) ? 1 : 0;
             $product->order = $request->input('order') !== null && $request->input('order') !== '' ? (int) $request->input('order') : 0;
 
@@ -1636,7 +1645,9 @@ class ProductController extends Controller
             if (! empty($request->input('not_for_selling')) && $request->input('not_for_selling') == 1) {
                 $product_details['not_for_selling'] = 1;
             }
-            $product_details['active_in_app'] = (! empty($request->input('active_in_app')) && $request->input('active_in_app') == 1) ? 1 : 0;
+            if (is_storefront_business($business_id)) {
+                $product_details['active_in_app'] = (! empty($request->input('active_in_app')) && $request->input('active_in_app') == 1) ? 1 : 0;
+            }
             $product_details['featured'] = (! empty($request->input('featured')) && $request->input('featured') == 1) ? 1 : 0;
             $product_details['order'] = $request->input('order') !== null && $request->input('order') !== '' ? (int) $request->input('order') : 0;
             if (empty($product_details['sku'])) {
@@ -2079,6 +2090,10 @@ class ProductController extends Controller
         $value = request()->input('value');
 
         if (! in_array($field, ['is_inactive', 'active_in_app'], true)) {
+            return ['success' => false, 'msg' => __('messages.something_went_wrong')];
+        }
+
+        if ($field === 'active_in_app' && ! is_storefront_business()) {
             return ['success' => false, 'msg' => __('messages.something_went_wrong')];
         }
 

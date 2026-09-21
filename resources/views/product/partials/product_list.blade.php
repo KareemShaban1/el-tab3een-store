@@ -29,7 +29,9 @@
             <th>@lang('product.tax')</th>
             <th>@lang('product.sku')</th>
             <th>@lang('product.is_inactive_column')</th>
+            @if(is_storefront_business())
             <th>@lang('product.active_in_app_column')</th>
+            @endif
             <th id="cf_1">{{ $custom_labels['product']['custom_field_1'] ?? '' }}</th>
             <th id="cf_2">{{ $custom_labels['product']['custom_field_2'] ?? '' }}</th>
             <th id="cf_3">{{ $custom_labels['product']['custom_field_3'] ?? '' }}</th>
