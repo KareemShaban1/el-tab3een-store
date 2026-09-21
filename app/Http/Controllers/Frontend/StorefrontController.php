@@ -10,11 +10,13 @@ use App\Contact;
 use App\Product;
 use App\StoreHeroBanner;
 use App\StorePage;
+use App\StorefrontSetting;
 use App\Services\Tab3eenCatalogService;
 use App\Variation;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\Schema;
 
 class StorefrontController extends Controller
 {
@@ -50,9 +52,21 @@ class StorefrontController extends Controller
             $heroBanners = collect([StoreHeroBanner::defaultFallback()]);
         }
 
+        $whatsapp = null;
+        if (Schema::hasTable('storefront_settings')) {
+            $whatsappSettings = StorefrontSetting::forBusiness($business_id);
+            if ($whatsappSettings->shouldShowWhatsappButton()) {
+                $whatsapp = [
+                    'url' => $whatsappSettings->whatsappUrl(),
+                    'label' => __('lang_v1.storefront_whatsapp_chat'),
+                ];
+            }
+        }
+
         return view('frontend.welcome', [
             'tab3eenCatalog' => $tab3eenCatalog,
             'heroBanners' => $heroBanners,
+            'whatsapp' => $whatsapp,
             'heroStats' => [
                 'products' => $this->formatHeroStat($localProductCount + $tab3eenProductCount),
                 'customers' => $this->formatHeroStat($customerCount),

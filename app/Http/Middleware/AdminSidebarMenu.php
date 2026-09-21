@@ -462,6 +462,11 @@ $is_superadmin = auth()->user()->can('superadmin');
                                 __('store_pages.store_pages'),
                                 ['icon' => '', 'active' => request()->segment(1) == 'store-pages']
                             );
+                            $sub->url(
+                                action([\App\Http\Controllers\StorefrontWhatsAppController::class, 'edit']),
+                                __('lang_v1.storefront_whatsapp'),
+                                ['icon' => '', 'active' => request()->segment(1) == 'storefront-whatsapp']
+                            );
                         }
                     },
                     ['icon' => '<svg aria-hidden="true" class="tw-size-5 tw-shrink-0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">

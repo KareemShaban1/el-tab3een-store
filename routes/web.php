@@ -74,6 +74,7 @@ use App\Http\Controllers\LocationsFees\GovernorateController as LocationsFeesGov
 use App\Http\Controllers\LocationsFees\LocationFeeController;
 use App\Http\Controllers\StoreHeroBannerController;
 use App\Http\Controllers\StorePageController;
+use App\Http\Controllers\StorefrontWhatsAppController;
 /*
 |--------------------------------------------------------------------------
 | Web Routes
@@ -298,6 +299,8 @@ Route::middleware(['setData', 'auth', 'SetSessionData', 'language', 'timezone', 
     Route::get('/servo-orders/{id}', [ServoOrderController::class, 'show'])->name('servo-orders.show');
     Route::resource('store-hero-banners', StoreHeroBannerController::class)->except(['show']);
     Route::resource('store-pages', StorePageController::class)->except(['show']);
+    Route::get('/storefront-whatsapp', [StorefrontWhatsAppController::class, 'edit'])->name('storefront-whatsapp.edit');
+    Route::put('/storefront-whatsapp', [StorefrontWhatsAppController::class, 'update'])->name('storefront-whatsapp.update');
 
     Route::prefix('locations-fees')->group(function () {
         Route::get('/', [LocationFeeController::class, 'index'])->name('locations-fees.index');

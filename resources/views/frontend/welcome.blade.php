@@ -6,59 +6,68 @@
 	<div class="container">
 		<div class="hero-slides">
 			@foreach ($heroBanners as $index => $banner)
-				@php
-					$linkUrl = $banner->link_url ?: route('store.products.index');
-					$imageUrl = $banner->image_url ?: 'https://placehold.co/460x400/3d3868/ffffff?text=Hero';
-					$imageAlt = $banner->image_alt ?: strip_tags((string) $banner->title);
-				@endphp
-				<div class="hero-slide {{ $index === 0 ? 'active' : '' }}" data-slide="{{ $index }}">
-					<div class="hero-inner">
-						<div class="hero-content">
-							@if (! empty($banner->badge))
-								<div class="hero-badge">{{ $banner->badge }}</div>
-							@endif
-							<h1 class="hero-title">{!! $banner->title !!}</h1>
-							@if (! empty($banner->content))
-								<p class="hero-desc">{{ $banner->content }}</p>
-							@endif
-							@if (! empty($banner->link_title))
-								<div class="hero-actions">
-									<a href="{{ $linkUrl }}" class="btn btn-primary">{{ $banner->link_title }}</a>
-								</div>
-							@endif
+			@php
+			$linkUrl = $banner->link_url ?: route('store.products.index');
+			$imageUrl = $banner->image_url ?: 'https://placehold.co/460x400/3d3868/ffffff?text=Hero';
+			$imageAlt = $banner->image_alt ?: strip_tags((string) $banner->title);
+			@endphp
+			<div class="hero-slide {{ $index === 0 ? 'active' : '' }}" data-slide="{{ $index }}">
+				<div class="hero-inner">
+					<div class="hero-content">
+						@if (! empty($banner->badge))
+						<div class="hero-badge">{{ $banner->badge }}</div>
+						@endif
+						<h1 class="hero-title">{!! $banner->title !!}</h1>
+						@if (! empty($banner->content))
+						<p class="hero-desc">{{ $banner->content }}</p>
+						@endif
+						@if (! empty($banner->link_title))
+						<div class="hero-actions">
+							<a href="{{ $linkUrl }}"
+								class="btn btn-primary">{{ $banner->link_title }}</a>
 						</div>
+						@endif
+					</div>
 
-						<div class="hero-visual">
-							<div class="hero-glow"></div>
-							<img class="hero-img" src="{{ $imageUrl }}" alt="{{ $imageAlt }}">
-							<div class="float-badge fb1">
-								<div class="fb-icon" style="background:#fff3e0;">⭐</div>
-								<div>
-									<strong class="fb-strong">تقييم 4.9 / 5</strong>
-									<span class="fb-small">من +50,000 تقييم</span>
-								</div>
+					<div class="hero-visual">
+						<div class="hero-glow"></div>
+						<img class="hero-img" src="{{ $imageUrl }}"
+							alt="{{ $imageAlt }}">
+						<div class="float-badge fb1">
+							<div class="fb-icon" style="background:#fff3e0;">⭐
 							</div>
-							<div class="float-badge fb2">
-								<div class="fb-icon" style="background:#e8f5e9;">🚚</div>
-								<div>
-									<strong class="fb-strong">توصيل مجاني</strong>
-									<span class="fb-small">على الطلبات +500 ج.م</span>
-								</div>
+							<div>
+								<strong class="fb-strong">تقييم 4.9 /
+									5</strong>
+								<span class="fb-small">من +50,000
+									تقييم</span>
+							</div>
+						</div>
+						<div class="float-badge fb2">
+							<div class="fb-icon" style="background:#e8f5e9;">
+								🚚</div>
+							<div>
+								<strong class="fb-strong">توصيل
+									مجاني</strong>
+								<span class="fb-small">على الطلبات +500
+									ج.م</span>
 							</div>
 						</div>
 					</div>
 				</div>
+			</div>
 			@endforeach
 		</div>
 
 		@if ($heroBanners->count() > 1)
-			<div class="hero-dots-wrap">
-				<div class="hero-dots">
-					@foreach ($heroBanners as $index => $banner)
-						<button type="button" class="hero-dot {{ $index === 0 ? 'active' : '' }}" data-dot="{{ $index }}" aria-label="Slide {{ $index + 1 }}"></button>
-					@endforeach
-				</div>
+		<div class="hero-dots-wrap">
+			<div class="hero-dots">
+				@foreach ($heroBanners as $index => $banner)
+				<button type="button" class="hero-dot {{ $index === 0 ? 'active' : '' }}"
+					data-dot="{{ $index }}" aria-label="Slide {{ $index + 1 }}"></button>
+				@endforeach
 			</div>
+		</div>
 		@endif
 	</div>
 </section>
@@ -497,5 +506,80 @@ document.querySelectorAll('.tab3een-tab').forEach(tab => {
 			</form>
 		</div>
 	</section> -->
+
+@if (! empty($whatsapp['url']))
+<a href="{{ $whatsapp['url'] }}" class="store-whatsapp-fab" target="_blank" rel="noopener noreferrer"
+	aria-label="{{ $whatsapp['label'] }}" title="{{ $whatsapp['label'] }}">
+	<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" aria-hidden="true" focusable="false">
+		<path fill="currentColor"
+			d="M16.04 3C9.4 3 4 8.37 4 14.96c0 2.11.55 4.16 1.6 5.97L4 29l8.28-2.16a12.1 12.1 0 0 0 3.76.59h.01c6.64 0 12.04-5.37 12.04-11.96C28.09 8.37 22.68 3 16.04 3zm0 21.85h-.01a10.04 10.04 0 0 1-5.12-1.4l-.37-.22-4.91 1.28 1.31-4.78-.24-.39a9.88 9.88 0 0 1-1.52-5.28c0-5.47 4.49-9.92 10.02-9.92 5.53 0 10.02 4.45 10.02 9.92-.01 5.47-4.5 9.91-10.18 9.91zm5.5-7.43c-.3-.15-1.78-.88-2.06-.98-.28-.1-.48-.15-.68.15-.2.3-.78.98-.96 1.18-.18.2-.35.22-.65.07-.3-.15-1.27-.47-2.42-1.49-.9-.8-1.5-1.78-1.68-2.08-.18-.3-.02-.46.13-.61.14-.14.3-.35.45-.53.15-.18.2-.3.3-.5.1-.2.05-.38-.02-.53-.08-.15-.68-1.63-.93-2.23-.24-.58-.5-.5-.68-.51h-.58c-.2 0-.53.08-.8.38-.28.3-1.05 1.02-1.05 2.49s1.08 2.89 1.23 3.09c.15.2 2.12 3.23 5.14 4.53.72.31 1.28.5 1.72.64.72.23 1.38.2 1.9.12.58-.09 1.78-.73 2.03-1.43.25-.7.25-1.3.18-1.43-.07-.12-.27-.2-.57-.35z" />
+	</svg>
+	<!-- <span class="store-whatsapp-fab__label">{{ $whatsapp['label'] }}</span> -->
+</a>
+<style>
+.store-whatsapp-fab {
+	position: fixed;
+	inset-inline-end: 22px;
+	bottom: 22px;
+	z-index: 9999;
+	display: inline-flex;
+	align-items: center;
+	gap: 10px;
+	min-height: 56px;
+	padding: 0 18px 0 14px;
+	border-radius: 999px;
+	background: #25D366;
+	color: #fff;
+	text-decoration: none;
+	box-shadow: 0 10px 28px rgba(37, 211, 102, .38);
+	transition: transform .2s ease, box-shadow .2s ease, background .2s ease;
+}
+
+.store-whatsapp-fab:hover,
+.store-whatsapp-fab:focus-visible {
+	background: #1ebe57;
+	color: #fff;
+	transform: translateY(-2px);
+	box-shadow: 0 14px 34px rgba(37, 211, 102, .45);
+	outline: none;
+}
+
+.store-whatsapp-fab svg {
+	width: 28px;
+	height: 28px;
+	flex-shrink: 0;
+}
+
+.store-whatsapp-fab__label {
+	font-family: Cairo, sans-serif;
+	font-size: 14px;
+	font-weight: 700;
+	line-height: 1;
+	white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+	.store-whatsapp-fab {
+		inset-inline-end: 16px;
+		bottom: 16px;
+		width: 56px;
+		height: 56px;
+		padding: 0;
+		justify-content: center;
+	}
+
+	.store-whatsapp-fab__label {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		padding: 0;
+		margin: -1px;
+		overflow: hidden;
+		clip: rect(0, 0, 0, 0);
+		border: 0;
+	}
+}
+</style>
+@endif
 
 @endsection
