@@ -2004,7 +2004,8 @@
 		font-size: .85rem;
 		transition: var(--t);
 		cursor: pointer;
-		font-weight: 700
+		font-weight: 700;
+		text-decoration: none
 	}
 
 	.soc-btn:hover {

@@ -463,6 +463,11 @@ $is_superadmin = auth()->user()->can('superadmin');
                                 ['icon' => '', 'active' => request()->segment(1) == 'store-pages']
                             );
                             $sub->url(
+                                action([\App\Http\Controllers\StorefrontAppearanceController::class, 'edit']),
+                                __('storefront_appearance.storefront_appearance'),
+                                ['icon' => '', 'active' => request()->segment(1) == 'storefront-appearance']
+                            );
+                            $sub->url(
                                 action([\App\Http\Controllers\StorefrontWhatsAppController::class, 'edit']),
                                 __('lang_v1.storefront_whatsapp'),
                                 ['icon' => '', 'active' => request()->segment(1) == 'storefront-whatsapp']

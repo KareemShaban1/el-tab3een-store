@@ -4,6 +4,7 @@ namespace App\View\Composers;
 
 use App\Category;
 use App\Http\Controllers\Frontend\StorefrontController;
+use App\StorefrontSetting;
 use App\StorePage;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\View\View;
@@ -37,11 +38,32 @@ class StorefrontThemeLayoutComposer
             $storeHeaderPages = $pages->where('show_in_header', true)->values();
         }
 
+        $storeAppearance = StorefrontSetting::defaultContent();
+        $storeAppearanceModel = null;
+
+        if (Schema::hasTable('storefront_settings')) {
+            $storeAppearanceModel = StorefrontSetting::forBusiness($businessId);
+            $storeAppearance = $storeAppearanceModel->content();
+            $storeAppearance['announce_link_url'] = $storeAppearanceModel->announceLinkUrl();
+            $storeAppearance['support_phone'] = $storeAppearanceModel->supportPhone();
+            $storeAppearance['support_email'] = $storeAppearanceModel->supportEmail();
+            $storeAppearance['copyright_text'] = $storeAppearanceModel->copyrightText();
+        } else {
+            $storeAppearance['announce_link_url'] = route('store.products.index');
+            $storeAppearance['copyright_text'] = '© '.date('Y').' '
+                .($storeAppearance['brand_name'] ?? '')
+                .' '
+                .($storeAppearance['brand_name_highlight'] ?? '')
+                .'. جميع الحقوق محفوظة.';
+        }
+
         $view->with([
             'storeHeaderFeaturedCategories' => $storeHeaderFeaturedCategories,
             'storeSearchSuggestUrl' => route('store.search.suggest'),
             'storeFooterPages' => $storeFooterPages,
             'storeHeaderPages' => $storeHeaderPages,
+            'storeAppearance' => $storeAppearance,
+            'storeAppearanceSettings' => $storeAppearanceModel,
         ]);
     }
 }

@@ -74,6 +74,7 @@ use App\Http\Controllers\LocationsFees\GovernorateController as LocationsFeesGov
 use App\Http\Controllers\LocationsFees\LocationFeeController;
 use App\Http\Controllers\StoreHeroBannerController;
 use App\Http\Controllers\StorePageController;
+use App\Http\Controllers\StorefrontAppearanceController;
 use App\Http\Controllers\StorefrontWhatsAppController;
 /*
 |--------------------------------------------------------------------------
@@ -301,6 +302,8 @@ Route::middleware(['setData', 'auth', 'SetSessionData', 'language', 'timezone', 
     Route::get('/servo-orders/{id}', [ServoOrderController::class, 'show'])->name('servo-orders.show');
     Route::resource('store-hero-banners', StoreHeroBannerController::class)->except(['show']);
     Route::resource('store-pages', StorePageController::class)->except(['show']);
+    Route::get('/storefront-appearance', [StorefrontAppearanceController::class, 'edit'])->name('storefront-appearance.edit');
+    Route::put('/storefront-appearance', [StorefrontAppearanceController::class, 'update'])->name('storefront-appearance.update');
     Route::get('/storefront-whatsapp', [StorefrontWhatsAppController::class, 'edit'])->name('storefront-whatsapp.edit');
     Route::put('/storefront-whatsapp', [StorefrontWhatsAppController::class, 'update'])->name('storefront-whatsapp.update');
 

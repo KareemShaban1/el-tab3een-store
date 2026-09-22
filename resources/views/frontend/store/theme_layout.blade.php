@@ -9,10 +9,34 @@
 	</script>
 	@endif
 	<!-- ===================== ANNOUNCEMENT BAR ===================== -->
+	@php
+		$appearance = $storeAppearance ?? \App\StorefrontSetting::defaultContent();
+		$supportPhone = $appearance['support_phone'] ?? config('storefront.support_phone', '19900');
+		$supportEmail = $appearance['support_email'] ?? config('storefront.support_email', 'info@eltab3een.com');
+		$announceEnabled = (bool) ($appearance['announce_enabled'] ?? true);
+		$announceText = trim((string) ($appearance['announce_text'] ?? ''));
+		$announceLinkText = trim((string) ($appearance['announce_link_text'] ?? ''));
+		$announceLinkUrl = $appearance['announce_link_url'] ?? route('store.products.index');
+		$socialLinks = [
+			'facebook' => ['label' => 'f', 'url' => data_get($appearance, 'social.facebook')],
+			'linkedin' => ['label' => 'in', 'url' => data_get($appearance, 'social.linkedin')],
+			'x' => ['label' => 'X', 'url' => data_get($appearance, 'social.x')],
+			'youtube' => ['label' => '▶', 'url' => data_get($appearance, 'social.youtube')],
+			'whatsapp' => ['label' => 'w', 'url' => data_get($appearance, 'social.whatsapp')],
+		];
+	@endphp
 	<div class="announce">
 		<div class="container">
-			<span>🎉 خصم يصل لـ 50% على أحدث الهواتف الذكية! <a
-					href="{{ route('store.products.index') }}">تسوق الآن ←</a></span>
+			@if ($announceEnabled && $announceText !== '')
+			<span>
+				{{ $announceText }}
+				@if ($announceLinkText !== '')
+				<a href="{{ $announceLinkUrl }}">{{ $announceLinkText }}</a>
+				@endif
+			</span>
+			@else
+			<span></span>
+			@endif
 			<div class="announce-links">
 				@foreach ($storeHeaderPages ?? [] as $headerPage)
 				<a href="{{ $headerPage->url }}">{{ $headerPage->title }}</a>
@@ -22,8 +46,10 @@
 				<a
 					href="{{ route('repair-status') }}">{{ __('storefront.repair_status.track_repair') }}</a>
 				@endif
-				<!-- <a href="#">مراكز الصيانة</a> -->
-				<span style="color:var(--accent);font-weight:700;">📞 19900</span>
+				@if ($supportPhone !== '')
+				<a href="tel:{{ preg_replace('/\s+/', '', $supportPhone) }}"
+					style="color:var(--accent);font-weight:700;">📞 {{ $supportPhone }}</a>
+				@endif
 			</div>
 		</div>
 	</div>
@@ -46,9 +72,14 @@
 				<a href="{{ route('welcome') }}" class="logo">
 					<div class="logo-icon">⚡</div>
 					<div>
-						<div class="logo-name">التابعين <span>للإلكترونيات</span>
+						<div class="logo-name">{{ $appearance['brand_name'] ?? 'التابعين' }}
+							@if (! empty($appearance['brand_name_highlight']))
+							<span>{{ $appearance['brand_name_highlight'] }}</span>
+							@endif
 						</div>
-						<div class="logo-sub">El Tab3een Electronics</div>
+						@if (! empty($appearance['brand_name_en']))
+						<div class="logo-sub">{{ $appearance['brand_name_en'] }}</div>
+						@endif
 					</div>
 				</a>
 
@@ -242,19 +273,30 @@
 						</div>
 						<div>
 							<div class="logo-name" style="color:#fff;">
-								التابعين <span>للإلكترونيات</span></div>
-							<div class="logo-sub">El Tab3een Electronics</div>
+								{{ $appearance['brand_name'] ?? 'التابعين' }}
+								@if (! empty($appearance['brand_name_highlight']))
+								<span>{{ $appearance['brand_name_highlight'] }}</span>
+								@endif
+							</div>
+							@if (! empty($appearance['brand_name_en']))
+							<div class="logo-sub">{{ $appearance['brand_name_en'] }}</div>
+							@endif
 						</div>
 					</div>
-					<p class="f-desc">وجهتك الأولى للإلكترونيات في مصر. نوفر أحدث الأجهزة
-						بأفضل الأسعار مع ضمان رسمي وخدمة متميزة ما بعد البيع.</p>
+					@if (! empty($appearance['footer_desc']))
+					<p class="f-desc">{{ $appearance['footer_desc'] }}</p>
+					@endif
+					@php
+						$visibleSocial = collect($socialLinks)->filter(fn ($item) => filled($item['url'] ?? null));
+					@endphp
+					@if ($visibleSocial->isNotEmpty())
 					<div class="f-social">
-						<div class="soc-btn">f</div>
-						<div class="soc-btn">in</div>
-						<div class="soc-btn">X</div>
-						<div class="soc-btn">▶</div>
-						<div class="soc-btn">w</div>
+						@foreach ($visibleSocial as $social)
+						<a href="{{ $social['url'] }}" class="soc-btn" target="_blank"
+							rel="noopener noreferrer">{{ $social['label'] }}</a>
+						@endforeach
 					</div>
+					@endif
 				</div>
 				<div>
 					<div class="f-col-title">روابط سريعة</div>
@@ -290,17 +332,28 @@
 				<div>
 					<div class="f-col-title">تواصل معنا</div>
 					<div class="f-links">
-						<a href="tel:19900" class="f-link">📞 19900</a>
-						<a href="mailto:info@eltab3een.com" class="f-link">✉
-							info@eltab3een.com</a>
-						<span class="f-link">📍 القاهرة، مصر</span>
-						<span class="f-link">🕐 السبت–الخميس: 9ص–10م</span>
-						<span class="f-link">🛡 ضمان أصالة المنتجات</span>
+						@if ($supportPhone !== '')
+						<a href="tel:{{ preg_replace('/\s+/', '', $supportPhone) }}"
+							class="f-link">📞 {{ $supportPhone }}</a>
+						@endif
+						@if ($supportEmail !== '')
+						<a href="mailto:{{ $supportEmail }}" class="f-link">✉
+							{{ $supportEmail }}</a>
+						@endif
+						@if (! empty($appearance['support_address']))
+						<span class="f-link">📍 {{ $appearance['support_address'] }}</span>
+						@endif
+						@if (! empty($appearance['support_hours']))
+						<span class="f-link">🕐 {{ $appearance['support_hours'] }}</span>
+						@endif
+						@if (! empty($appearance['support_badge']))
+						<span class="f-link">🛡 {{ $appearance['support_badge'] }}</span>
+						@endif
 					</div>
 				</div>
 			</div>
 			<div class="footer-bottom">
-				<div class="f-copy">© {{ date('Y') }} التابعين للإلكترونيات. جميع الحقوق محفوظة.
+				<div class="f-copy">{{ $appearance['copyright_text'] ?? '' }}
 				</div>
 				@if (($storeFooterPages[\App\StorePage::FOOTER_GROUP_LEGAL] ??
 				collect())->isNotEmpty())
