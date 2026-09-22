@@ -33,7 +33,7 @@
 						<div class="hero-glow"></div>
 						<img class="hero-img" src="{{ $imageUrl }}"
 							alt="{{ $imageAlt }}">
-						<div class="float-badge fb1">
+						<!-- <div class="float-badge fb1">
 							<div class="fb-icon" style="background:#fff3e0;">⭐
 							</div>
 							<div>
@@ -42,8 +42,8 @@
 								<span class="fb-small">من +50,000
 									تقييم</span>
 							</div>
-						</div>
-						<div class="float-badge fb2">
+						</div> -->
+						<!-- <div class="float-badge fb2">
 							<div class="fb-icon" style="background:#e8f5e9;">
 								🚚</div>
 							<div>
@@ -52,7 +52,7 @@
 								<span class="fb-small">على الطلبات +500
 									ج.م</span>
 							</div>
-						</div>
+						</div> -->
 					</div>
 				</div>
 			</div>

@@ -89,7 +89,9 @@ use App\Http\Controllers\StorefrontWhatsAppController;
 include_once 'install_r.php';
 
 Route::middleware(['setData'])->group(function () {
-    Route::get('/', [StorefrontController::class, 'welcome'])->name('welcome');
+    Route::get('/', [StorefrontController::class, 'welcome'])
+        ->middleware('storefront.locale')
+        ->name('welcome');
 
     Auth::routes();
 
