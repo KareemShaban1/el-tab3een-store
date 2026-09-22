@@ -1398,7 +1398,7 @@ return [
     'price_import_instruction_4' => 'بعد إجراء التغييرات، استيرد الملف.',
     'price_import_instruction_5' => 'يمكنك تحديث عمودي وصف المنتج والضمانات لكل منتج.',
     
-    'orders' => 'طلبات',	
+    'orders' => 'الطلبات و الموقع',	
     'tab3een_orders' => 'طلبات التابعين',
     'servo_orders' => 'طلبات Servo',
     'servo_client_name' => 'اسم عميل Servo',
