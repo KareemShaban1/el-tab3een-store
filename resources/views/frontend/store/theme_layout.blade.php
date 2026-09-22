@@ -730,7 +730,9 @@
 
 	async function loadDynamicProducts() {
 		try {
-			const res = await fetch(STORE_PRODUCTS_URL, {
+			const url = new URL(STORE_PRODUCTS_URL, window.location.origin);
+			url.searchParams.set('featured', '1');
+			const res = await fetch(url.toString(), {
 				headers: {
 					Accept: 'application/json',
 				},

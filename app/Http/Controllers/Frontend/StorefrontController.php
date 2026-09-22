@@ -193,6 +193,9 @@ class StorefrontController extends Controller
         if ($request->filled('brand_id')) {
             $query->where('brand_id', $request->integer('brand_id'));
         }
+        if ($request->boolean('featured')) {
+            $query->featured();
+        }
         if ($request->filled('q')) {
             $query->where('name', 'like', '%'.$request->input('q').'%');
         }
@@ -282,6 +285,7 @@ class StorefrontController extends Controller
             'q' => $request->filled('q') ? (string) $request->input('q') : null,
             'category_id' => $request->filled('category_id') ? (string) $request->input('category_id') : null,
             'brand_id' => $request->filled('brand_id') ? (string) $request->input('brand_id') : null,
+            'featured' => $request->boolean('featured') ? '1' : null,
             'price_min' => $request->filled('price_min') ? (string) $request->input('price_min') : null,
             'price_max' => $request->filled('price_max') ? (string) $request->input('price_max') : null,
         ], function ($v) {

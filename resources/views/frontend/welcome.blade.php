@@ -561,7 +561,7 @@ document.querySelectorAll('.tab3een-tab').forEach(tab => {
 @media (max-width: 640px) {
 	.store-whatsapp-fab {
 		inset-inline-end: 16px;
-		bottom: 16px;
+		bottom: 75px;
 		width: 56px;
 		height: 56px;
 		padding: 0;
