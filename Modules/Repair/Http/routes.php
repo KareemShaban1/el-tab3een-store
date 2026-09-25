@@ -12,6 +12,7 @@ Route::group(['middleware' => ['web', 'authh', 'auth', 'SetSessionData', 'langua
     Route::resource('/repair', 'RepairController')->except(['create', 'edit']);
     Route::resource('/status', 'RepairStatusController', ['except' => ['show']]);
     
+    Route::post('repair-settings/upload-image', 'RepairSettingsController@uploadImage');
     Route::resource('/repair-settings', 'RepairSettingsController', ['only' => ['index', 'store']]);
 
     Route::get('/install', 'InstallController@index');
