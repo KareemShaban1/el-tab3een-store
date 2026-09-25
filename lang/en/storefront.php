@@ -19,6 +19,7 @@ return [
         'errors_summary_title' => 'We could not complete your request',
         'errors_summary_hint' => 'Please review the highlighted fields and correct the following.',
         'logged_in_success' => 'Logged in successfully.',
+        'mobile_taken' => 'This mobile number is already registered for an app customer. The same number can still be used by a contact of another type.',
     ],
     'checkout' => [
         'errors_title' => 'We could not place your order',

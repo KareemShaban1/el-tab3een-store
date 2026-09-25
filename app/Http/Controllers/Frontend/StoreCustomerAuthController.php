@@ -149,6 +149,10 @@ class StoreCustomerAuthController extends Controller
         $business_id = $this->resolveBusinessId($request);
         $business = Business::findOrFail($business_id);
 
+        $request->merge([
+            'mobile' => trim((string) $request->input('mobile')),
+        ]);
+
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => [
@@ -160,7 +164,18 @@ class StoreCustomerAuthController extends Controller
                 }),
             ],
             'password' => 'required|string|min:8|confirmed',
-            'mobile' => 'required|string|max:30|unique:contacts,mobile',
+            'mobile' => [
+                'required',
+                'string',
+                'max:30',
+                Rule::unique('contacts', 'mobile')->where(function ($q) use ($business_id) {
+                    return $q->where('business_id', $business_id)
+                        ->where('type', 'app_customer')
+                        ->whereNull('deleted_at');
+                }),
+            ],
+        ], [
+            'mobile.unique' => __('storefront.auth.mobile_taken'),
         ]);
 
         $ref_count = $this->commonUtil->setAndGetReferenceCount('contacts', $business_id);

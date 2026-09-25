@@ -693,6 +693,9 @@ lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, "All"]],
                 mobile_number: function() {
                     return $('#mobile').val();
                 },
+                contact_type: function() {
+                    return $(form).find('#contact_type, [name="type"]').first().val();
+                },
             },
             success: function(result) {
                 if (result.is_mobile_exists == true) {

@@ -10,6 +10,7 @@ use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Collection;
+use Illuminate\Validation\Rule;
 
 class StoreAccountController extends Controller
 {
@@ -49,12 +50,28 @@ class StoreAccountController extends Controller
         /** @var \App\Contact $customer */
         $customer = auth('customer')->user();
 
+        $mobile = trim((string) $request->input('mobile'));
+        $request->merge([
+            'mobile' => $mobile === '' ? null : $mobile,
+        ]);
+
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'mobile' => 'nullable|string|max:30',
+            'mobile' => [
+                'nullable',
+                'string',
+                'max:30',
+                Rule::unique('contacts', 'mobile')->ignore($customer->id)->where(function ($q) use ($customer) {
+                    return $q->where('business_id', $customer->business_id)
+                        ->where('type', 'app_customer')
+                        ->whereNull('deleted_at');
+                }),
+            ],
             'shipping_address' => 'nullable|string',
             'city' => 'nullable|string|max:120',
             'state' => 'nullable|string|max:120',
+        ], [
+            'mobile.unique' => __('storefront.auth.mobile_taken'),
         ]);
 
         $validated['country'] = 'Egypt';
