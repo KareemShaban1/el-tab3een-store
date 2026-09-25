@@ -89,8 +89,9 @@ class SellController extends Controller
     public function index()
     {
         $is_admin = $this->businessUtil->is_admin(auth()->user());
+        $is_tab3een_orders_data = request()->routeIs('sells.ecommerce.orders.data');
 
-        if (! $is_admin && ! auth()->user()->hasAnyPermission(['sell.view', 'sell.create', 'direct_sell.access', 'direct_sell.view', 'view_own_sell_only', 'view_commission_agent_sell', 'access_shipping', 'access_own_shipping', 'access_commission_agent_shipping', 'so.view_all', 'so.view_own'])) {
+        if (! $is_admin && ! ($is_tab3een_orders_data && auth()->user()->can('tab3een_orders.view')) && ! auth()->user()->hasAnyPermission(['sell.view', 'sell.create', 'direct_sell.access', 'direct_sell.view', 'view_own_sell_only', 'view_commission_agent_sell', 'access_shipping', 'access_own_shipping', 'access_commission_agent_shipping', 'so.view_all', 'so.view_own'])) {
             abort(403, 'Unauthorized action.');
         }
 
@@ -669,6 +670,8 @@ class SellController extends Controller
      */
     public function ecommerceOrders()
     {
+        $this->authorizeTab3eenOrders();
+
         if (request()->ajax()) {
             return $this->ecommerceOrdersData();
         }
@@ -726,12 +729,23 @@ class SellController extends Controller
 
     public function ecommerceOrdersData()
     {
+        $this->authorizeTab3eenOrders();
+
         request()->merge([
             'source' => 'ecommerce',
             'sale_type' => 'sell',
         ]);
 
         return $this->index();
+    }
+
+    private function authorizeTab3eenOrders(): void
+    {
+        $is_admin = $this->businessUtil->is_admin(auth()->user());
+
+        if (! $is_admin && ! auth()->user()->can('tab3een_orders.view')) {
+            abort(403, 'Unauthorized action.');
+        }
     }
 
     /**

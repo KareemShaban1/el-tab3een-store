@@ -432,7 +432,14 @@ $is_superadmin = auth()->user()->can('superadmin');
                 )->order(26);
             }
 
-            if (is_storefront_business() && ($is_admin || auth()->user()->hasAnyPermission(['sell.view', 'direct_sell.view', 'view_own_sell_only', 'view_commission_agent_sell']))) {
+            $can_tab3een_orders = $is_admin || auth()->user()->can('tab3een_orders.view');
+            $can_servo_orders = $is_admin || auth()->user()->can('servo_orders.view');
+            $can_hero_banners = $is_admin || auth()->user()->can('hero_banners.access');
+            $can_store_pages = $is_admin || auth()->user()->can('store_pages.access');
+            $can_storefront_appearance = $is_admin || auth()->user()->can('storefront_appearance.access');
+            $can_storefront_whatsapp = $is_admin || auth()->user()->can('storefront_whatsapp.access');
+
+            if (is_storefront_business() && ($can_tab3een_orders || $can_servo_orders || $can_hero_banners || $can_store_pages || $can_storefront_appearance || $can_storefront_whatsapp)) {
                 $storeOrderNotificationUtil = app(StoreOrderNotificationUtil::class);
                 $store_order_counts = $storeOrderNotificationUtil->getSidebarCounts(auth()->user());
                 $tab3een_badge = $storeOrderNotificationUtil->sidebarBadgeHtml($store_order_counts['tab3een'], 'sidebar-tab3een-orders-badge');
@@ -440,33 +447,43 @@ $is_superadmin = auth()->user()->can('superadmin');
 
                 $menu->dropdown(
                     __('lang_v1.orders'),
-                    function ($sub) use ($is_admin, $tab3een_badge, $servo_badge) {
-                        $sub->url(
-                            action([\App\Http\Controllers\SellController::class, 'ecommerceOrders']),
-                            __('lang_v1.tab3een_orders').$tab3een_badge,
-                            ['icon' => '', 'active' => request()->segment(1) == 'sells' && request()->segment(2) == 'ecommerce' && request()->segment(3) == 'orders']
-                        );
-                        $sub->url(
-                            action([\App\Http\Controllers\ServoOrderController::class, 'index']),
-                            __('lang_v1.servo_orders').$servo_badge,
-                            ['icon' => '', 'active' => request()->segment(1) == 'servo-orders']
-                        );
-                        if (auth()->user()->can('business_settings.access') || $is_admin) {
+                    function ($sub) use ($can_tab3een_orders, $can_servo_orders, $can_hero_banners, $can_store_pages, $can_storefront_appearance, $can_storefront_whatsapp, $tab3een_badge, $servo_badge) {
+                        if ($can_tab3een_orders) {
+                            $sub->url(
+                                action([\App\Http\Controllers\SellController::class, 'ecommerceOrders']),
+                                __('lang_v1.tab3een_orders').$tab3een_badge,
+                                ['icon' => '', 'active' => request()->segment(1) == 'sells' && request()->segment(2) == 'ecommerce' && request()->segment(3) == 'orders']
+                            );
+                        }
+                        if ($can_servo_orders) {
+                            $sub->url(
+                                action([\App\Http\Controllers\ServoOrderController::class, 'index']),
+                                __('lang_v1.servo_orders').$servo_badge,
+                                ['icon' => '', 'active' => request()->segment(1) == 'servo-orders']
+                            );
+                        }
+                        if ($can_hero_banners) {
                             $sub->url(
                                 action([\App\Http\Controllers\StoreHeroBannerController::class, 'index']),
                                 __('lang_v1.hero_banners'),
                                 ['icon' => '', 'active' => request()->segment(1) == 'store-hero-banners']
                             );
+                        }
+                        if ($can_store_pages) {
                             $sub->url(
                                 action([\App\Http\Controllers\StorePageController::class, 'index']),
                                 __('store_pages.store_pages'),
                                 ['icon' => '', 'active' => request()->segment(1) == 'store-pages']
                             );
+                        }
+                        if ($can_storefront_appearance) {
                             $sub->url(
                                 action([\App\Http\Controllers\StorefrontAppearanceController::class, 'edit']),
                                 __('storefront_appearance.storefront_appearance'),
                                 ['icon' => '', 'active' => request()->segment(1) == 'storefront-appearance']
                             );
+                        }
+                        if ($can_storefront_whatsapp) {
                             $sub->url(
                                 action([\App\Http\Controllers\StorefrontWhatsAppController::class, 'edit']),
                                 __('lang_v1.storefront_whatsapp'),
