@@ -5,7 +5,8 @@
     $data = (isset($products) && $products) ? ($products->getCollection() ?? collect()) : collect();
 
     $activeQ = trim((string) request('q', ''));
-    $activeCategoryId = request('category_id');
+    $activeCategoryId = $selected_category_id ?? request('category_id');
+    $activeSubCategoryId = $selected_sub_category_id ?? null;
     $activeBrandId = request('brand_id');
     $activePriceMin = request('price_min');
     $activePriceMax = request('price_max');
@@ -15,7 +16,11 @@
     // Links should keep pagination off (remove `page`) while keeping any other filter params.
     $queryWithoutPage = request()->except(['page']);
     $queryWithoutQ = request()->except(['page', 'q']);
-    $queryWithoutCategory = request()->except(['page', 'category_id', 'source']);
+    $queryWithoutCategory = request()->except(['page', 'category_id', 'sub_category_id', 'source']);
+    $queryWithoutSubCategory = request()->except(['page', 'sub_category_id']);
+    if (! empty($activeCategoryId) && (string) request('category_id') !== (string) $activeCategoryId) {
+        $queryWithoutSubCategory['category_id'] = $activeCategoryId;
+    }
     $queryWithoutServoCategory = request()->except(['page', 'category_id']);
     $queryWithoutBrand = request()->except(['page', 'brand_id']);
     $queryWithoutPrice = request()->except(['page', 'price_min', 'price_max']);
@@ -462,6 +467,23 @@ window.__SSR_STORE_PRODUCTS__ = @json($productsSeed);
                 @endif
             @endif
 
+            @if(! $isServoCatalog && ! empty($activeSubCategoryId))
+                @php
+                    $activeSubCategoryName = '';
+                    if (isset($sub_categories)) {
+                        $activeSubCategory = $sub_categories->firstWhere('id', (int) $activeSubCategoryId);
+                        $activeSubCategoryName = $activeSubCategory ? (string) $activeSubCategory->name : '';
+                    }
+                @endphp
+                @if($activeSubCategoryName !== '')
+                    <a class="filter-pill js-store-ajax-nav" href="{{ route('store.products.index', $queryWithoutSubCategory) }}" title="Remove subcategory filter">
+                        <span class="pill-label">{{ __('product.sub_category') }}</span>
+                        <span>{{ $activeSubCategoryName }}</span>
+                        <span class="pill-x">✕</span>
+                    </a>
+                @endif
+            @endif
+
             @if(! $isServoCatalog && ! empty($activeBrandId))
                 @php
                     $activeBrandName = '';
@@ -515,7 +537,18 @@ window.__SSR_STORE_PRODUCTS__ = @json($productsSeed);
                 <select id="filter-category-desktop" name="category_id">
                     <option value="">{{ __('lang_v1.all') }}</option>
                     @foreach($categories as $category)
-                        <option value="{{ $category->id }}" @selected((string)request('category_id') === (string)$category->id)>{{ $category->name }}</option>
+                        <option value="{{ $category->id }}" @selected((string)$activeCategoryId === (string)$category->id)>{{ $category->name }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="filter-group">
+                <label for="filter-sub-category-desktop">{{ __('product.sub_category') }}</label>
+                <select id="filter-sub-category-desktop" name="sub_category_id" data-all-label="{{ __('lang_v1.all') }}">
+                    <option value="">{{ __('lang_v1.all') }}</option>
+                    @foreach(($sub_categories ?? collect()) as $subCategory)
+                        @if(empty($activeCategoryId) || (string) $subCategory->parent_id === (string) $activeCategoryId)
+                            <option value="{{ $subCategory->id }}" @selected((string)$activeSubCategoryId === (string)$subCategory->id)>{{ $subCategory->name }}</option>
+                        @endif
                     @endforeach
                 </select>
             </div>
@@ -672,6 +705,23 @@ window.__SSR_STORE_PRODUCTS__ = @json($productsSeed);
             @endif
         @endif
 
+        @if(! $isServoCatalog && ! empty($activeSubCategoryId))
+            @php
+                $activeSubCategoryName = '';
+                if (isset($sub_categories)) {
+                    $activeSubCategory = $sub_categories->firstWhere('id', (int) $activeSubCategoryId);
+                    $activeSubCategoryName = $activeSubCategory ? (string) $activeSubCategory->name : '';
+                }
+            @endphp
+            @if($activeSubCategoryName !== '')
+                <a class="filter-pill js-store-ajax-nav" href="{{ route('store.products.index', $queryWithoutSubCategory) }}" title="Remove subcategory filter">
+                    <span class="pill-label">{{ __('product.sub_category') }}</span>
+                    <span>{{ $activeSubCategoryName }}</span>
+                    <span class="pill-x">✕</span>
+                </a>
+            @endif
+        @endif
+
         @if(! $isServoCatalog && ! empty($activeBrandId))
             @php
                 $activeBrandName = '';
@@ -725,7 +775,18 @@ window.__SSR_STORE_PRODUCTS__ = @json($productsSeed);
             <select id="filter-category-mobile" name="category_id">
                 <option value="">{{ __('lang_v1.all') }}</option>
                 @foreach($categories as $category)
-                    <option value="{{ $category->id }}" @selected((string)request('category_id') === (string)$category->id)>{{ $category->name }}</option>
+                    <option value="{{ $category->id }}" @selected((string)$activeCategoryId === (string)$category->id)>{{ $category->name }}</option>
+                @endforeach
+            </select>
+        </div>
+        <div class="filter-group">
+            <label for="filter-sub-category-mobile">{{ __('product.sub_category') }}</label>
+            <select id="filter-sub-category-mobile" name="sub_category_id" data-all-label="{{ __('lang_v1.all') }}">
+                <option value="">{{ __('lang_v1.all') }}</option>
+                @foreach(($sub_categories ?? collect()) as $subCategory)
+                    @if(empty($activeCategoryId) || (string) $subCategory->parent_id === (string) $activeCategoryId)
+                        <option value="{{ $subCategory->id }}" @selected((string)$activeSubCategoryId === (string)$subCategory->id)>{{ $subCategory->name }}</option>
+                    @endif
                 @endforeach
             </select>
         </div>
@@ -795,6 +856,10 @@ window.__SSR_STORE_PRODUCTS__ = @json($productsSeed);
 
         const STORE_PRODUCTS_URL = @json(route('store.products.index'));
         const STORE_CATEGORY_NAMES = @json(isset($categories) ? $categories->pluck('name', 'id')->all() : []);
+        const STORE_SUBCATEGORIES = @json(isset($sub_categories) ? $sub_categories->map(function ($sub) {
+            return ['id' => (int) $sub->id, 'name' => (string) $sub->name, 'parent_id' => (int) $sub->parent_id];
+        })->values() : []);
+        const STORE_SUBCATEGORY_LABEL = @json(__('product.sub_category'));
         const STORE_BRAND_NAMES = @json(isset($brands) ? $brands->pluck('name', 'id')->all() : []);
         const STORE_SERVO_CATEGORY_NAME = @json($servoCategoryName ?? '');
         const STORE_IS_SERVO_CATALOG = @json($isServoCatalog ?? false);
@@ -963,6 +1028,27 @@ window.__SSR_STORE_PRODUCTS__ = @json($productsSeed);
             });
         }
 
+        function fillSubCategorySelect(select, parentId, selectedId) {
+            if (!select) return;
+            const parent = String(parentId || '');
+            const selected = String(selectedId || '');
+            const allLabel = select.dataset.allLabel || '';
+            const options = ['<option value="">' + escHtml(allLabel) + '</option>'];
+            STORE_SUBCATEGORIES.forEach((sub) => {
+                if (parent && String(sub.parent_id) !== parent) return;
+                const id = String(sub.id);
+                options.push('<option value="' + id + '"' + (id === selected ? ' selected' : '') + '>' + escHtml(sub.name) + '</option>');
+            });
+            select.innerHTML = options.join('');
+        }
+
+        function syncSubCategorySelect(fromSuffix, toSuffix) {
+            const fromCategory = document.getElementById('filter-category-' + fromSuffix);
+            const fromSub = document.getElementById('filter-sub-category-' + fromSuffix);
+            const toSub = document.getElementById('filter-sub-category-' + toSuffix);
+            fillSubCategorySelect(toSub, fromCategory ? fromCategory.value : '', fromSub ? fromSub.value : '');
+        }
+
         function syncDesktopToMobile() {
             const pairs = [
                 ['filter-q-desktop', 'filter-q-mobile'],
@@ -991,6 +1077,7 @@ window.__SSR_STORE_PRODUCTS__ = @json($productsSeed);
                 hMaxT.value = hMaxF.value;
             }
             updatePriceSliderVisual('mobile');
+            syncSubCategorySelect('desktop', 'mobile');
         }
 
         function syncMobileToDesktop() {
@@ -1023,6 +1110,7 @@ window.__SSR_STORE_PRODUCTS__ = @json($productsSeed);
                 hMinF.value = hMinT.value;
                 hMaxF.value = hMaxT.value;
             }
+            syncSubCategorySelect('mobile', 'desktop');
         }
 
         function readFiltersFromDesktopForm() {
@@ -1042,12 +1130,28 @@ window.__SSR_STORE_PRODUCTS__ = @json($productsSeed);
                 const el = document.getElementById(id);
                 if (el) el.value = v;
             };
+            let categoryId = get('category_id');
+            let subCategoryId = get('sub_category_id');
+            if (!subCategoryId && categoryId) {
+                const asSub = STORE_SUBCATEGORIES.find((sub) => String(sub.id) === String(categoryId));
+                if (asSub) {
+                    subCategoryId = String(asSub.id);
+                    categoryId = String(asSub.parent_id);
+                }
+            }
             set('filter-q-desktop', get('q'));
             set('filter-q-mobile', get('q'));
-            set('filter-category-desktop', get('category_id'));
-            set('filter-category-mobile', get('category_id'));
+            set('filter-category-desktop', categoryId);
+            set('filter-category-mobile', categoryId);
             set('filter-brand-desktop', get('brand_id'));
             set('filter-brand-mobile', get('brand_id'));
+            ['desktop', 'mobile'].forEach((suffix) => {
+                fillSubCategorySelect(
+                    document.getElementById('filter-sub-category-' + suffix),
+                    categoryId,
+                    subCategoryId
+                );
+            });
 
             const b = getPriceSliderBounds();
             const pmin = get('price_min');
@@ -1087,6 +1191,7 @@ window.__SSR_STORE_PRODUCTS__ = @json($productsSeed);
             if (f.source) o.source = f.source;
             if (f.q) o.q = f.q;
             if (f.category_id) o.category_id = f.category_id;
+            if (f.sub_category_id) o.sub_category_id = f.sub_category_id;
             if (f.brand_id) o.brand_id = f.brand_id;
             if (f.price_min) o.price_min = f.price_min;
             if (f.price_max) o.price_max = f.price_max;
@@ -1118,7 +1223,21 @@ window.__SSR_STORE_PRODUCTS__ = @json($productsSeed);
                     name = STORE_SERVO_CATEGORY_NAME || '';
                 }
                 if (name) {
-                    parts.push(`<a class="filter-pill js-store-ajax-nav" href="${urlWithoutFilterKey(f, 'category_id')}"><span class="pill-label">Category</span><span>${String(name).replace(/</g, '&lt;')}</span><span class="pill-x">✕</span></a>`);
+                    const next = { ...f };
+                    delete next.category_id;
+                    delete next.sub_category_id;
+                    const p = new URLSearchParams();
+                    Object.entries(next).forEach(([k, v]) => {
+                        if (v) p.set(k, String(v));
+                    });
+                    const href = p.toString() ? (STORE_PRODUCTS_URL + '?' + p.toString()) : STORE_PRODUCTS_URL;
+                    parts.push(`<a class="filter-pill js-store-ajax-nav" href="${href}"><span class="pill-label">Category</span><span>${String(name).replace(/</g, '&lt;')}</span><span class="pill-x">✕</span></a>`);
+                }
+            }
+            if (f.sub_category_id && f.source !== 'servo') {
+                const sub = STORE_SUBCATEGORIES.find((item) => String(item.id) === String(f.sub_category_id));
+                if (sub && sub.name) {
+                    parts.push(`<a class="filter-pill js-store-ajax-nav" href="${urlWithoutFilterKey(f, 'sub_category_id')}"><span class="pill-label">${escHtml(STORE_SUBCATEGORY_LABEL)}</span><span>${escHtml(sub.name)}</span><span class="pill-x">✕</span></a>`);
                 }
             }
             if (f.brand_id && f.source !== 'servo') {
@@ -1317,14 +1436,25 @@ window.__SSR_STORE_PRODUCTS__ = @json($productsSeed);
 
         document.querySelectorAll('.js-store-filters-reset').forEach((btn) => {
             btn.addEventListener('click', () => {
-                ['filter-q-desktop', 'filter-q-mobile', 'filter-category-desktop', 'filter-category-mobile', 'filter-brand-desktop', 'filter-brand-mobile'].forEach((id) => {
+                ['filter-q-desktop', 'filter-q-mobile', 'filter-category-desktop', 'filter-category-mobile', 'filter-sub-category-desktop', 'filter-sub-category-mobile', 'filter-brand-desktop', 'filter-brand-mobile'].forEach((id) => {
                     const el = document.getElementById(id);
                     if (!el) return;
                     if (el.tagName === 'SELECT') el.selectedIndex = 0;
                     else el.value = '';
                 });
+                ['desktop', 'mobile'].forEach((suffix) => {
+                    fillSubCategorySelect(document.getElementById('filter-sub-category-' + suffix), '', '');
+                });
                 resetAllPriceSliders();
                 fetchStoreProducts(STORE_PRODUCTS_URL);
+            });
+        });
+
+        ['desktop', 'mobile'].forEach((suffix) => {
+            const category = document.getElementById('filter-category-' + suffix);
+            if (!category) return;
+            category.addEventListener('change', () => {
+                fillSubCategorySelect(document.getElementById('filter-sub-category-' + suffix), category.value, '');
             });
         });
 

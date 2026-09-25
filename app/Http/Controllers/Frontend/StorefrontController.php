@@ -174,6 +174,7 @@ class StorefrontController extends Controller
         $business_id = self::resolveBusinessId($request);
         $location_id = $this->resolveLocationId($business_id, $request);
         $business_location_ids = BusinessLocation::where('business_id', $business_id)->where('is_active', 1)->pluck('id');
+        [$selectedCategoryId, $selectedSubCategoryId] = $this->resolveStorefrontCategoryFilters($request, $business_id);
 
         $query = Product::where('products.business_id', $business_id)
             ->active()
@@ -187,8 +188,13 @@ class StorefrontController extends Controller
                 'category:id,name',
             ]);
 
-        if ($request->filled('category_id')) {
-            $categoryId = $request->integer('category_id');
+        if ($selectedSubCategoryId) {
+            $query->where('sub_category_id', $selectedSubCategoryId);
+            if ($selectedCategoryId) {
+                $query->where('category_id', $selectedCategoryId);
+            }
+        } elseif ($selectedCategoryId) {
+            $categoryId = $selectedCategoryId;
             // Parent categories are stored on products.category_id.
             // Subcategories are stored on products.sub_category_id.
             $query->where(function ($categoryQuery) use ($categoryId) {
@@ -289,7 +295,8 @@ class StorefrontController extends Controller
         $products->appends($request->query());
         $filterQuery = array_filter([
             'q' => $request->filled('q') ? (string) $request->input('q') : null,
-            'category_id' => $request->filled('category_id') ? (string) $request->input('category_id') : null,
+            'category_id' => $selectedCategoryId ? (string) $selectedCategoryId : null,
+            'sub_category_id' => $selectedSubCategoryId ? (string) $selectedSubCategoryId : null,
             'brand_id' => $request->filled('brand_id') ? (string) $request->input('brand_id') : null,
             'featured' => $request->boolean('featured') ? '1' : null,
             'price_min' => $request->filled('price_min') ? (string) $request->input('price_min') : null,
@@ -323,6 +330,13 @@ class StorefrontController extends Controller
                 ->storefrontSortOrder()
                 ->select('id', 'name')
                 ->get();
+            $subCategories = Category::where('business_id', $business_id)
+                ->where('category_type', 'product')
+                ->where('parent_id', '>', 0)
+                ->activeInApp()
+                ->storefrontSortOrder()
+                ->select('id', 'name', 'parent_id')
+                ->get();
             $brands = Brands::where('business_id', $business_id)->select('id', 'name')->orderBy('name')->get();
 
             $priceSlider = $this->getStorefrontCatalogPriceSliderSpec($business_id, $business_location_ids);
@@ -330,6 +344,9 @@ class StorefrontController extends Controller
             return view('frontend.store.products')->with([
                 'products' => $products,
                 'categories' => $categories,
+                'sub_categories' => $subCategories,
+                'selected_category_id' => $selectedCategoryId,
+                'selected_sub_category_id' => $selectedSubCategoryId,
                 'brands' => $brands,
                 'store_price_slider_min' => $priceSlider['min'],
                 'store_price_slider_max' => $priceSlider['max'],
@@ -983,5 +1000,41 @@ class StorefrontController extends Controller
         }
 
         return '+'.number_format($value);
+    }
+
+    /**
+     * @return array{0: ?int, 1: ?int}
+     */
+    private function resolveStorefrontCategoryFilters(Request $request, int $businessId): array
+    {
+        $categoryId = $request->filled('category_id') ? $request->integer('category_id') : null;
+        $subCategoryId = $request->filled('sub_category_id') ? $request->integer('sub_category_id') : null;
+
+        if ($subCategoryId) {
+            $subCategory = Category::query()
+                ->where('business_id', $businessId)
+                ->where('category_type', 'product')
+                ->where('id', $subCategoryId)
+                ->first();
+
+            if ($subCategory && (int) $subCategory->parent_id > 0) {
+                $categoryId = $categoryId ?: (int) $subCategory->parent_id;
+            } else {
+                $subCategoryId = null;
+            }
+        } elseif ($categoryId) {
+            $category = Category::query()
+                ->where('business_id', $businessId)
+                ->where('category_type', 'product')
+                ->where('id', $categoryId)
+                ->first();
+
+            if ($category && (int) $category->parent_id > 0) {
+                $subCategoryId = (int) $category->id;
+                $categoryId = (int) $category->parent_id;
+            }
+        }
+
+        return [$categoryId, $subCategoryId];
     }
 }
