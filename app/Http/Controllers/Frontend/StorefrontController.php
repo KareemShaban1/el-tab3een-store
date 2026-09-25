@@ -188,7 +188,13 @@ class StorefrontController extends Controller
             ]);
 
         if ($request->filled('category_id')) {
-            $query->where('category_id', $request->integer('category_id'));
+            $categoryId = $request->integer('category_id');
+            // Parent categories are stored on products.category_id.
+            // Subcategories are stored on products.sub_category_id.
+            $query->where(function ($categoryQuery) use ($categoryId) {
+                $categoryQuery->where('category_id', $categoryId)
+                    ->orWhere('sub_category_id', $categoryId);
+            });
         }
         if ($request->filled('brand_id')) {
             $query->where('brand_id', $request->integer('brand_id'));
@@ -197,7 +203,7 @@ class StorefrontController extends Controller
             $query->featured();
         }
         if ($request->filled('q')) {
-            $query->where('name', 'like', '%'.$request->input('q').'%');
+            $query->whereNameOrTags(trim((string) $request->input('q')));
         }
 
         $priceMin = $request->filled('price_min') ? (float) $request->input('price_min') : null;
@@ -507,7 +513,10 @@ class StorefrontController extends Controller
                         ->active()
                         ->productForSales()
                         ->activeInApp()
-                        ->where('category_id', $sub->id)
+                        ->where(function ($categoryQuery) use ($sub) {
+                            $categoryQuery->where('category_id', $sub->id)
+                                ->orWhere('sub_category_id', $sub->id);
+                        })
                         ->count();
 
                     return [
@@ -911,7 +920,7 @@ class StorefrontController extends Controller
             ->productForSales()
             ->activeInApp()
             ->inStockByBusiness($business_id)
-            ->where('name', 'like', $like)
+            ->whereNameOrTags($term)
             ->orderBy('name')
             ->limit(10)
             ->select('id', 'name');

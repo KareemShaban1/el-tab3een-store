@@ -1653,6 +1653,7 @@ class ProductUtil extends Util
                 $query->where(function ($query) use ($search_term, $search_fields) {
                     if (in_array('name', $search_fields)) {
                         $query->where('products.name', 'like', '%'.$search_term.'%');
+                        $query->orWhere('products.tags', 'like', '%'.$search_term.'%');
                     }
 
                     if (in_array('sku', $search_fields)) {
@@ -1687,6 +1688,7 @@ class ProductUtil extends Util
                 $query->where(function ($query) use ($search_term, $search_fields) {
                     if (in_array('name', $search_fields)) {
                         $query->where('products.name', $search_term);
+                        $query->orWhere('products.tags', 'like', '%'.$search_term.'%');
                     }
 
                     if (in_array('sku', $search_fields)) {

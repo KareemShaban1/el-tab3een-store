@@ -113,6 +113,7 @@ return [
             'provider' => 'contacts',
             'table' => 'password_resets_contacts',
             'expire' => 60,
+            'throttle' => 60,
         ],
     ],
 

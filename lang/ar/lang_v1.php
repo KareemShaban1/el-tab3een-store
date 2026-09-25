@@ -549,6 +549,8 @@ return [
     'accept_terms_and_conditions' => 'قبول الشروط والأحكام',
     'terms_conditions' => 'الشروط والاحكام',
     'product_description' => 'وصف المنتج',
+    'product_tags' => 'tags المنتج',
+    'product_tags_help' => 'افصل tags بفاصلة. يظهر المنتج في البحث عند مطابقة الاسم أو أي tag.',
     'click_here' => 'انقر هنا',
     'for_more_info' => 'لمزيد من المعلومات',
     'username_help' => 'اترك الحقل فارغًا لإنشاء اسم المستخدم تلقائيًا',

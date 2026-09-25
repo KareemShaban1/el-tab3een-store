@@ -156,6 +156,11 @@
                   {!! Form::textarea('product_description', $product->product_description, ['class' => 'form-control']); !!}
               </div>
               <div class="form-group tw-mt-3">
+                {!! Form::label('tags', __('lang_v1.product_tags') . ':') !!}
+                {!! Form::text('tags', $product->tags, ['class' => 'form-control', 'placeholder' => __('lang_v1.product_tags_help')]); !!}
+                <p class="help-block">@lang('lang_v1.product_tags_help')</p>
+              </div>
+              <div class="form-group tw-mt-3">
                 {!! Form::label('warranties', __('lang_v1.warranties') . ':') !!}
                   {!! Form::textarea('warranties', $product->warranties, ['class' => 'form-control']); !!}
               </div>

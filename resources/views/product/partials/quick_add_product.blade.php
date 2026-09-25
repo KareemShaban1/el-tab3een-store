@@ -140,6 +140,10 @@
             {!! Form::label('product_description', __('lang_v1.product_description') . ':') !!}
               {!! Form::textarea('product_description', null, ['class' => 'form-control']); !!}
           </div>
+          <div class="form-group">
+            {!! Form::label('tags', __('lang_v1.product_tags') . ':') !!}
+            {!! Form::text('tags', null, ['class' => 'form-control', 'placeholder' => __('lang_v1.product_tags_help')]); !!}
+          </div>
         </div>
         <div class="clearfix"></div>
         <div class="col-sm-4">

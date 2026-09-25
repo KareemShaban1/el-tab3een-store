@@ -28,8 +28,8 @@ margin: 20px auto;
             </div>
         </div>
 
-        <label for="register-email">البريد الإلكتروني</label>
-        <input id="register-email" type="email" name="email" value="{{ old('email') }}" class="@error('email') auth-input-error @enderror" aria-invalid="{{ $errors->has('email') ? 'true' : 'false' }}" autocomplete="email" required>
+        <label for="register-email">البريد الإلكتروني <span style="color: var(--muted); font-weight: 500;">(اختياري)</span></label>
+        <input id="register-email" type="email" name="email" value="{{ old('email') }}" class="@error('email') auth-input-error @enderror" aria-invalid="{{ $errors->has('email') ? 'true' : 'false' }}" autocomplete="email">
 
         <div class="row">
             <div>
