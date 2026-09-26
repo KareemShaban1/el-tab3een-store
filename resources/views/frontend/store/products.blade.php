@@ -1139,16 +1139,12 @@ if ($sPmax <= $sPmin) { $sPmax=$sPmin + 1; } $sliderRngLo=$sPmin; $sliderRngHi=$
 		if (!main) return;
 
 		const STORE_PRODUCTS_URL = @json(route('store.products.index'));
-		const STORE_CATEGORY_NAMES = @json(isset($categories) ? $categories - > pluck('name', 'id') - >
-			all() : []);
-		const STORE_SUBCATEGORIES = @json(isset($sub_categories) ? $sub_categories - > map(function($sub) {
-			return ['id' => (int) $sub - > id, 'name' => (
-				string) $sub - > name, 'parent_id' => (
-					int) $sub - > parent_id
-			];
-		}) - > values() : []);
+		const STORE_CATEGORY_NAMES = @json(isset($categories) ? $categories->pluck('name', 'id')->all() : []);
+		const STORE_SUBCATEGORIES = @json(isset($sub_categories) ? $sub_categories->map(function($sub) {
+			return ['id' => (int) $sub->id, 'name' => (string) $sub->name, 'parent_id' => (int) $sub->parent_id];
+		})-> values() : []);
 		const STORE_SUBCATEGORY_LABEL = @json(__('product.sub_category'));
-		const STORE_BRAND_NAMES = @json(isset($brands) ? $brands - > pluck('name', 'id') - > all() : []);
+		const STORE_BRAND_NAMES = @json(isset($brands) ? $brands->pluck('name', 'id')-> all() : []);
 		const STORE_SERVO_CATEGORY_NAME = @json($servoCategoryName ?? '');
 		const STORE_IS_SERVO_CATALOG = @json($isServoCatalog ?? false);
 
