@@ -944,11 +944,19 @@
 		}
 	}
 
+	function servoCategoryDisplayName(c) {
+		const categoryName = String(c.category_name || (c.category && c.category.name) || '').trim();
+		const subName = String(c.sub_category_name || (c.sub_category && c.sub_category.name) || '').trim();
+		if (categoryName) return categoryName;
+		if (subName) return subName;
+		return String(c.name || '').trim();
+	}
+
 	function normalizeServoCategoriesForGrid(catalog) {
 		return (catalog || [])
 			.map((c) => ({
-				id: Number(c.id),
-				name: String(c.name || ''),
+				id: Number(c.id || c.category_id || c.sub_category_id),
+				name: servoCategoryDisplayName(c),
 				count: Array.isArray(c.products) ? c.products.length : Number(c
 					.count || 0),
 				image_url: String(c.image_url || c.image || ''),
@@ -1540,6 +1548,7 @@
 						name: d.name,
 						brand: d.brand || prev.brand || '',
 						category: d.category || prev.category || '',
+						sub_category: d.sub_category || prev.sub_category || '',
 						unit: d.unit || prev.unit || '',
 						price: defPrice,
 						old: prev.old != null ? prev.old : null,
@@ -1602,7 +1611,7 @@
 			})
 			.join('');
 
-		const crumb = [p.brand, p.category].filter((x) => String(x).trim()).join(' · ');
+		const crumb = [p.brand, p.category, p.sub_category].filter((x) => String(x || '').trim()).join(' · ');
 		const imgSrc = String(p.img || '').replace(/"/g, '');
 		const unitLine = p.unit ?
 			`<div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;">الوحدة: ${modalEsc(p.unit)}</div>` :

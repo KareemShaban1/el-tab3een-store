@@ -636,6 +636,8 @@ class StorefrontController extends Controller
         if ($categoryId !== null) {
             $matchedCategory = collect($catalog)->first(
                 fn ($category) => (int) ($category['id'] ?? 0) === $categoryId
+                    || (int) ($category['category_id'] ?? 0) === $categoryId
+                    || (int) ($category['sub_category_id'] ?? 0) === $categoryId
             );
             $servoCategoryName = $matchedCategory ? (string) ($matchedCategory['name'] ?? '') : '';
         }
@@ -762,13 +764,18 @@ class StorefrontController extends Controller
             ->all();
 
         $defaultVariation = $variations[0] ?? null;
+        $categoryName = trim((string) ($category['category_name'] ?? ''));
+        $subCategoryName = trim((string) ($category['sub_category_name'] ?? ''));
+        $categoryLabel = $categoryName !== ''
+            ? $categoryName
+            : ($subCategoryName !== '' ? $subCategoryName : (string) ($category['name'] ?? ''));
 
         return [
             'id' => (int) ($product['id'] ?? 0),
             'name' => (string) ($product['name'] ?? ''),
             'image_url' => (string) ($product['image_url'] ?? ''),
-            'brand' => (string) ($category['name'] ?? ''),
-            'category' => (string) ($category['name'] ?? ''),
+            'brand' => $categoryLabel,
+            'category' => $categoryLabel,
             'source' => 'servo',
             'in_stock_qty' => collect($variations)->sum('qty_available'),
             'variation_id' => $defaultVariation ? (int) $defaultVariation['variation_id'] : 0,

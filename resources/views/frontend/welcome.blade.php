@@ -75,13 +75,19 @@
 <!-- ===================== CATEGORIES ===================== -->
 @php
 $servoCategoriesForGrid = collect($tab3eenCatalog ?? [])->map(function ($category) {
+$categoryName = trim((string) ($category['category_name'] ?? ''));
+$subCategoryName = trim((string) ($category['sub_category_name'] ?? ''));
+$displayName = $categoryName !== '' ? $categoryName : ($subCategoryName !== '' ? $subCategoryName : trim((string) ($category['name'] ?? '')));
+
 return [
 'id' => (int) ($category['id'] ?? 0),
-'name' => (string) ($category['name'] ?? ''),
+'name' => $displayName,
+'category_name' => $categoryName,
+'sub_category_name' => $subCategoryName,
 'image' => (string) ($category['image'] ?? ''),
 'products' => $category['products'] ?? [],
 ];
-})->filter(fn ($category) => $category['id'] > 0 && count($category['products']) > 0)->values();
+})->filter(fn ($category) => $category['id'] > 0 && $category['name'] !== '' && count($category['products']) > 0)->values();
 @endphp
 <script>
 window.__SSR_SERVO_CATEGORIES__ = @json($servoCategoriesForGrid);
@@ -135,8 +141,8 @@ $vid = (int) ($item['default_variation_id'] ?? ($def['variation_id'] ?? $id));
 return [
 $id => [
 'name' => (string) ($item['name'] ?? ''),
-'brand' => (string) ($category['name'] ?? ''),
-'category' => (string) ($category['name'] ?? ''),
+'brand' => (string) (($category['name'] ?? '') !== '' ? $category['name'] : (($category['category_name'] ?? '') !== '' ? $category['category_name'] : ($category['sub_category_name'] ?? ''))),
+'category' => (string) (($category['category_name'] ?? '') !== '' ? $category['category_name'] : (($category['sub_category_name'] ?? '') !== '' ? $category['sub_category_name'] : ($category['name'] ?? ''))),
 'unit' => '',
 'price' => $price,
 'has_price' => ! empty($item['has_price']) && $price !== null,

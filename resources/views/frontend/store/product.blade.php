@@ -56,6 +56,7 @@ window.__SSR_STORE_PRODUCTS__[{{ $productIdForCart }}] = {
     name: @json($sfStr($product['name'] ?? '')),
     brand: @json($sfStr($product['brand'] ?? '')),
     category: @json($sfStr($product['category'] ?? '')),
+    sub_category: @json($sfStr($product['sub_category'] ?? '')),
     unit: '',
     price: {{ $initialPriceForCart ?? 'null' }},
     has_price: @json($initialHasPrice),
@@ -249,7 +250,7 @@ window.__SSR_STORE_PRODUCTS__[{{ $productIdForCart }}] = {
                 </div>
             </div> -->
 
-            @if($isServoProduct && ($sfStr($product['brand'] ?? '') || $sfStr($product['category'] ?? '')))
+            @if($isServoProduct && ($sfStr($product['brand'] ?? '') || $sfStr($product['category'] ?? '') || $sfStr($product['sub_category'] ?? '')))
                 <div class="meta-grid">
                     @if($sfStr($product['brand'] ?? ''))
                         <div class="meta-box">
@@ -261,6 +262,12 @@ window.__SSR_STORE_PRODUCTS__[{{ $productIdForCart }}] = {
                         <div class="meta-box">
                             <p class="meta-label">{{ __('storefront.catalog.category') }}</p>
                             <p class="meta-value">{{ $sfStr($product['category'] ?? '') }}</p>
+                        </div>
+                    @endif
+                    @if($sfStr($product['sub_category'] ?? ''))
+                        <div class="meta-box">
+                            <p class="meta-label">{{ __('product.sub_category') }}</p>
+                            <p class="meta-value">{{ $sfStr($product['sub_category'] ?? '') }}</p>
                         </div>
                     @endif
                 </div>

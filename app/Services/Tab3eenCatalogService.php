@@ -29,7 +29,9 @@ class Tab3eenCatalogService
 
             if ($categoryId !== null && $categoryId > 0) {
                 $categories = collect($categories)
-                    ->filter(fn ($category) => (int) ($category['id'] ?? 0) === $categoryId)
+                    ->filter(fn ($category) => (int) ($category['id'] ?? 0) === $categoryId
+                        || (int) ($category['category_id'] ?? 0) === $categoryId
+                        || (int) ($category['sub_category_id'] ?? 0) === $categoryId)
                     ->values()
                     ->all();
             }
@@ -247,9 +249,16 @@ class Tab3eenCatalogService
                     ->values()
                     ->all();
 
+                [$categoryName, $subCategoryName] = $this->categoryLabelParts($category, true);
+                $displayName = $categoryName !== '' ? $categoryName : $subCategoryName;
+
                 return [
-                    'id' => (int) ($category['id'] ?? 0),
-                    'name' => (string) ($category['name'] ?? ''),
+                    'id' => (int) ($category['id'] ?? $category['category_id'] ?? $category['sub_category_id'] ?? 0),
+                    'category_id' => ! empty($category['category_id']) ? (int) $category['category_id'] : null,
+                    'sub_category_id' => ! empty($category['sub_category_id']) ? (int) $category['sub_category_id'] : null,
+                    'category_name' => $categoryName,
+                    'sub_category_name' => $subCategoryName,
+                    'name' => $displayName,
                     'image' => (string) ($category['image'] ?? ''),
                     'sort_order' => (int) ($category['sort_order'] ?? 0),
                     'products' => $products,
@@ -350,7 +359,7 @@ class Tab3eenCatalogService
         }
 
         $brand = $product['brand'] ?? null;
-        $category = $product['category'] ?? null;
+        [$categoryName, $subCategoryName] = $this->categoryLabelParts($product);
 
         return [
             'id' => (int) ($product['id'] ?? 0),
@@ -360,11 +369,40 @@ class Tab3eenCatalogService
             'warranty' => null,
             'image_url' => (string) ($product['image_url'] ?? ''),
             'brand' => is_array($brand) ? (string) ($brand['name'] ?? '') : (string) ($brand ?? ''),
-            'category' => is_array($category) ? (string) ($category['name'] ?? '') : (string) ($category ?? ''),
+            'category' => $categoryName,
+            'sub_category' => $subCategoryName,
             'unit' => null,
             'source' => 'servo',
             'has_price' => collect($variations)->contains(fn ($variation) => $variation['price_inc_tax'] !== null),
             'variations' => $variations,
         ];
+    }
+
+    /**
+     * @return array{0: string, 1: string}
+     */
+    private function categoryLabelParts(array $row, bool $fallbackToName = false): array
+    {
+        $categoryName = '';
+        if (is_array($row['category'] ?? null)) {
+            $categoryName = trim((string) ($row['category']['name'] ?? ''));
+        }
+        if ($categoryName === '') {
+            $categoryName = trim((string) ($row['category_name'] ?? ''));
+        }
+
+        $subCategoryName = '';
+        if (is_array($row['sub_category'] ?? null)) {
+            $subCategoryName = trim((string) ($row['sub_category']['name'] ?? ''));
+        }
+        if ($subCategoryName === '') {
+            $subCategoryName = trim((string) ($row['sub_category_name'] ?? ''));
+        }
+
+        if ($categoryName === '' && $subCategoryName === '' && $fallbackToName) {
+            $categoryName = trim((string) ($row['name'] ?? ''));
+        }
+
+        return [$categoryName, $subCategoryName];
     }
 }
