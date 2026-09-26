@@ -19,7 +19,7 @@ class Tab3eenCatalogService
         }
 
         try {
-            $rawData = $this->fetchCatalogPayload($url, $categoryId);
+            $rawData = $this->fetchCatalogPayload($url, null);
 
             if ($rawData === null) {
                 return [];
@@ -29,9 +29,13 @@ class Tab3eenCatalogService
 
             if ($categoryId !== null && $categoryId > 0) {
                 $categories = collect($categories)
-                    ->filter(fn ($category) => (int) ($category['id'] ?? 0) === $categoryId
-                        || (int) ($category['category_id'] ?? 0) === $categoryId
-                        || (int) ($category['sub_category_id'] ?? 0) === $categoryId)
+                    ->filter(function ($category) use ($categoryId) {
+                        $aliasIds = array_map('intval', $category['alias_ids'] ?? []);
+
+                        return (int) ($category['id'] ?? 0) === $categoryId
+                            || (int) ($category['category_id'] ?? 0) === $categoryId
+                            || in_array($categoryId, $aliasIds, true);
+                    })
                     ->values()
                     ->all();
             }
@@ -265,11 +269,65 @@ class Tab3eenCatalogService
                 ];
             })
             ->filter(fn ($category) => ! empty($category['products']))
+            ->values();
+
+        return $this->groupCategoriesByParent($normalized);
+    }
+
+    /**
+     * Rows that share a Servo category are one category. Subcategory ids stay as aliases
+     * so older links still open that category.
+     *
+     * @param  \Illuminate\Support\Collection<int, array<string, mixed>>  $categories
+     * @return array<int, array<string, mixed>>
+     */
+    private function groupCategoriesByParent($categories): array
+    {
+        return $categories
+            ->groupBy(function ($category) {
+                $categoryId = (int) ($category['category_id'] ?? 0);
+
+                return $categoryId > 0 ? 'category-'.$categoryId : 'row-'.(int) ($category['id'] ?? 0);
+            })
+            ->map(function ($group) {
+                $first = $group->first();
+                $categoryId = (int) ($first['category_id'] ?? 0);
+                $products = $group
+                    ->flatMap(fn ($category) => $category['products'] ?? [])
+                    ->unique('id')
+                    ->values()
+                    ->all();
+                $aliasIds = $group
+                    ->flatMap(function ($category) {
+                        return [
+                            (int) ($category['id'] ?? 0),
+                            (int) ($category['category_id'] ?? 0),
+                            (int) ($category['sub_category_id'] ?? 0),
+                        ];
+                    })
+                    ->filter(fn ($id) => $id > 0)
+                    ->unique()
+                    ->values()
+                    ->all();
+                $withImage = $group->first(fn ($category) => trim((string) ($category['image'] ?? '')) !== '');
+                $image = (string) ($withImage['image'] ?? '');
+
+                return [
+                    'id' => $categoryId > 0 ? $categoryId : (int) ($first['id'] ?? 0),
+                    'category_id' => $categoryId > 0 ? $categoryId : null,
+                    'sub_category_id' => null,
+                    'alias_ids' => $aliasIds,
+                    'category_name' => (string) ($first['category_name'] ?? ''),
+                    'sub_category_name' => '',
+                    'name' => (string) ($first['name'] ?? ''),
+                    'image' => $image,
+                    'sort_order' => (int) $group->min('sort_order'),
+                    'products' => $products,
+                ];
+            })
             ->sortBy('sort_order')
             ->values()
             ->all();
-
-        return $normalized;
     }
 
     /**

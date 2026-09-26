@@ -634,11 +634,7 @@ class StorefrontController extends Controller
 
         $servoCategoryName = '';
         if ($categoryId !== null) {
-            $matchedCategory = collect($catalog)->first(
-                fn ($category) => (int) ($category['id'] ?? 0) === $categoryId
-                    || (int) ($category['category_id'] ?? 0) === $categoryId
-                    || (int) ($category['sub_category_id'] ?? 0) === $categoryId
-            );
+            $matchedCategory = collect($catalog)->first();
             $servoCategoryName = $matchedCategory ? (string) ($matchedCategory['name'] ?? '') : '';
         }
 

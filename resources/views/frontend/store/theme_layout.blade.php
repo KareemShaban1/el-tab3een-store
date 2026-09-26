@@ -953,15 +953,34 @@
 	}
 
 	function normalizeServoCategoriesForGrid(catalog) {
-		return (catalog || [])
-			.map((c) => ({
-				id: Number(c.id || c.category_id || c.sub_category_id),
-				name: servoCategoryDisplayName(c),
-				count: Array.isArray(c.products) ? c.products.length : Number(c
-					.count || 0),
-				image_url: String(c.image_url || c.image || ''),
-				source: 'servo',
-			}))
+		const groups = new Map();
+		(catalog || []).forEach((c) => {
+			const products = Array.isArray(c.products) ? c.products : [];
+			const count = products.length || Number(c.count || 0);
+			if (count <= 0) return;
+			const categoryId = Number(c.category_id || 0);
+			const key = categoryId > 0 ? 'category-' + categoryId : 'row-' + Number(c.id || c.sub_category_id || 0);
+			const existing = groups.get(key);
+			if (!existing) {
+				groups.set(key, {
+					id: categoryId > 0 ? categoryId : Number(c.id || c.sub_category_id || 0),
+					name: servoCategoryDisplayName(c),
+					count,
+					image_url: String(c.image_url || c.image || ''),
+					source: 'servo',
+				});
+				return;
+			}
+			const seen = new Set((existing._productIds || []).concat(products.map((p) => Number(p.id))));
+			existing._productIds = [...seen];
+			existing.count = products.length ? seen.size : existing.count + count;
+			if (!existing.image_url) {
+				existing.image_url = String(c.image_url || c.image || '');
+			}
+		});
+
+		return [...groups.values()]
+			.map(({ _productIds, ...category }) => category)
 			.filter((c) => c.id > 0 && c.name && c.count > 0);
 	}
 

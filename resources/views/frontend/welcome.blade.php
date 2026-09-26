@@ -78,16 +78,35 @@ $servoCategoriesForGrid = collect($tab3eenCatalog ?? [])->map(function ($categor
 $categoryName = trim((string) ($category['category_name'] ?? ''));
 $subCategoryName = trim((string) ($category['sub_category_name'] ?? ''));
 $displayName = $categoryName !== '' ? $categoryName : ($subCategoryName !== '' ? $subCategoryName : trim((string) ($category['name'] ?? '')));
+$categoryId = (int) ($category['category_id'] ?? 0);
 
 return [
-'id' => (int) ($category['id'] ?? 0),
+'id' => $categoryId > 0 ? $categoryId : (int) ($category['id'] ?? 0),
+'category_id' => $categoryId > 0 ? $categoryId : null,
 'name' => $displayName,
 'category_name' => $categoryName,
 'sub_category_name' => $subCategoryName,
 'image' => (string) ($category['image'] ?? ''),
 'products' => $category['products'] ?? [],
 ];
-})->filter(fn ($category) => $category['id'] > 0 && $category['name'] !== '' && count($category['products']) > 0)->values();
+})->filter(fn ($category) => $category['id'] > 0 && $category['name'] !== '' && count($category['products']) > 0)
+->groupBy(fn ($category) => (int) ($category['category_id'] ?? 0) > 0 ? 'category-'.$category['category_id'] : 'row-'.$category['id'])
+->map(function ($group) {
+$first = $group->first();
+$products = $group->flatMap(fn ($category) => $category['products'] ?? [])->unique('id')->values()->all();
+
+$withImage = $group->first(fn ($category) => trim((string) ($category['image'] ?? '')) !== '');
+
+return [
+'id' => (int) $first['id'],
+'category_id' => $first['category_id'],
+'name' => (string) $first['name'],
+'category_name' => (string) $first['category_name'],
+'sub_category_name' => '',
+'image' => (string) ($withImage['image'] ?? ''),
+'products' => $products,
+];
+})->values();
 @endphp
 <script>
 window.__SSR_SERVO_CATEGORIES__ = @json($servoCategoriesForGrid);
