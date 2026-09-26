@@ -10,20 +10,20 @@
 	@endif
 	<!-- ===================== ANNOUNCEMENT BAR ===================== -->
 	@php
-		$appearance = $storeAppearance ?? \App\StorefrontSetting::defaultContent();
-		$supportPhone = $appearance['support_phone'] ?? config('storefront.support_phone', '19900');
-		$supportEmail = $appearance['support_email'] ?? config('storefront.support_email', 'info@eltab3een.com');
-		$announceEnabled = (bool) ($appearance['announce_enabled'] ?? true);
-		$announceText = trim((string) ($appearance['announce_text'] ?? ''));
-		$announceLinkText = trim((string) ($appearance['announce_link_text'] ?? ''));
-		$announceLinkUrl = $appearance['announce_link_url'] ?? route('store.products.index');
-		$socialLinks = [
-			'facebook' => ['label' => 'f', 'url' => data_get($appearance, 'social.facebook')],
-			'linkedin' => ['label' => 'in', 'url' => data_get($appearance, 'social.linkedin')],
-			'x' => ['label' => 'X', 'url' => data_get($appearance, 'social.x')],
-			'youtube' => ['label' => '▶', 'url' => data_get($appearance, 'social.youtube')],
-			'whatsapp' => ['label' => 'w', 'url' => data_get($appearance, 'social.whatsapp')],
-		];
+	$appearance = $storeAppearance ?? \App\StorefrontSetting::defaultContent();
+	$supportPhone = $appearance['support_phone'] ?? config('storefront.support_phone', '19900');
+	$supportEmail = $appearance['support_email'] ?? config('storefront.support_email', 'info@eltab3een.com');
+	$announceEnabled = (bool) ($appearance['announce_enabled'] ?? true);
+	$announceText = trim((string) ($appearance['announce_text'] ?? ''));
+	$announceLinkText = trim((string) ($appearance['announce_link_text'] ?? ''));
+	$announceLinkUrl = $appearance['announce_link_url'] ?? route('store.products.index');
+	$socialLinks = [
+	'facebook' => ['label' => 'f', 'url' => data_get($appearance, 'social.facebook')],
+	'linkedin' => ['label' => 'in', 'url' => data_get($appearance, 'social.linkedin')],
+	'x' => ['label' => 'X', 'url' => data_get($appearance, 'social.x')],
+	'youtube' => ['label' => '▶', 'url' => data_get($appearance, 'social.youtube')],
+	'whatsapp' => ['label' => 'w', 'url' => data_get($appearance, 'social.whatsapp')],
+	];
 	@endphp
 	<div class="announce">
 		<div class="container">
@@ -48,7 +48,8 @@
 				@endif
 				@if ($supportPhone !== '')
 				<a href="tel:{{ preg_replace('/\s+/', '', $supportPhone) }}"
-					style="color:var(--accent);font-weight:700;">📞 {{ $supportPhone }}</a>
+					style="color:var(--accent);font-weight:700;">📞
+					{{ $supportPhone }}</a>
 				@endif
 			</div>
 		</div>
@@ -72,13 +73,15 @@
 				<a href="{{ route('welcome') }}" class="logo">
 					<div class="logo-icon">⚡</div>
 					<div>
-						<div class="logo-name">{{ $appearance['brand_name'] ?? 'التابعين' }}
+						<div class="logo-name">
+							{{ $appearance['brand_name'] ?? 'التابعين' }}
 							@if (! empty($appearance['brand_name_highlight']))
 							<span>{{ $appearance['brand_name_highlight'] }}</span>
 							@endif
 						</div>
 						@if (! empty($appearance['brand_name_en']))
-						<div class="logo-sub">{{ $appearance['brand_name_en'] }}</div>
+						<div class="logo-sub">{{ $appearance['brand_name_en'] }}
+						</div>
 						@endif
 					</div>
 				</a>
@@ -274,12 +277,14 @@
 						<div>
 							<div class="logo-name" style="color:#fff;">
 								{{ $appearance['brand_name'] ?? 'التابعين' }}
-								@if (! empty($appearance['brand_name_highlight']))
+								@if (!
+								empty($appearance['brand_name_highlight']))
 								<span>{{ $appearance['brand_name_highlight'] }}</span>
 								@endif
 							</div>
 							@if (! empty($appearance['brand_name_en']))
-							<div class="logo-sub">{{ $appearance['brand_name_en'] }}</div>
+							<div class="logo-sub">
+								{{ $appearance['brand_name_en'] }}</div>
 							@endif
 						</div>
 					</div>
@@ -287,12 +292,14 @@
 					<p class="f-desc">{{ $appearance['footer_desc'] }}</p>
 					@endif
 					@php
-						$visibleSocial = collect($socialLinks)->filter(fn ($item) => filled($item['url'] ?? null));
+					$visibleSocial = collect($socialLinks)->filter(fn ($item) =>
+					filled($item['url'] ?? null));
 					@endphp
 					@if ($visibleSocial->isNotEmpty())
 					<div class="f-social">
 						@foreach ($visibleSocial as $social)
-						<a href="{{ $social['url'] }}" class="soc-btn" target="_blank"
+						<a href="{{ $social['url'] }}" class="soc-btn"
+							target="_blank"
 							rel="noopener noreferrer">{{ $social['label'] }}</a>
 						@endforeach
 					</div>
@@ -305,7 +312,8 @@
 							الرئيسية</a>
 						<a href="{{ route('store.products.index') }}"
 							class="f-link">المتجر</a>
-						@foreach(($storeFooterPages[\App\StorePage::FOOTER_GROUP_QUICK_LINKS] ?? collect()) as $footerPage)
+						@foreach(($storeFooterPages[\App\StorePage::FOOTER_GROUP_QUICK_LINKS]
+						?? collect()) as $footerPage)
 						<a href="{{ $footerPage->url }}"
 							class="f-link">{{ $footerPage->title }}</a>
 						@endforeach
@@ -323,7 +331,8 @@
 						<a href="{{ route('store.auth.login.form') }}"
 							class="f-link">حسابي</a>
 						@endauth
-						@foreach(($storeFooterPages[\App\StorePage::FOOTER_GROUP_CUSTOMER_SERVICE] ?? collect()) as $footerPage)
+						@foreach(($storeFooterPages[\App\StorePage::FOOTER_GROUP_CUSTOMER_SERVICE]
+						?? collect()) as $footerPage)
 						<a href="{{ $footerPage->url }}"
 							class="f-link">{{ $footerPage->title }}</a>
 						@endforeach
@@ -341,13 +350,16 @@
 							{{ $supportEmail }}</a>
 						@endif
 						@if (! empty($appearance['support_address']))
-						<span class="f-link">📍 {{ $appearance['support_address'] }}</span>
+						<span class="f-link">📍
+							{{ $appearance['support_address'] }}</span>
 						@endif
 						@if (! empty($appearance['support_hours']))
-						<span class="f-link">🕐 {{ $appearance['support_hours'] }}</span>
+						<span class="f-link">🕐
+							{{ $appearance['support_hours'] }}</span>
 						@endif
 						@if (! empty($appearance['support_badge']))
-						<span class="f-link">🛡 {{ $appearance['support_badge'] }}</span>
+						<span class="f-link">🛡
+							{{ $appearance['support_badge'] }}</span>
 						@endif
 					</div>
 				</div>
@@ -358,7 +370,8 @@
 				@if (($storeFooterPages[\App\StorePage::FOOTER_GROUP_LEGAL] ??
 				collect())->isNotEmpty())
 				<div class="f-legal-links">
-					@foreach (($storeFooterPages[\App\StorePage::FOOTER_GROUP_LEGAL] ?? collect()) as $footerPage)
+					@foreach (($storeFooterPages[\App\StorePage::FOOTER_GROUP_LEGAL] ??
+					collect()) as $footerPage)
 					<a href="{{ $footerPage->url }}"
 						class="f-legal-link">{{ $footerPage->title }}</a>
 					@endforeach
@@ -764,8 +777,7 @@
 							</svg>
 							أضف للسلة
 						</button>
-						<button class="pa-icon pa-wish" data-wish="${p.id}">🤍</button>
-						<button class="pa-icon" data-quickview="${p.id}">👁</button>
+							
 					</div>
 				</div>
 				<div class="prod-info">
@@ -1078,7 +1090,8 @@
 
 	function clearMegaSidebarActive(side) {
 		if (!side) return;
-		side.querySelectorAll('.mega-sitem.active, .mega-sub-item.active').forEach((el) => el.classList.remove('active'));
+		side.querySelectorAll('.mega-sitem.active, .mega-sub-item.active').forEach((el) => el.classList.remove(
+			'active'));
 	}
 
 	function renderMegaMenuCategories(categories) {
@@ -1187,7 +1200,8 @@
 
 			const subLinks = subs.map((sub) => {
 				const u = new URL(base.href);
-				u.searchParams.set('category_id', String(sub.id));
+				u.searchParams.set('category_id', String(sub
+					.id));
 				return `<a href="${u.pathname + '?' + u.searchParams.toString()}" class="mm-sub-item">${megaEsc(sub.name || '')}</a>`;
 			}).join('');
 
@@ -1704,10 +1718,12 @@
 			if (subItem && sidebar.contains(subItem)) {
 				e.preventDefault();
 				const id = subItem.dataset.categoryId;
-				const label = subItem.dataset.categoryLabel || subItem.textContent.trim();
+				const label = subItem.dataset.categoryLabel || subItem.textContent
+					.trim();
 				clearMegaSidebarActive(sidebar);
 				subItem.classList.add('active');
-				const toggle = subItem.closest('.mega-cat-group')?.querySelector('.mega-cat-toggle');
+				const toggle = subItem.closest('.mega-cat-group')?.querySelector(
+					'.mega-cat-toggle');
 				closeAllMegaCategoryGroups(sidebar);
 				if (toggle) openMegaCategoryGroup(toggle);
 				loadMegaCategoryProducts(id, label);
@@ -1726,7 +1742,8 @@
 			}
 
 			const item = e.target.closest('.mega-sitem');
-			if (!item || item.classList.contains('mega-sitem--loading') || item.classList.contains('mega-cat-toggle')) {
+			if (!item || item.classList.contains('mega-sitem--loading') || item.classList
+				.contains('mega-cat-toggle')) {
 				return;
 			}
 
