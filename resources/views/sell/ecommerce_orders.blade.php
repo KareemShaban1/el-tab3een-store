@@ -44,7 +44,8 @@
         @endcomponent
 
         @component('components.widget', ['class' => 'box-primary', 'title' => $page_title])
-            @if (auth()->user()->can('direct_sell.view') ||
+            @if (auth()->user()->can('tab3een_orders.view') ||
+                    auth()->user()->can('direct_sell.view') ||
                     auth()->user()->can('view_own_sell_only') ||
                     auth()->user()->can('view_commission_agent_sell'))
                 <table class="table table-bordered table-striped ajax_view" id="sell_table">

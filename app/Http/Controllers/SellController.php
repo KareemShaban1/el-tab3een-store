@@ -377,7 +377,7 @@ class SellController extends Controller
                         return '';
                     }
 
-                    if (! (auth()->user()->can('sell.view') || auth()->user()->can('direct_sell.view') || auth()->user()->can('view_own_sell_only'))) {
+                    if (! (auth()->user()->can('tab3een_orders.view') || auth()->user()->can('sell.view') || auth()->user()->can('direct_sell.view') || auth()->user()->can('view_own_sell_only'))) {
                         return '';
                     }
 
@@ -748,6 +748,12 @@ class SellController extends Controller
         }
     }
 
+    private function canViewAllTab3eenOrders(): bool
+    {
+        return request()->routeIs('sells.ecommerce.orders.data')
+            && auth()->user()->can('tab3een_orders.view');
+    }
+
     /**
      * Show the form for creating a new resource.
      *
@@ -934,7 +940,12 @@ class SellController extends Controller
                     }, 'sell_lines.product', 'sell_lines.product.unit', 'sell_lines.product.second_unit', 'sell_lines.variations', 'sell_lines.variations.product_variation', 'payment_lines', 'sell_lines.modifiers', 'sell_lines.lot_details', 'tax', 'sell_lines.sub_unit', 'table', 'service_staff', 'sell_lines.service_staff', 'types_of_service', 'sell_lines.warranties', 'media']);
 
         if (! auth()->user()->can('sell.view') && ! auth()->user()->can('direct_sell.access') && auth()->user()->can('view_own_sell_only')) {
-            $query->where('transactions.created_by', request()->session()->get('user.id'));
+            $query->where(function ($ownSales) {
+                $ownSales->where('transactions.created_by', request()->session()->get('user.id'));
+                if (auth()->user()->can('tab3een_orders.view')) {
+                    $ownSales->orWhere('transactions.source', 'ecommerce');
+                }
+            });
         }
 
         $sell = $query->firstOrFail();
@@ -1897,10 +1908,14 @@ class SellController extends Controller
             });
         }
 
-        // Location permissions
-        $permitted_locations = auth()->user()->permitted_locations();
-        if ($permitted_locations != 'all') {
-            $query->whereIn('transactions.location_id', $permitted_locations);
+        $can_view_all_tab3een_orders = $this->canViewAllTab3eenOrders();
+
+        // Location permissions. E-commerce orders are visible across locations when the user can view Tab3een orders.
+        if (! $can_view_all_tab3een_orders) {
+            $permitted_locations = auth()->user()->permitted_locations();
+            if ($permitted_locations != 'all') {
+                $query->whereIn('transactions.location_id', $permitted_locations);
+            }
         }
 
         // Created by filter
@@ -1912,7 +1927,7 @@ class SellController extends Controller
         }
 
         // Ownership / commission permissions
-        if (! auth()->user()->can('direct_sell.view')) {
+        if (! $can_view_all_tab3een_orders && ! auth()->user()->can('direct_sell.view')) {
             $can_view_own = auth()->user()->hasAnyPermission(['view_own_sell_only', 'access_own_shipping']);
             $can_view_commission = auth()->user()->hasAnyPermission(['view_commission_agent_sell', 'access_commission_agent_shipping']);
 
@@ -1942,7 +1957,7 @@ class SellController extends Controller
 
         // Payment status visibility restrictions
         $is_admin = $this->businessUtil->is_admin(auth()->user());
-        if (! $is_admin && ! $only_shipments && $sale_type != 'sales_order') {
+        if (! $is_admin && ! $can_view_all_tab3een_orders && ! $only_shipments && $sale_type != 'sales_order') {
             $payment_status_arr = [];
             if (auth()->user()->can('view_paid_sells_only')) {
                 $payment_status_arr[] = 'paid';
