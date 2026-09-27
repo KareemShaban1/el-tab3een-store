@@ -1,4 +1,5 @@
 @if(\Modules\Manufacturing\Support\PackagingFeature::isEnabledForBusiness(session()->get('user.business_id')))
+{!! Form::hidden('has_module_data', 1) !!}
 <div class="col-sm-4">
     <div class="form-group">
         {!! Form::label('product_usage_type', __('manufacturing::lang.product_usage_type') . ':') !!}
