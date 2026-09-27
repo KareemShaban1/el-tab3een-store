@@ -1255,6 +1255,65 @@
 		color: var(--muted)
 	}
 
+	.cat-subs {
+		display: none;
+	}
+
+	.cat-sub-row {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 12px;
+		width: 100%;
+		padding: 12px 14px;
+		border-bottom: 1px solid #ececf3;
+		color: var(--text);
+		font-weight: 600;
+		font-size: .9rem;
+		text-decoration: none;
+		background: #fff;
+	}
+
+	.cat-sub-row:last-child {
+		border-bottom: none;
+	}
+
+	.cat-sub-thumb {
+		width: 40px;
+		height: 40px;
+		border-radius: 10px;
+		background: var(--bg-soft);
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		overflow: hidden;
+		flex-shrink: 0;
+		padding: 4px;
+	}
+
+	.cat-sub-img {
+		width: 100%;
+		height: 100%;
+		object-fit: contain;
+	}
+
+	.cat-sub-name {
+		flex: 1;
+		min-width: 0;
+	}
+
+	.cat-sub-count {
+		flex-shrink: 0;
+		font-size: .75rem;
+		font-weight: 600;
+		color: var(--muted);
+	}
+
+	.cat-sub-row--all {
+		font-weight: 700;
+		color: var(--primary);
+	}
+
 	/* ============================================================
    PRODUCTS GRID
    ============================================================ */
@@ -2583,7 +2642,7 @@
 
 	.mm-chevron {
 		display: inline-flex;
-		transition: transform .2s ease;
+		transition: transform .32s ease, color .32s ease;
 		font-size: 1.1rem;
 		color: var(--muted);
 	}
@@ -2594,8 +2653,30 @@
 	}
 
 	.mm-sub-list {
+		display: grid;
+		grid-template-rows: 0fr;
+		opacity: 0;
 		background: var(--bg-soft);
-		border-top: 1px solid #ececf3;
+		border-top: 1px solid transparent;
+		transition: grid-template-rows .32s ease, opacity .24s ease, border-color .24s ease;
+	}
+
+	.mm-sub-list-inner {
+		overflow: hidden;
+		min-height: 0;
+	}
+
+	.mm-sub-list.is-open {
+		grid-template-rows: 1fr;
+		opacity: 1;
+		border-top-color: #ececf3;
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.mm-sub-list,
+		.mm-chevron {
+			transition: none;
+		}
 	}
 
 	.mm-sub-item {
@@ -2741,42 +2822,29 @@
 		}
 
 		.cats-scroll {
-			overflow-x: auto;
-			overflow-y: hidden;
-			-webkit-overflow-scrolling: touch;
-			touch-action: pan-x;
-			overscroll-behavior-x: contain;
-			margin-inline: -12px;
-			padding-inline: 12px;
-			padding-bottom: 10px;
-			scrollbar-width: none;
+			overflow: visible;
+			margin-inline: 0;
+			padding: 0;
 			width: auto;
-			max-width: 100vw;
-		}
-
-		.cats-scroll::-webkit-scrollbar {
-			display: none;
+			max-width: 100%;
 		}
 
 		.cats-grid {
-			display: flex;
-			flex-wrap: nowrap;
-			gap: 14px;
-			width: max-content;
-			min-width: 100%;
+			display: grid;
+			grid-template-columns: repeat(3, minmax(0, 1fr));
+			gap: 10px;
+			width: 100%;
+			min-width: 0;
 			margin: 0;
 			padding: 0;
-			overflow: visible;
-			scroll-snap-type: none;
 		}
 
 		.cats-grid .cat-card {
-			flex: 0 0 132px;
-			width: 132px;
-			min-width: 132px;
-			max-width: 132px;
-			scroll-snap-align: start;
-			touch-action: pan-x;
+			width: auto;
+			min-width: 0;
+			max-width: none;
+			padding: 14px 8px;
+			touch-action: manipulation;
 			-webkit-user-drag: none;
 			user-select: none;
 			transform: none;
@@ -2789,6 +2857,31 @@
 
 		.cats-grid .cat-card:hover .cat-icon {
 			transform: none;
+		}
+
+		.cats-grid .cat-name {
+			display: -webkit-box;
+			-webkit-line-clamp: 2;
+			-webkit-box-orient: vertical;
+			overflow: hidden;
+			line-height: 1.35;
+			min-height: 2.7em;
+		}
+
+		.cats-grid .cat-card--has-subs.is-open {
+			border-color: var(--accent);
+			box-shadow: var(--shadow-sm);
+		}
+
+		.cats-grid .cat-subs.is-open {
+			display: flex;
+			flex-direction: column;
+			grid-column: 1 / -1;
+			background: #fff;
+			border: 1px solid var(--border);
+			border-radius: 12px;
+			overflow: hidden;
+			box-shadow: var(--shadow-sm);
 		}
 
 		.products-grid {
@@ -2897,22 +2990,21 @@
 		}
 
 		.cats-grid {
-			gap: 12px;
+			gap: 8px;
 			margin-inline: 0;
 			padding-inline: 0;
 		}
 
 		.cats-scroll {
-			margin-inline: -8px;
-			padding-inline: 8px;
+			margin-inline: 0;
+			padding-inline: 0;
 		}
 
 		.cats-grid .cat-card {
-			flex: 0 0 118px;
-			width: 118px;
-			min-width: 118px;
-			max-width: 118px;
-			padding: 16px 10px;
+			width: auto;
+			min-width: 0;
+			max-width: none;
+			padding: 12px 6px;
 		}
 
 		.cats-grid .cat-icon {

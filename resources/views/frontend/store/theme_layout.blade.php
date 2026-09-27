@@ -507,6 +507,7 @@
 		price_unavailable: @json(__('storefront.catalog.price_unavailable')),
 	};
 	const STORE_PRODUCTS_INDEX_BASE = @json(rtrim(route('store.products.index'), '/'));
+	const CATEGORY_PLACEHOLDER_URL = @json(asset('/img/default.png'));
 	let megaMenuCategories = [];
 	let tab3eenCatalogCache = null;
 	let tab3eenCatalogFetchedAt = 0;
@@ -952,6 +953,42 @@
 		return String(c.name || '').trim();
 	}
 
+	function subsFromServoRow(c) {
+		if (Array.isArray(c.sub_categories) && c.sub_categories.length) {
+			return c.sub_categories.map((sub) => ({
+				id: Number(sub.id || 0),
+				name: String(sub.name || '').trim(),
+				count: Number(sub.count || 0),
+				image_url: String(sub.image_url || sub.image || '').trim(),
+			})).filter((sub) => sub.id > 0 && sub.name);
+		}
+		const name = String(c.sub_category_name || '').trim();
+		const id = Number(c.sub_category_id || 0);
+		if (id <= 0 || !name) return [];
+		const products = Array.isArray(c.products) ? c.products : [];
+		return [{
+			id,
+			name,
+			count: products.length || Number(c.count || 0),
+			image_url: String(c.image_url || c.image || '').trim(),
+		}];
+	}
+
+	function mergeServoSubCategories(current, incoming, sumCounts) {
+		const map = new Map((current || []).map((sub) => [sub.id, { ...sub }]));
+		(incoming || []).forEach((sub) => {
+			const prev = map.get(sub.id);
+			if (!prev) {
+				map.set(sub.id, { ...sub });
+				return;
+			}
+			prev.count = sumCounts ? prev.count + Number(sub.count || 0) : Math.max(prev.count, Number(sub.count || 0));
+			if (!prev.name) prev.name = sub.name;
+			if (!prev.image_url) prev.image_url = sub.image_url || '';
+		});
+		return [...map.values()];
+	}
+
 	function normalizeServoCategoriesForGrid(catalog) {
 		const groups = new Map();
 		(catalog || []).forEach((c) => {
@@ -960,6 +997,8 @@
 			if (count <= 0) return;
 			const categoryId = Number(c.category_id || 0);
 			const key = categoryId > 0 ? 'category-' + categoryId : 'row-' + Number(c.id || c.sub_category_id || 0);
+			const incomingSubs = subsFromServoRow(c);
+			const aggregatedSubs = Array.isArray(c.sub_categories) && c.sub_categories.length > 0;
 			const existing = groups.get(key);
 			if (!existing) {
 				groups.set(key, {
@@ -968,6 +1007,7 @@
 					count,
 					image_url: String(c.image_url || c.image || ''),
 					source: 'servo',
+					sub_categories: incomingSubs,
 				});
 				return;
 			}
@@ -977,6 +1017,7 @@
 			if (!existing.image_url) {
 				existing.image_url = String(c.image_url || c.image || '');
 			}
+			existing.sub_categories = mergeServoSubCategories(existing.sub_categories, incomingSubs, !aggregatedSubs);
 		});
 
 		return [...groups.values()]
@@ -1013,6 +1054,92 @@
 		return u.pathname + '?' + u.searchParams.toString();
 	}
 
+	function subCategoryCardHref(parent, sub) {
+		const u = new URL(STORE_PRODUCTS_URL, window.location.origin);
+		u.searchParams.set('category_id', String(parent.id));
+		u.searchParams.set('sub_category_id', String(sub.id));
+		if (parent.source === 'servo') {
+			u.searchParams.set('source', 'servo');
+		}
+		return u.pathname + '?' + u.searchParams.toString();
+	}
+
+	function categoryGridKey(c) {
+		return String(c.source || 'local') + '-' + Number(c.id || 0);
+	}
+
+	function isSmallCategoryGrid() {
+		return window.matchMedia('(max-width: 768px)').matches;
+	}
+
+	function closeHomeCategorySubs(grid) {
+		if (!grid) return;
+		grid.querySelectorAll('.cat-card.is-open').forEach((card) => {
+			card.classList.remove('is-open');
+			card.setAttribute('aria-expanded', 'false');
+		});
+		grid.querySelectorAll('.cat-subs.is-open').forEach((panel) => panel.classList.remove('is-open'));
+	}
+
+	function placeCategorySubsAfterRow(grid, card, panel) {
+		const cards = [...grid.querySelectorAll(':scope > .cat-card')];
+		const index = cards.indexOf(card);
+		if (index < 0) return;
+		const endIndex = Math.min(cards.length - 1, Math.floor(index / 3) * 3 + 2);
+		cards[endIndex].after(panel);
+	}
+
+	function bindHomeCategoryAccordion(grid) {
+		if (!grid || grid.dataset.accordionBound === '1') return;
+		grid.dataset.accordionBound = '1';
+
+		grid.addEventListener('click', (e) => {
+			const card = e.target.closest('.cat-card');
+			if (!card || !grid.contains(card)) return;
+			const key = card.dataset.catKey || '';
+			const panel = key ? grid.querySelector('.cat-subs[data-cat-key="' + key + '"]') : null;
+			if (!panel || !isSmallCategoryGrid()) return;
+
+			e.preventDefault();
+			const wasOpen = card.classList.contains('is-open');
+			closeHomeCategorySubs(grid);
+			if (wasOpen) return;
+
+			placeCategorySubsAfterRow(grid, card, panel);
+			panel.classList.add('is-open');
+			card.classList.add('is-open');
+			card.setAttribute('aria-expanded', 'true');
+		});
+
+		const mq = window.matchMedia('(max-width: 768px)');
+		const onChange = () => closeHomeCategorySubs(grid);
+		if (mq.addEventListener) mq.addEventListener('change', onChange);
+		else mq.addListener(onChange);
+	}
+
+	function categoryMediaUrl(value) {
+		const url = String(value || '').trim();
+		return url !== '' ? url : CATEGORY_PLACEHOLDER_URL;
+	}
+
+	function categoryImageHtml(name, imageUrl, className) {
+		const src = megaEsc(categoryMediaUrl(imageUrl));
+		return `<img src="${src}" alt="${megaEsc(name || '')}" class="${className}" data-category-img="1">`;
+	}
+
+	function bindCategoryImageFallback(root) {
+		if (!root) return;
+		root.querySelectorAll('img[data-category-img]').forEach((img) => {
+			if (img.dataset.fallbackBound === '1') return;
+			img.dataset.fallbackBound = '1';
+			img.addEventListener('error', () => {
+				if (img.dataset.fallbackApplied === '1') return;
+				img.dataset.fallbackApplied = '1';
+				img.src = CATEGORY_PLACEHOLDER_URL;
+			});
+		});
+	}
+
 	function renderDynamicCategories(categories) {
 		const grid = $('dynamic-categories-grid');
 		if (!grid) return;
@@ -1023,19 +1150,38 @@
 			return;
 		}
 
-		grid.innerHTML = categories.map((c, idx) => {
+		grid.innerHTML = categories.map((c) => {
 			const href = categoryCardHref(c);
-			const iconHtml = c.image_url ?
-				`<img src="${megaEsc(c.image_url)}" alt="${megaEsc(c.name || '')}" class="cat-icon-img">` :
-				categoryIconByIndex(idx);
-			return `
-			<a href="${href}" class="cat-card">
-				<div class="cat-icon${c.image_url ? ' cat-icon--image' : ''}" style="background:#f8f9fc;">${iconHtml}</div>
+			const subs = (Array.isArray(c.sub_categories) ? c.sub_categories : [])
+				.filter((sub) => sub && Number(sub.id) > 0 && String(sub.name || '').trim() !== '');
+			const categoryImage = c.image_url || c.image || '';
+			const iconHtml = categoryImageHtml(c.name || '', categoryImage, 'cat-icon-img');
+			const key = categoryGridKey(c);
+			const card = `
+			<a href="${href}" class="cat-card${subs.length ? ' cat-card--has-subs' : ''}" data-cat-key="${key}"${subs.length ? ' aria-expanded="false"' : ''}>
+				<div class="cat-icon cat-icon--image" style="background:#f8f9fc;">${iconHtml}</div>
 				<div class="cat-name">${megaEsc(c.name || '')}</div>
 				<div class="cat-count">+${Number(c.count || 0).toLocaleString('ar-EG')} منتج</div>
 			</a>`;
+			if (!subs.length) return card;
+
+			const parentThumb = categoryImageHtml(c.name || '', categoryImage, 'cat-sub-img');
+			const rows = [`
+				<a class="cat-sub-row cat-sub-row--all" href="${href}">
+					<span class="cat-sub-thumb">${parentThumb}</span>
+					<span class="cat-sub-name">كل منتجات ${megaEsc(c.name || '')}</span>
+					<span class="cat-sub-count">${Number(c.count || 0).toLocaleString('ar-EG')}</span>
+				</a>`].concat(subs.map((sub) => `
+				<a class="cat-sub-row" href="${subCategoryCardHref(c, sub)}">
+					<span class="cat-sub-thumb">${categoryImageHtml(sub.name || '', sub.image_url || sub.image || '', 'cat-sub-img')}</span>
+					<span class="cat-sub-name">${megaEsc(sub.name || '')}</span>
+					<span class="cat-sub-count">${Number(sub.count || 0).toLocaleString('ar-EG')}</span>
+				</a>`)).join('');
+
+			return card + `<div class="cat-subs" data-cat-key="${key}">${rows}</div>`;
 		}).join('');
-		// initCategoriesAutoScroll();
+		bindCategoryImageFallback(grid);
+		bindHomeCategoryAccordion(grid);
 	}
 
 	function resetCategoriesAutoScroll(grid) {
@@ -1177,7 +1323,7 @@
 			btn.setAttribute('aria-expanded', 'false');
 			btn.classList.remove('mm-cat-toggle--open');
 			const list = btn.closest('.mm-cat-group')?.querySelector('.mm-sub-list');
-			if (list) list.hidden = true;
+			if (list) list.classList.remove('is-open');
 		});
 	}
 
@@ -1186,7 +1332,7 @@
 		btn.setAttribute('aria-expanded', 'true');
 		btn.classList.add('mm-cat-toggle--open');
 		const list = btn.closest('.mm-cat-group')?.querySelector('.mm-sub-list');
-		if (list) list.hidden = false;
+		if (list) list.classList.add('is-open');
 	}
 
 	function sortCategoriesByOrder(categories) {
@@ -1238,9 +1384,11 @@
 					<span class="mm-cat-label">${icon} ${megaEsc(c.name || '')}</span>
 					<span class="mm-chevron" aria-hidden="true">›</span>
 				</button>
-				<div class="mm-sub-list" hidden>
-					<a href="${parentHref}" class="mm-sub-item mm-sub-item--all">كل منتجات ${megaEsc(c.name || '')}</a>
-					${subLinks}
+				<div class="mm-sub-list">
+					<div class="mm-sub-list-inner">
+						<a href="${parentHref}" class="mm-sub-item mm-sub-item--all">كل منتجات ${megaEsc(c.name || '')}</a>
+						${subLinks}
+					</div>
 				</div>
 			</div>`;
 		}).join('');

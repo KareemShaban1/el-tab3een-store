@@ -86,6 +86,8 @@ return [
 'name' => $displayName,
 'category_name' => $categoryName,
 'sub_category_name' => $subCategoryName,
+'sub_category_id' => (int) ($category['sub_category_id'] ?? 0),
+'sub_categories' => $category['sub_categories'] ?? [],
 'image' => (string) ($category['image'] ?? ''),
 'products' => $category['products'] ?? [],
 ];
@@ -97,12 +99,42 @@ $products = $group->flatMap(fn ($category) => $category['products'] ?? [])->uniq
 
 $withImage = $group->first(fn ($category) => trim((string) ($category['image'] ?? '')) !== '');
 
+$subCategories = collect($group)
+->flatMap(function ($category) {
+if (! empty($category['sub_categories']) && is_array($category['sub_categories'])) {
+return $category['sub_categories'];
+}
+$subId = (int) ($category['sub_category_id'] ?? 0);
+$subName = trim((string) ($category['sub_category_name'] ?? ''));
+if ($subId <= 0 || $subName === '') {
+return [];
+}
+
+return [[
+'id' => $subId,
+'name' => $subName,
+'count' => count($category['products'] ?? []),
+'image' => (string) ($category['image'] ?? ''),
+]];
+})
+->filter(fn ($sub) => (int) ($sub['id'] ?? 0) > 0 && trim((string) ($sub['name'] ?? '')) !== '')
+->unique('id')
+->map(fn ($sub) => [
+'id' => (int) $sub['id'],
+'name' => trim((string) $sub['name']),
+'count' => (int) ($sub['count'] ?? 0),
+'image' => trim((string) ($sub['image'] ?? $sub['image_url'] ?? '')),
+])
+->values()
+->all();
+
 return [
 'id' => (int) $first['id'],
 'category_id' => $first['category_id'],
 'name' => (string) $first['name'],
 'category_name' => (string) $first['category_name'],
 'sub_category_name' => '',
+'sub_categories' => $subCategories,
 'image' => (string) ($withImage['image'] ?? ''),
 'products' => $products,
 ];

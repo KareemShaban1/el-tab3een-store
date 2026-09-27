@@ -507,7 +507,8 @@ class StorefrontController extends Controller
                 $query->where('category_type', 'product')
                     ->activeInApp()
                     ->storefrontSortOrder()
-                    ->select('id', 'name', 'parent_id', 'order', 'featured');
+                    ->select('id', 'name', 'parent_id', 'order', 'featured')
+                    ->with('media');
             }])
             ->limit(30)
             ->get()
@@ -542,6 +543,7 @@ class StorefrontController extends Controller
                         'parent_id' => $sub->parent_id,
                         'order' => (int) ($sub->order ?? 0),
                         'count' => $sub_count,
+                        'image_url' => $sub->image_url,
                     ];
                 })->values();
 
@@ -630,10 +632,11 @@ class StorefrontController extends Controller
         $business_id = self::resolveBusinessId($request);
         $location_id = $this->resolveLocationId($business_id, $request);
         $categoryId = $request->filled('category_id') ? $request->integer('category_id') : null;
-        $catalog = $tab3eenCatalogService->getCatalog($categoryId);
+        $subCategoryId = $request->filled('sub_category_id') ? $request->integer('sub_category_id') : null;
+        $catalog = $tab3eenCatalogService->getCatalog($categoryId ?: $subCategoryId);
 
         $servoCategoryName = '';
-        if ($categoryId !== null) {
+        if ($categoryId !== null || $subCategoryId !== null) {
             $matchedCategory = collect($catalog)->first();
             $servoCategoryName = $matchedCategory ? (string) ($matchedCategory['name'] ?? '') : '';
         }
@@ -644,6 +647,21 @@ class StorefrontController extends Controller
                     ->map(fn ($product) => $this->mapServoCatalogProductForStorefront($product, $category));
             })
             ->values();
+
+        if ($subCategoryId) {
+            $matchedSub = collect($catalog)
+                ->flatMap(fn ($category) => $category['sub_categories'] ?? [])
+                ->first(fn ($sub) => (int) ($sub['id'] ?? 0) === $subCategoryId);
+            $productIds = collect(is_array($matchedSub) ? ($matchedSub['product_ids'] ?? []) : [])
+                ->map(fn ($id) => (int) $id)
+                ->all();
+            if ($matchedSub) {
+                $servoCategoryName = (string) ($matchedSub['name'] ?? $servoCategoryName);
+            }
+            $items = $items
+                ->filter(fn ($item) => in_array((int) ($item['id'] ?? 0), $productIds, true))
+                ->values();
+        }
 
         if ($request->filled('q')) {
             $needle = mb_strtolower(trim((string) $request->input('q')));
@@ -689,6 +707,7 @@ class StorefrontController extends Controller
             'source' => 'servo',
             'q' => $request->filled('q') ? (string) $request->input('q') : null,
             'category_id' => $request->filled('category_id') ? (string) $request->input('category_id') : null,
+            'sub_category_id' => $request->filled('sub_category_id') ? (string) $request->input('sub_category_id') : null,
             'price_min' => $request->filled('price_min') ? (string) $request->input('price_min') : null,
             'price_max' => $request->filled('price_max') ? (string) $request->input('price_max') : null,
         ], fn ($value) => $value !== null && $value !== '');

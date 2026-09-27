@@ -311,6 +311,34 @@ class Tab3eenCatalogService
                     ->all();
                 $withImage = $group->first(fn ($category) => trim((string) ($category['image'] ?? '')) !== '');
                 $image = (string) ($withImage['image'] ?? '');
+                $subCategories = $group
+                    ->filter(function ($category) {
+                        return trim((string) ($category['sub_category_name'] ?? '')) !== ''
+                            && (int) ($category['sub_category_id'] ?? 0) > 0;
+                    })
+                    ->groupBy(fn ($category) => (int) $category['sub_category_id'])
+                    ->map(function ($rows) {
+                        $firstRow = $rows->first();
+                        $productIds = $rows
+                            ->flatMap(fn ($row) => collect($row['products'] ?? [])->pluck('id'))
+                            ->map(fn ($id) => (int) $id)
+                            ->filter(fn ($id) => $id > 0)
+                            ->unique()
+                            ->values()
+                            ->all();
+                        $withSubImage = $rows->first(fn ($row) => trim((string) ($row['image'] ?? '')) !== '');
+
+                        return [
+                            'id' => (int) ($firstRow['sub_category_id'] ?? 0),
+                            'name' => trim((string) ($firstRow['sub_category_name'] ?? '')),
+                            'count' => count($productIds),
+                            'image' => (string) ($withSubImage['image'] ?? ''),
+                            'product_ids' => $productIds,
+                        ];
+                    })
+                    ->filter(fn ($sub) => $sub['id'] > 0 && $sub['name'] !== '')
+                    ->values()
+                    ->all();
 
                 return [
                     'id' => $categoryId > 0 ? $categoryId : (int) ($first['id'] ?? 0),
@@ -319,6 +347,7 @@ class Tab3eenCatalogService
                     'alias_ids' => $aliasIds,
                     'category_name' => (string) ($first['category_name'] ?? ''),
                     'sub_category_name' => '',
+                    'sub_categories' => $subCategories,
                     'name' => (string) ($first['name'] ?? ''),
                     'image' => $image,
                     'sort_order' => (int) $group->min('sort_order'),
