@@ -1373,7 +1373,13 @@
 			btn.setAttribute('aria-expanded', 'false');
 			btn.classList.remove('mm-cat-toggle--open');
 			const list = btn.closest('.mm-cat-group')?.querySelector('.mm-sub-list');
-			if (list) list.classList.remove('is-open');
+			if (list) {
+				if (list._mmAnimTimer) {
+					clearTimeout(list._mmAnimTimer);
+					list._mmAnimTimer = null;
+				}
+				list.classList.remove('is-open', 'is-animating');
+			}
 		});
 	}
 
@@ -1382,7 +1388,20 @@
 		btn.setAttribute('aria-expanded', 'true');
 		btn.classList.add('mm-cat-toggle--open');
 		const list = btn.closest('.mm-cat-group')?.querySelector('.mm-sub-list');
-		if (list) list.classList.add('is-open');
+		if (!list) return;
+
+		const items = [...list.querySelectorAll('.mm-sub-item')];
+		items.forEach((item, index) => {
+			item.style.setProperty('--mm-stagger', String(index));
+		});
+		list.classList.remove('is-animating');
+		void list.offsetWidth;
+		list.classList.add('is-open', 'is-animating');
+		if (list._mmAnimTimer) clearTimeout(list._mmAnimTimer);
+		list._mmAnimTimer = setTimeout(() => {
+			list.classList.remove('is-animating');
+			list._mmAnimTimer = null;
+		}, 120 + (items.length * 90) + 750);
 	}
 
 	function sortCategoriesByOrder(categories) {
