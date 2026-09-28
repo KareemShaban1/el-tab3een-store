@@ -10,6 +10,7 @@ use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Carbon;
 use Illuminate\Validation\Rule;
 
 class StoreAccountController extends Controller
@@ -210,7 +211,18 @@ class StoreAccountController extends Controller
             $entries->push($this->mapServoOrderEntry($servoOrder));
         }
 
-        return $entries->sortByDesc(fn ($entry) => $entry->sort_at->timestamp)->values();
+        return $entries->sortByDesc(function ($entry) {
+            $sortAt = $entry->sort_at ?? null;
+            if ($sortAt instanceof \DateTimeInterface) {
+                return $sortAt->getTimestamp();
+            }
+
+            try {
+                return Carbon::parse((string) $sortAt)->getTimestamp();
+            } catch (\Throwable $e) {
+                return 0;
+            }
+        })->values();
     }
 
     /**
