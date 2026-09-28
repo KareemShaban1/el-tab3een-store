@@ -9,7 +9,10 @@
                     dataType: 'json',
                     delay: 250,
                     data: function(params) {
-                        return { term: params.term };
+                        return {
+                            term: params.term,
+                            include_packaging_materials: 1
+                        };
                     },
                     processResults: function(data) {
                         return {

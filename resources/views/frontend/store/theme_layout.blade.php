@@ -1072,13 +1072,28 @@
 		return window.matchMedia('(max-width: 768px)').matches;
 	}
 
-	function closeHomeCategorySubs(grid) {
+	function closeHomeCategorySubs(grid, options = {}) {
 		if (!grid) return;
+		const animate = options.animate !== false;
 		grid.querySelectorAll('.cat-card.is-open').forEach((card) => {
 			card.classList.remove('is-open');
 			card.setAttribute('aria-expanded', 'false');
 		});
-		grid.querySelectorAll('.cat-subs.is-open').forEach((panel) => panel.classList.remove('is-open'));
+		grid.querySelectorAll('.cat-subs.is-mounted, .cat-subs.is-open').forEach((panel) => {
+			if (panel._catsCloseTimer) {
+				clearTimeout(panel._catsCloseTimer);
+				panel._catsCloseTimer = null;
+			}
+			panel.classList.remove('is-open', 'is-animating');
+			if (!animate) {
+				panel.classList.remove('is-mounted');
+				return;
+			}
+			panel._catsCloseTimer = setTimeout(() => {
+				panel.classList.remove('is-mounted');
+				panel._catsCloseTimer = null;
+			}, 980);
+		});
 	}
 
 	function placeCategorySubsAfterRow(grid, card, panel) {
@@ -1087,6 +1102,30 @@
 		if (index < 0) return;
 		const endIndex = Math.min(cards.length - 1, Math.floor(index / 3) * 3 + 2);
 		cards[endIndex].after(panel);
+	}
+
+	function prepareCategorySubsAnimation(panel) {
+		const head = panel.querySelector('.cat-subs-head');
+		const rows = [...panel.querySelectorAll('.cat-sub-row')];
+		if (head) head.style.setProperty('--cat-stagger', '0');
+		rows.forEach((row, index) => {
+			row.style.setProperty('--cat-stagger', String(index + 1));
+		});
+		panel.classList.remove('is-animating');
+		void panel.offsetWidth;
+	}
+
+	function openHomeCategorySubs(grid, card, panel) {
+		placeCategorySubsAfterRow(grid, card, panel);
+		prepareCategorySubsAnimation(panel);
+		panel.classList.add('is-mounted');
+		card.classList.add('is-open');
+		card.setAttribute('aria-expanded', 'true');
+		requestAnimationFrame(() => {
+			requestAnimationFrame(() => {
+				panel.classList.add('is-open', 'is-animating');
+			});
+		});
 	}
 
 	function bindHomeCategoryAccordion(grid) {
@@ -1102,17 +1141,14 @@
 
 			e.preventDefault();
 			const wasOpen = card.classList.contains('is-open');
-			closeHomeCategorySubs(grid);
+			closeHomeCategorySubs(grid, { animate: wasOpen });
 			if (wasOpen) return;
 
-			placeCategorySubsAfterRow(grid, card, panel);
-			panel.classList.add('is-open');
-			card.classList.add('is-open');
-			card.setAttribute('aria-expanded', 'true');
+			openHomeCategorySubs(grid, card, panel);
 		});
 
 		const mq = window.matchMedia('(max-width: 768px)');
-		const onChange = () => closeHomeCategorySubs(grid);
+		const onChange = () => closeHomeCategorySubs(grid, { animate: false });
 		if (mq.addEventListener) mq.addEventListener('change', onChange);
 		else mq.addListener(onChange);
 	}
@@ -1165,20 +1201,24 @@
 			</a>`;
 			if (!subs.length) return card;
 
-			const parentThumb = categoryImageHtml(c.name || '', categoryImage, 'cat-sub-img');
-			const rows = [`
-				<a class="cat-sub-row cat-sub-row--all" href="${href}">
-					<span class="cat-sub-thumb">${parentThumb}</span>
-					<span class="cat-sub-name">كل منتجات ${megaEsc(c.name || '')}</span>
-					<span class="cat-sub-count">${Number(c.count || 0).toLocaleString('ar-EG')}</span>
-				</a>`].concat(subs.map((sub) => `
+			const parentThumb = categoryImageHtml(c.name || '', categoryImage, 'cat-subs-head-img');
+			const head = `
+				<div class="cat-subs-head">
+					<div class="cat-subs-head-icon">${parentThumb}</div>
+					<div class="cat-subs-head-meta">
+						<div class="cat-subs-head-name">${megaEsc(c.name || '')}</div>
+						<div class="cat-subs-head-count">+${Number(c.count || 0).toLocaleString('ar-EG')} منتج</div>
+					</div>
+					<a class="cat-subs-head-all" href="${href}">عرض الكل</a>
+				</div>`;
+			const rows = subs.map((sub) => `
 				<a class="cat-sub-row" href="${subCategoryCardHref(c, sub)}">
 					<span class="cat-sub-thumb">${categoryImageHtml(sub.name || '', sub.image_url || sub.image || '', 'cat-sub-img')}</span>
 					<span class="cat-sub-name">${megaEsc(sub.name || '')}</span>
 					<span class="cat-sub-count">${Number(sub.count || 0).toLocaleString('ar-EG')}</span>
-				</a>`)).join('');
+				</a>`).join('');
 
-			return card + `<div class="cat-subs" data-cat-key="${key}">${rows}</div>`;
+			return card + `<div class="cat-subs" data-cat-key="${key}"><div class="cat-subs-inner">${head}<div class="cat-subs-list">${rows}</div></div></div>`;
 		}).join('');
 		bindCategoryImageFallback(grid);
 		bindHomeCategoryAccordion(grid);

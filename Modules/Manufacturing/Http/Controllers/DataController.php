@@ -112,11 +112,16 @@ class DataController extends Controller
 
     /**
      * Hide packaging materials from POS product search when configured.
+     * Pass include_packaging_materials=1 (e.g. packaging profile form) to show them.
      */
     public function modify_product_search_query($data)
     {
         $business_id = $data['business_id'];
         if (! PackagingFeature::shouldHidePackagingMaterialsInPos($business_id)) {
+            return;
+        }
+
+        if (request()->boolean('include_packaging_materials')) {
             return;
         }
 
