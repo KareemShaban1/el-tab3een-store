@@ -1328,6 +1328,242 @@
 		flex-direction: column;
 	}
 
+	.cats-grid .cat-card--has-subs {
+		transition: transform .38s cubic-bezier(.22, 1, .36, 1), box-shadow .38s ease, border-color .38s ease, background .38s ease;
+	}
+
+	.cats-grid .cat-card--has-subs.is-open {
+		position: relative;
+		z-index: 2;
+		transform: scale(1.04);
+		border-color: var(--accent);
+		background: #fff;
+		box-shadow: none;
+	}
+
+	.cats-grid .cat-card--has-subs.is-open:hover,
+	.cats-grid .cat-card--has-subs.is-open:active {
+		transform: scale(1.04);
+		border-color: var(--accent);
+		box-shadow: none;
+	}
+
+	.cats-grid .cat-card--has-subs.is-open .cat-icon {
+		transform: scale(1.05);
+		transition: transform .38s cubic-bezier(.22, 1, .36, 1);
+	}
+
+	.cats-grid .cat-subs {
+		display: none;
+		grid-column: 1 / -1;
+		grid-template-rows: 0fr;
+		opacity: 0;
+		background: #fff;
+		border: 1px solid transparent;
+		border-radius: 14px;
+		overflow: hidden;
+		box-shadow: none;
+		transform: translateY(-14px) scale(.985);
+		filter: blur(2px);
+	}
+
+	.cats-grid .cat-subs.is-mounted {
+		display: grid;
+		transition: grid-template-rows .9s cubic-bezier(.16, 1, .3, 1), opacity .75s ease, transform .9s cubic-bezier(.16, 1, .3, 1), border-color .55s ease, box-shadow .55s ease, filter .75s ease;
+	}
+
+	.cats-grid .cat-subs.is-open {
+		grid-template-rows: 1fr;
+		opacity: 1;
+		border-color: var(--border);
+		box-shadow: var(--shadow-sm);
+		transform: translateY(0) scale(1);
+		filter: blur(0);
+	}
+
+	.cats-grid .cat-subs .cat-subs-inner {
+		display: flex;
+		flex-direction: column;
+		background: #fff;
+	}
+
+	.cats-grid .cat-subs-head {
+		display: flex;
+		align-items: center;
+		gap: 14px;
+		padding: 14px 16px 12px;
+		border-bottom: 1px solid #ececf3;
+		background: var(--bg-soft);
+		opacity: 0;
+		transform: translateY(-12px) scale(.96);
+	}
+
+	.cats-grid .cat-subs.is-animating .cat-subs-head,
+	.cats-grid .cat-subs.is-animating .cat-sub-row {
+		animation: cat-sub-cascade 1s cubic-bezier(.16, 1, .3, 1) forwards;
+		animation-delay: calc(var(--cat-stagger, 0) * 130ms + 220ms);
+	}
+
+	.cats-grid .cat-subs-head-icon {
+		width: 72px;
+		height: 72px;
+		border-radius: 14px;
+		background: #fff;
+		border: 1px solid var(--border);
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		overflow: hidden;
+		flex-shrink: 0;
+		padding: 6px;
+	}
+
+	.cats-grid .cat-subs-head-img {
+		width: 100%;
+		height: 100%;
+		object-fit: contain;
+	}
+
+	.cats-grid .cat-subs-head-meta {
+		flex: 1;
+		min-width: 0;
+	}
+
+	.cats-grid .cat-subs-head-name {
+		font-weight: 800;
+		font-size: 1rem;
+		color: var(--text);
+		line-height: 1.3;
+		margin-bottom: 4px;
+	}
+
+	.cats-grid .cat-subs-head-count {
+		font-size: .78rem;
+		font-weight: 600;
+		color: var(--muted);
+	}
+
+	.cats-grid .cat-subs-head-all {
+		flex-shrink: 0;
+		font-size: .8rem;
+		font-weight: 700;
+		color: var(--accent);
+		text-decoration: none;
+		padding: 8px 10px;
+		border-radius: 999px;
+		background: #fff;
+		border: 1px solid var(--border);
+	}
+
+	.cats-grid .cat-subs-list {
+		display: grid;
+		grid-template-columns: repeat(6, minmax(0, 1fr));
+		gap: 12px;
+		padding: 14px;
+		background: #fff;
+	}
+
+	.cats-grid .cat-subs-list .cat-sub-row {
+		flex-direction: column;
+		align-items: center;
+		justify-content: flex-start;
+		gap: 8px;
+		text-align: center;
+		padding: 14px 10px;
+		border: 1px solid #ececf3;
+		border-radius: 12px;
+		background: #fff;
+		opacity: 0;
+		transform: translateY(16px) scale(.96);
+		filter: blur(1.5px);
+		transition: border-color .2s ease, box-shadow .2s ease, transform .2s ease, background .2s ease;
+	}
+
+	.cats-grid .cat-subs.is-open:not(.is-animating) .cat-subs-list .cat-sub-row {
+		opacity: 1;
+		transform: none;
+		filter: none;
+	}
+
+	.cats-grid .cat-subs.is-open:not(.is-animating) .cat-subs-head {
+		opacity: 1;
+		transform: none;
+	}
+
+	.cats-grid .cat-subs-list .cat-sub-row:hover {
+		border-color: var(--accent);
+		box-shadow: var(--shadow-sm);
+		transform: translateY(-2px);
+	}
+
+	.cats-grid .cat-subs-list .cat-sub-row:last-child {
+		border-bottom: 1px solid #ececf3;
+	}
+
+	.cats-grid .cat-subs-list .cat-sub-thumb {
+		width: 64px;
+		height: 64px;
+		margin: 0 auto;
+	}
+
+	.cats-grid .cat-subs-list .cat-sub-name {
+		flex: none;
+		width: 100%;
+		font-size: .82rem;
+		line-height: 1.35;
+		display: -webkit-box;
+		-webkit-line-clamp: 2;
+		-webkit-box-orient: vertical;
+		overflow: hidden;
+	}
+
+	.cats-grid .cat-subs-list .cat-sub-count {
+		font-size: .7rem;
+	}
+
+	@keyframes cat-sub-cascade {
+		0% {
+			opacity: 0;
+			transform: translateY(18px) scale(.94);
+			filter: blur(2px);
+		}
+		60% {
+			opacity: 1;
+			filter: blur(0);
+		}
+		100% {
+			opacity: 1;
+			transform: translateY(0) scale(1);
+			filter: blur(0);
+		}
+	}
+
+	@media (max-width: 1024px) {
+		.cats-grid .cat-subs-list {
+			grid-template-columns: repeat(3, minmax(0, 1fr));
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.cats-grid .cat-card--has-subs,
+		.cats-grid .cat-card--has-subs.is-open .cat-icon,
+		.cats-grid .cat-subs.is-mounted {
+			transition: none;
+		}
+
+		.cats-grid .cat-card--has-subs.is-open {
+			transform: none;
+		}
+
+		.cats-grid .cat-subs.is-animating .cat-subs-head,
+		.cats-grid .cat-subs.is-animating .cat-sub-row {
+			animation: none;
+			opacity: 1;
+			transform: none;
+			filter: none;
+		}
+	}
+
 	/* ============================================================
    PRODUCTS GRID
    ============================================================ */
@@ -2895,146 +3131,59 @@
 			min-height: 2.7em;
 		}
 
-		.cats-grid .cat-card--has-subs.is-open {
-			position: relative;
-			z-index: 2;
-			transform: scale(1.04);
-			border-color: var(--accent);
-			background: #fff;
-			box-shadow: none;
-		}
-
-		.cats-grid .cat-card--has-subs.is-open:hover,
-		.cats-grid .cat-card--has-subs.is-open:active {
-			transform: scale(1.04);
-			border-color: var(--accent);
-			box-shadow: none;
-		}
-
-		.cats-grid .cat-card--has-subs.is-open .cat-icon {
-			transform: scale(1.05);
-			transition: transform .38s cubic-bezier(.22, 1, .36, 1);
-		}
-
-		.cats-grid .cat-subs {
-			display: none;
-			grid-column: 1 / -1;
-			grid-template-rows: 0fr;
-			opacity: 0;
-			background: #fff;
-			border: 1px solid transparent;
-			border-radius: 14px;
-			overflow: hidden;
-			box-shadow: none;
-			transform: translateY(-14px) scale(.985);
-			filter: blur(2px);
-		}
-
-		.cats-grid .cat-subs.is-mounted {
-			display: grid;
-			transition: grid-template-rows .9s cubic-bezier(.16, 1, .3, 1), opacity .75s ease, transform .9s cubic-bezier(.16, 1, .3, 1), border-color .55s ease, box-shadow .55s ease, filter .75s ease;
-		}
-
-		.cats-grid .cat-subs.is-open {
-			grid-template-rows: 1fr;
-			opacity: 1;
-			border-color: var(--border);
-			box-shadow: var(--shadow-sm);
-			transform: translateY(0) scale(1);
-			filter: blur(0);
-		}
-
-		.cats-grid .cat-subs .cat-subs-inner {
-			display: flex;
-			flex-direction: column;
-			background: #fff;
-		}
-
-		.cats-grid .cat-subs-head {
-			display: flex;
-			align-items: center;
-			gap: 14px;
-			padding: 14px 14px 12px;
-			border-bottom: 1px solid #ececf3;
-			background: var(--bg-soft);
-			opacity: 0;
-			transform: translateY(-12px) scale(.96);
-		}
-
-		.cats-grid .cat-subs.is-animating .cat-subs-head,
-		.cats-grid .cat-subs.is-animating .cat-sub-row {
-			animation: cat-sub-cascade 1s cubic-bezier(.16, 1, .3, 1) forwards;
-			animation-delay: calc(var(--cat-stagger, 0) * 130ms + 220ms);
-		}
-
-		.cats-grid .cat-subs-head-icon {
-			width: 72px;
-			height: 72px;
-			border-radius: 14px;
-			background: #fff;
-			border: 1px solid var(--border);
-			display: flex;
-			align-items: center;
-			justify-content: center;
-			overflow: hidden;
-			flex-shrink: 0;
-			padding: 6px;
-		}
-
-		.cats-grid .cat-subs-head-img {
-			width: 100%;
-			height: 100%;
-			object-fit: contain;
-		}
-
-		.cats-grid .cat-subs-head-meta {
-			flex: 1;
-			min-width: 0;
-		}
-
-		.cats-grid .cat-subs-head-name {
-			font-weight: 800;
-			font-size: 1rem;
-			color: var(--text);
-			line-height: 1.3;
-			margin-bottom: 4px;
-		}
-
-		.cats-grid .cat-subs-head-count {
-			font-size: .78rem;
-			font-weight: 600;
-			color: var(--muted);
-		}
-
-		.cats-grid .cat-subs-head-all {
-			flex-shrink: 0;
-			font-size: .8rem;
-			font-weight: 700;
-			color: var(--accent);
-			text-decoration: none;
-			padding: 8px 10px;
-			border-radius: 999px;
-			background: #fff;
-			border: 1px solid var(--border);
-		}
-
 		.cats-grid .cat-subs-list {
 			display: flex;
 			flex-direction: column;
-			background: #fff;
+			gap: 0;
+			padding: 0;
 		}
 
 		.cats-grid .cat-subs-list .cat-sub-row {
-			opacity: 0;
+			flex-direction: row;
+			align-items: center;
+			justify-content: space-between;
+			gap: 12px;
+			text-align: start;
+			padding: 12px 14px;
+			border: none;
+			border-bottom: 1px solid #ececf3;
+			border-radius: 0;
+			box-shadow: none;
 			transform: translateX(18px) scale(.97);
-			filter: blur(1.5px);
+		}
+
+		.cats-grid .cat-subs-list .cat-sub-row:hover {
+			border-color: transparent;
+			border-bottom-color: #ececf3;
+			box-shadow: none;
+			transform: none;
+			background: var(--bg-soft);
 		}
 
 		.cats-grid .cat-subs-list .cat-sub-row:last-child {
 			border-bottom: none;
 		}
 
-		@keyframes cat-sub-cascade {
+		.cats-grid .cat-subs-list .cat-sub-thumb {
+			width: 52px;
+			height: 52px;
+			margin: 0;
+		}
+
+		.cats-grid .cat-subs-list .cat-sub-name {
+			flex: 1;
+			width: auto;
+			font-size: .9rem;
+			display: block;
+			-webkit-line-clamp: unset;
+			overflow: visible;
+		}
+
+		.cats-grid .cat-subs.is-animating .cat-subs-list .cat-sub-row {
+			animation-name: cat-sub-cascade-mobile;
+		}
+
+		@keyframes cat-sub-cascade-mobile {
 			0% {
 				opacity: 0;
 				transform: translateX(22px) translateY(8px) scale(.94);
@@ -3048,26 +3197,6 @@
 				opacity: 1;
 				transform: translateX(0) translateY(0) scale(1);
 				filter: blur(0);
-			}
-		}
-
-		@media (prefers-reduced-motion: reduce) {
-			.cats-grid .cat-card,
-			.cats-grid .cat-card--has-subs.is-open .cat-icon,
-			.cats-grid .cat-subs.is-mounted {
-				transition: none;
-			}
-
-			.cats-grid .cat-card--has-subs.is-open {
-				transform: none;
-			}
-
-			.cats-grid .cat-subs.is-animating .cat-subs-head,
-			.cats-grid .cat-subs.is-animating .cat-sub-row {
-				animation: none;
-				opacity: 1;
-				transform: none;
-				filter: none;
 			}
 		}
 

@@ -1068,8 +1068,9 @@
 		return String(c.source || 'local') + '-' + Number(c.id || 0);
 	}
 
-	function isSmallCategoryGrid() {
-		return window.matchMedia('(max-width: 768px)').matches;
+	function categoryGridColumns() {
+		if (window.matchMedia('(max-width: 1024px)').matches) return 3;
+		return 6;
 	}
 
 	function closeHomeCategorySubs(grid, options = {}) {
@@ -1100,7 +1101,8 @@
 		const cards = [...grid.querySelectorAll(':scope > .cat-card')];
 		const index = cards.indexOf(card);
 		if (index < 0) return;
-		const endIndex = Math.min(cards.length - 1, Math.floor(index / 3) * 3 + 2);
+		const cols = categoryGridColumns();
+		const endIndex = Math.min(cards.length - 1, Math.floor(index / cols) * cols + (cols - 1));
 		cards[endIndex].after(panel);
 	}
 
@@ -1124,6 +1126,13 @@
 		requestAnimationFrame(() => {
 			requestAnimationFrame(() => {
 				panel.classList.add('is-open', 'is-animating');
+				const rows = panel.querySelectorAll('.cat-sub-row').length;
+				const settleMs = 220 + ((rows + 1) * 130) + 1000;
+				if (panel._catsAnimTimer) clearTimeout(panel._catsAnimTimer);
+				panel._catsAnimTimer = setTimeout(() => {
+					panel.classList.remove('is-animating');
+					panel._catsAnimTimer = null;
+				}, settleMs);
 			});
 		});
 	}
@@ -1133,11 +1142,12 @@
 		grid.dataset.accordionBound = '1';
 
 		grid.addEventListener('click', (e) => {
+			if (e.target.closest('.cat-sub-row, .cat-subs-head-all')) return;
 			const card = e.target.closest('.cat-card');
 			if (!card || !grid.contains(card)) return;
 			const key = card.dataset.catKey || '';
 			const panel = key ? grid.querySelector('.cat-subs[data-cat-key="' + key + '"]') : null;
-			if (!panel || !isSmallCategoryGrid()) return;
+			if (!panel) return;
 
 			e.preventDefault();
 			const wasOpen = card.classList.contains('is-open');
@@ -1147,10 +1157,10 @@
 			openHomeCategorySubs(grid, card, panel);
 		});
 
-		const mq = window.matchMedia('(max-width: 768px)');
-		const onChange = () => closeHomeCategorySubs(grid, { animate: false });
-		if (mq.addEventListener) mq.addEventListener('change', onChange);
-		else mq.addListener(onChange);
+		const onViewportChange = () => closeHomeCategorySubs(grid, { animate: false });
+		const mqTablet = window.matchMedia('(max-width: 1024px)');
+		if (mqTablet.addEventListener) mqTablet.addEventListener('change', onViewportChange);
+		else mqTablet.addListener(onViewportChange);
 	}
 
 	function categoryMediaUrl(value) {
