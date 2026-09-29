@@ -6,11 +6,12 @@ $data = (isset($products) && $products) ? ($products->getCollection() ?? collect
 
 $activeQ = trim((string) request('q', ''));
 $activeCategoryId = $selected_category_id ?? request('category_id');
-$activeSubCategoryId = $selected_sub_category_id ?? null;
+$activeSubCategoryId = $selected_sub_category_id ?? request('sub_category_id');
 $activeBrandId = request('brand_id');
 $activePriceMin = request('price_min');
 $activePriceMax = request('price_max');
-$isServoCatalog = request('source') === 'servo';
+$activeSort = (string) request('sort', '');
+$isServoCatalog = request('source') === 'servo' || ! empty($isServoCatalog);
 $servoCategoryName = (string) ($servoCategoryName ?? '');
 
 // Links should keep pagination off (remove `page`) while keeping any other filter params.
@@ -21,9 +22,10 @@ $queryWithoutSubCategory = request()->except(['page', 'sub_category_id']);
 if (! empty($activeCategoryId) && (string) request('category_id') !== (string) $activeCategoryId) {
 $queryWithoutSubCategory['category_id'] = $activeCategoryId;
 }
-$queryWithoutServoCategory = request()->except(['page', 'category_id']);
+$queryWithoutServoCategory = request()->except(['page', 'category_id', 'sub_category_id']);
 $queryWithoutBrand = request()->except(['page', 'brand_id']);
 $queryWithoutPrice = request()->except(['page', 'price_min', 'price_max']);
+$queryWithoutSort = request()->except(['page', 'sort']);
 
 $sPmin = (float) (isset($store_price_slider_min) ? $store_price_slider_min : 0);
 $sPmax = (float) (isset($store_price_slider_max) ? $store_price_slider_max : 1);
@@ -361,6 +363,23 @@ if ($sPmax <= $sPmin) { $sPmax=$sPmin + 1; } $sliderRngLo=$sPmin; $sliderRngHi=$
 		margin-bottom: 12px;
 	}
 
+	.products-head-actions {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		flex-wrap: wrap;
+	}
+
+	.products-sort-select {
+		min-width: 180px;
+		padding: 8px 10px;
+		border: 1px solid #e5e7eb;
+		border-radius: 10px;
+		background: #fff;
+		font-size: 13px;
+		color: #111827;
+	}
+
 	.products-title {
 		margin: 0;
 		font-size: 24px;
@@ -635,10 +654,13 @@ if ($sPmax <= $sPmin) { $sPmax=$sPmin + 1; } $sliderRngLo=$sPmin; $sliderRngHi=$
 
 				@if(! empty($activeCategoryId))
 				@php
-				$activeCategoryName = $isServoCatalog ? $servoCategoryName : '';
-				if (! $isServoCatalog && isset($categories)) {
+				$activeCategoryName = '';
+				if (isset($categories)) {
 				$activeCategory = $categories->firstWhere('id', (int) $activeCategoryId);
 				$activeCategoryName = $activeCategory ? (string) $activeCategory->name : '';
+				}
+				if ($activeCategoryName === '' && $isServoCatalog) {
+				$activeCategoryName = $servoCategoryName;
 				}
 				$categoryClearQuery = $isServoCatalog ? $queryWithoutServoCategory :
 				$queryWithoutCategory;
@@ -654,7 +676,7 @@ if ($sPmax <= $sPmin) { $sPmax=$sPmin + 1; } $sliderRngLo=$sPmin; $sliderRngHi=$
 				@endif
 				@endif
 
-				@if(! $isServoCatalog && ! empty($activeSubCategoryId))
+				@if(! empty($activeSubCategoryId))
 				@php
 				$activeSubCategoryName = '';
 				if (isset($sub_categories)) {
@@ -675,7 +697,7 @@ if ($sPmax <= $sPmin) { $sPmax=$sPmin + 1; } $sliderRngLo=$sPmin; $sliderRngHi=$
 				@endif
 				@endif
 
-				@if(! $isServoCatalog && ! empty($activeBrandId))
+				@if(! empty($activeBrandId))
 				@php
 				$activeBrandName = '';
 				if (isset($brands)) {
@@ -698,7 +720,7 @@ if ($sPmax <= $sPmin) { $sPmax=$sPmin + 1; } $sliderRngLo=$sPmin; $sliderRngHi=$
 				<a class="filter-pill js-store-ajax-nav"
 					href="{{ route('store.products.index', $queryWithoutPrice) }}"
 					title="Remove price filter">
-					<span class="pill-label">Price</span>
+					<span class="pill-label">{{ __('lang_v1.price_range') }}</span>
 					<span>
 						@if((string) $activePriceMin !== '' && (string)
 						$activePriceMax !== '')
@@ -708,6 +730,18 @@ if ($sPmax <= $sPmin) { $sPmax=$sPmin + 1; } $sliderRngLo=$sPmin; $sliderRngHi=$
 						@else
 						≤ {{ $activePriceMax }}
 						@endif
+					</span>
+					<span class="pill-x">✕</span>
+				</a>
+				@endif
+
+				@if(in_array($activeSort, ['price_asc', 'price_desc'], true))
+				<a class="filter-pill js-store-ajax-nav"
+					href="{{ route('store.products.index', $queryWithoutSort) }}"
+					title="Remove sort">
+					<span class="pill-label">{{ __('lang_v1.sort_by') }}</span>
+					<span>
+						{{ $activeSort === 'price_asc' ? __('lang_v1.price_lowest') : __('lang_v1.price_highest') }}
 					</span>
 					<span class="pill-x">✕</span>
 				</a>
@@ -732,13 +766,12 @@ if ($sPmax <= $sPmin) { $sPmax=$sPmin + 1; } $sliderRngLo=$sPmin; $sliderRngHi=$
 						@endif
 					</div>
 				</div>
-				@unless($isServoCatalog)
 				<div class="filter-group">
 					<label
 						for="filter-category-desktop">{{ __('lang_v1.category') }}</label>
 					<select id="filter-category-desktop" name="category_id">
 						<option value="">{{ __('lang_v1.all') }}</option>
-						@foreach($categories as $category)
+						@foreach(($categories ?? collect()) as $category)
 						<option value="{{ $category->id }}"
 							@selected((string)$activeCategoryId===(string)$category->
 							id)>{{ $category->name }}</option>
@@ -764,15 +797,24 @@ if ($sPmax <= $sPmin) { $sPmax=$sPmin + 1; } $sliderRngLo=$sPmin; $sliderRngHi=$
 				<div class="filter-group">
 					<label for="filter-brand-desktop">{{ __('lang_v1.brand') }}</label>
 					<select id="filter-brand-desktop" name="brand_id">
-						<option value="">All</option>
-						@foreach($brands as $brand)
+						<option value="">{{ __('lang_v1.all') }}</option>
+						@foreach(($brands ?? collect()) as $brand)
 						<option value="{{ $brand->id }}"
 							@selected((string)request('brand_id')===(string)$brand->
 							id)>{{ $brand->name }}</option>
 						@endforeach
 					</select>
 				</div>
-				@endunless
+				<div class="filter-group">
+					<label for="filter-sort-desktop">{{ __('lang_v1.sort_by') }}</label>
+					<select id="filter-sort-desktop" name="sort">
+						<option value="">{{ __('lang_v1.sort_default') }}</option>
+						<option value="price_asc" @selected($activeSort==='price_asc')>
+							{{ __('lang_v1.price_lowest') }}</option>
+						<option value="price_desc" @selected($activeSort==='price_desc')>
+							{{ __('lang_v1.price_highest') }}</option>
+					</select>
+				</div>
 				<div class="filter-group filter-group--price-slider">
 					<label>{{ __('lang_v1.price_range') }}</label>
 					<div class="price-dual-range">
@@ -817,8 +859,18 @@ if ($sPmax <= $sPmin) { $sPmax=$sPmin + 1; } $sliderRngLo=$sPmin; $sliderRngHi=$
 						<div class="products-meta">{{ __('lang_v1.total') }}:
 							{{ $products->total() }}</div>
 					</div>
-					<button type="button" class="btn mobile-filter-toggle"
-						id="open-filter-sheet">{{ __('lang_v1.filter') }}</button>
+					<div class="products-head-actions">
+						<select class="products-sort-select js-store-sort-select"
+							aria-label="{{ __('lang_v1.sort_by') }}">
+							<option value="">{{ __('lang_v1.sort_default') }}</option>
+							<option value="price_asc" @selected($activeSort==='price_asc')>
+								{{ __('lang_v1.price_lowest') }}</option>
+							<option value="price_desc" @selected($activeSort==='price_desc')>
+								{{ __('lang_v1.price_highest') }}</option>
+						</select>
+						<button type="button" class="btn mobile-filter-toggle"
+							id="open-filter-sheet">{{ __('lang_v1.filter') }}</button>
+					</div>
 				</div>
 
 				<div class="products-grid">
@@ -939,10 +991,13 @@ if ($sPmax <= $sPmin) { $sPmax=$sPmin + 1; } $sliderRngLo=$sPmin; $sliderRngHi=$
 
 			@if(! empty($activeCategoryId))
 			@php
-			$activeCategoryName = $isServoCatalog ? $servoCategoryName : '';
-			if (! $isServoCatalog && isset($categories)) {
+			$activeCategoryName = '';
+			if (isset($categories)) {
 			$activeCategory = $categories->firstWhere('id', (int) $activeCategoryId);
 			$activeCategoryName = $activeCategory ? (string) $activeCategory->name : '';
+			}
+			if ($activeCategoryName === '' && $isServoCatalog) {
+			$activeCategoryName = $servoCategoryName;
 			}
 			$categoryClearQuery = $isServoCatalog ? $queryWithoutServoCategory :
 			$queryWithoutCategory;
@@ -951,14 +1006,14 @@ if ($sPmax <= $sPmin) { $sPmax=$sPmin + 1; } $sliderRngLo=$sPmin; $sliderRngHi=$
 			<a class="filter-pill js-store-ajax-nav"
 				href="{{ route('store.products.index', $categoryClearQuery) }}"
 				title="Remove category filter">
-				<span class="pill-label">Category</span>
+				<span class="pill-label">{{ __('lang_v1.category') }}</span>
 				<span>{{ $activeCategoryName }}</span>
 				<span class="pill-x">✕</span>
 			</a>
 			@endif
 			@endif
 
-			@if(! $isServoCatalog && ! empty($activeSubCategoryId))
+			@if(! empty($activeSubCategoryId))
 			@php
 			$activeSubCategoryName = '';
 			if (isset($sub_categories)) {
@@ -977,7 +1032,7 @@ if ($sPmax <= $sPmin) { $sPmax=$sPmin + 1; } $sliderRngLo=$sPmin; $sliderRngHi=$
 			@endif
 			@endif
 
-			@if(! $isServoCatalog && ! empty($activeBrandId))
+			@if(! empty($activeBrandId))
 			@php
 			$activeBrandName = '';
 			if (isset($brands)) {
@@ -989,7 +1044,7 @@ if ($sPmax <= $sPmin) { $sPmax=$sPmin + 1; } $sliderRngLo=$sPmin; $sliderRngHi=$
 			<a class="filter-pill js-store-ajax-nav"
 				href="{{ route('store.products.index', $queryWithoutBrand) }}"
 				title="Remove brand filter">
-				<span class="pill-label">Brand</span>
+				<span class="pill-label">{{ __('lang_v1.brand') }}</span>
 				<span>{{ $activeBrandName }}</span>
 				<span class="pill-x">✕</span>
 			</a>
@@ -1000,7 +1055,7 @@ if ($sPmax <= $sPmin) { $sPmax=$sPmin + 1; } $sliderRngLo=$sPmin; $sliderRngHi=$
 			<a class="filter-pill js-store-ajax-nav"
 				href="{{ route('store.products.index', $queryWithoutPrice) }}"
 				title="Remove price filter">
-				<span class="pill-label">Price</span>
+				<span class="pill-label">{{ __('lang_v1.price_range') }}</span>
 				<span>
 					@if((string) $activePriceMin !== '' && (string) $activePriceMax !==
 					'')
@@ -1010,6 +1065,18 @@ if ($sPmax <= $sPmin) { $sPmax=$sPmin + 1; } $sliderRngLo=$sPmin; $sliderRngHi=$
 					@else
 					≤ {{ $activePriceMax }}
 					@endif
+				</span>
+				<span class="pill-x">✕</span>
+			</a>
+			@endif
+
+			@if(in_array($activeSort, ['price_asc', 'price_desc'], true))
+			<a class="filter-pill js-store-ajax-nav"
+				href="{{ route('store.products.index', $queryWithoutSort) }}"
+				title="Remove sort">
+				<span class="pill-label">{{ __('lang_v1.sort_by') }}</span>
+				<span>
+					{{ $activeSort === 'price_asc' ? __('lang_v1.price_lowest') : __('lang_v1.price_highest') }}
 				</span>
 				<span class="pill-x">✕</span>
 			</a>
@@ -1034,12 +1101,11 @@ if ($sPmax <= $sPmin) { $sPmax=$sPmin + 1; } $sliderRngLo=$sPmin; $sliderRngHi=$
 					@endif
 				</div>
 			</div>
-			@unless($isServoCatalog)
 			<div class="filter-group">
 				<label for="filter-category-mobile">{{ __('lang_v1.category') }}</label>
 				<select id="filter-category-mobile" name="category_id">
 					<option value="">{{ __('lang_v1.all') }}</option>
-					@foreach($categories as $category)
+					@foreach(($categories ?? collect()) as $category)
 					<option value="{{ $category->id }}"
 						@selected((string)$activeCategoryId===(string)$category->
 						id)>{{ $category->name }}</option>
@@ -1065,14 +1131,23 @@ if ($sPmax <= $sPmin) { $sPmax=$sPmin + 1; } $sliderRngLo=$sPmin; $sliderRngHi=$
 				<label for="filter-brand-mobile">{{ __('lang_v1.brand') }}</label>
 				<select id="filter-brand-mobile" name="brand_id">
 					<option value="">{{ __('lang_v1.all') }}</option>
-					@foreach($brands as $brand)
+					@foreach(($brands ?? collect()) as $brand)
 					<option value="{{ $brand->id }}"
 						@selected((string)request('brand_id')===(string)$brand->
 						id)>{{ $brand->name }}</option>
 					@endforeach
 				</select>
 			</div>
-			@endunless
+			<div class="filter-group">
+				<label for="filter-sort-mobile">{{ __('lang_v1.sort_by') }}</label>
+				<select id="filter-sort-mobile" name="sort">
+					<option value="">{{ __('lang_v1.sort_default') }}</option>
+					<option value="price_asc" @selected($activeSort==='price_asc')>
+						{{ __('lang_v1.price_lowest') }}</option>
+					<option value="price_desc" @selected($activeSort==='price_desc')>
+						{{ __('lang_v1.price_highest') }}</option>
+				</select>
+			</div>
 			<div class="filter-group filter-group--price-slider">
 				<label>{{ __('lang_v1.price_range') }}</label>
 				<div class="price-dual-range">
@@ -1147,6 +1222,11 @@ if ($sPmax <= $sPmin) { $sPmax=$sPmin + 1; } $sliderRngLo=$sPmin; $sliderRngHi=$
 		const STORE_BRAND_NAMES = @json(isset($brands) ? $brands->pluck('name', 'id')-> all() : []);
 		const STORE_SERVO_CATEGORY_NAME = @json($servoCategoryName ?? '');
 		const STORE_IS_SERVO_CATALOG = @json($isServoCatalog ?? false);
+		const STORE_SORT_LABELS = {
+			price_asc: @json(__('lang_v1.price_lowest')),
+			price_desc: @json(__('lang_v1.price_highest')),
+		};
+		const STORE_SORT_BY_LABEL = @json(__('lang_v1.sort_by'));
 
 		const grid = main.querySelector('.products-grid');
 		const pagWrap = main.querySelector('.store-products-pagination');
@@ -1361,12 +1441,16 @@ if ($sPmax <= $sPmin) { $sPmax=$sPmin + 1; } $sliderRngLo=$sPmin; $sliderRngHi=$
 				['filter-q-desktop', 'filter-q-mobile'],
 				['filter-category-desktop', 'filter-category-mobile'],
 				['filter-brand-desktop', 'filter-brand-mobile'],
+				['filter-sort-desktop', 'filter-sort-mobile'],
 			];
 			pairs.forEach(([a, b]) => {
 				const elA = document.getElementById(a);
 				const elB = document.getElementById(b);
 				if (elA && elB) elB.value = elA.value;
 			});
+			const sortHead = document.querySelector('.js-store-sort-select');
+			const sortDesktop = document.getElementById('filter-sort-desktop');
+			if (sortHead && sortDesktop) sortHead.value = sortDesktop.value;
 			const loF = document.getElementById('range-price-min-desktop');
 			const hiF = document.getElementById('range-price-max-desktop');
 			const hMinF = document.getElementById('filter-price-min-desktop');
@@ -1392,12 +1476,16 @@ if ($sPmax <= $sPmin) { $sPmax=$sPmin + 1; } $sliderRngLo=$sPmin; $sliderRngHi=$
 				['filter-q-desktop', 'filter-q-mobile'],
 				['filter-category-desktop', 'filter-category-mobile'],
 				['filter-brand-desktop', 'filter-brand-mobile'],
+				['filter-sort-desktop', 'filter-sort-mobile'],
 			];
 			pairs.forEach(([a, b]) => {
 				const elA = document.getElementById(a);
 				const elB = document.getElementById(b);
 				if (elA && elB) elA.value = elB.value;
 			});
+			const sortHead = document.querySelector('.js-store-sort-select');
+			const sortDesktop = document.getElementById('filter-sort-desktop');
+			if (sortHead && sortDesktop) sortHead.value = sortDesktop.value;
 			const loF = document.getElementById('range-price-min-desktop');
 			const hiF = document.getElementById('range-price-max-desktop');
 			const loT = document.getElementById('range-price-min-mobile');
@@ -1453,6 +1541,11 @@ if ($sPmax <= $sPmin) { $sPmax=$sPmin + 1; } $sliderRngLo=$sPmin; $sliderRngHi=$
 			set('filter-category-mobile', categoryId);
 			set('filter-brand-desktop', get('brand_id'));
 			set('filter-brand-mobile', get('brand_id'));
+			set('filter-sort-desktop', get('sort'));
+			set('filter-sort-mobile', get('sort'));
+			document.querySelectorAll('.js-store-sort-select').forEach((el) => {
+				el.value = get('sort');
+			});
 			['desktop', 'mobile'].forEach((suffix) => {
 				fillSubCategorySelect(
 					document.getElementById(
@@ -1509,6 +1602,7 @@ if ($sPmax <= $sPmin) { $sPmax=$sPmin + 1; } $sliderRngLo=$sPmin; $sliderRngHi=$
 			if (f.brand_id) o.brand_id = f.brand_id;
 			if (f.price_min) o.price_min = f.price_min;
 			if (f.price_max) o.price_max = f.price_max;
+			if (f.sort) o.sort = f.sort;
 			return o;
 		}
 
@@ -1557,7 +1651,7 @@ if ($sPmax <= $sPmin) { $sPmax=$sPmin + 1; } $sliderRngLo=$sPmin; $sliderRngHi=$
 						`<a class="filter-pill js-store-ajax-nav" href="${href}"><span class="pill-label">Category</span><span>${String(name).replace(/</g, '&lt;')}</span><span class="pill-x">✕</span></a>`);
 				}
 			}
-			if (f.sub_category_id && f.source !== 'servo') {
+			if (f.sub_category_id) {
 				const sub = STORE_SUBCATEGORIES.find((item) => String(item.id) === String(f
 					.sub_category_id));
 				if (sub && sub.name) {
@@ -1565,7 +1659,7 @@ if ($sPmax <= $sPmin) { $sPmax=$sPmin + 1; } $sliderRngLo=$sPmin; $sliderRngHi=$
 						`<a class="filter-pill js-store-ajax-nav" href="${urlWithoutFilterKey(f, 'sub_category_id')}"><span class="pill-label">${escHtml(STORE_SUBCATEGORY_LABEL)}</span><span>${escHtml(sub.name)}</span><span class="pill-x">✕</span></a>`);
 				}
 			}
-			if (f.brand_id && f.source !== 'servo') {
+			if (f.brand_id) {
 				const name = STORE_BRAND_NAMES[f.brand_id] || STORE_BRAND_NAMES[String(f
 					.brand_id)] || '';
 				if (name) {
@@ -1591,6 +1685,10 @@ if ($sPmax <= $sPmin) { $sPmax=$sPmin + 1; } $sliderRngLo=$sPmin; $sliderRngHi=$
 					STORE_PRODUCTS_URL;
 				parts.push(
 					`<a class="filter-pill js-store-ajax-nav" href="${href}"><span class="pill-label">Price</span><span>${String(label).replace(/</g, '&lt;')}</span><span class="pill-x">✕</span></a>`);
+			}
+			if (f.sort && STORE_SORT_LABELS[f.sort]) {
+				parts.push(
+					`<a class="filter-pill js-store-ajax-nav" href="${urlWithoutFilterKey(f, 'sort')}"><span class="pill-label">${escHtml(STORE_SORT_BY_LABEL)}</span><span>${escHtml(STORE_SORT_LABELS[f.sort])}</span><span class="pill-x">✕</span></a>`);
 			}
 			const html = parts.join('');
 			document.querySelectorAll('.js-store-active-filters').forEach((el) => {
@@ -1806,7 +1904,9 @@ if ($sPmax <= $sPmin) { $sPmax=$sPmin + 1; } $sliderRngLo=$sPmin; $sliderRngHi=$
 					'filter-sub-category-desktop',
 					'filter-sub-category-mobile',
 					'filter-brand-desktop',
-					'filter-brand-mobile'
+					'filter-brand-mobile',
+					'filter-sort-desktop',
+					'filter-sort-mobile'
 				].forEach((id) => {
 					const el = document
 						.getElementById(
@@ -1823,6 +1923,9 @@ if ($sPmax <= $sPmin) { $sPmax=$sPmin + 1; } $sliderRngLo=$sPmin; $sliderRngHi=$
 					else el.value =
 						'';
 				});
+				document.querySelectorAll('.js-store-sort-select').forEach((el) => {
+					el.selectedIndex = 0;
+				});
 				['desktop', 'mobile'].forEach((
 					suffix) => {
 						fillSubCategorySelect
@@ -1835,9 +1938,35 @@ if ($sPmax <= $sPmin) { $sPmax=$sPmin + 1; } $sliderRngLo=$sPmin; $sliderRngHi=$
 								);
 					});
 				resetAllPriceSliders();
-				fetchStoreProducts(STORE_PRODUCTS_URL);
+				const resetUrl = STORE_IS_SERVO_CATALOG
+					? (STORE_PRODUCTS_URL + '?source=servo')
+					: STORE_PRODUCTS_URL;
+				fetchStoreProducts(resetUrl);
 			});
 		});
+
+		function applySortValue(sortValue) {
+			const sort = String(sortValue || '');
+			['filter-sort-desktop', 'filter-sort-mobile'].forEach((id) => {
+				const el = document.getElementById(id);
+				if (el) el.value = sort;
+			});
+			document.querySelectorAll('.js-store-sort-select').forEach((el) => {
+				el.value = sort;
+			});
+			const p = readFiltersFromDesktopForm();
+			if (sort) p.set('sort', sort);
+			else p.delete('sort');
+			if (STORE_IS_SERVO_CATALOG && !p.get('source')) {
+				p.set('source', 'servo');
+			}
+			fetchStoreProducts(buildUrlFromParams(p));
+		}
+
+		document.querySelectorAll('.js-store-sort-select, #filter-sort-desktop, #filter-sort-mobile')
+			.forEach((el) => {
+				el.addEventListener('change', () => applySortValue(el.value));
+			});
 
 		['desktop', 'mobile'].forEach((suffix) => {
 			const category = document.getElementById('filter-category-' +

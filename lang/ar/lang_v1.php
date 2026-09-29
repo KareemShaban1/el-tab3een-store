@@ -1562,6 +1562,10 @@ return [
 'reset'=>'أعادة',
 'filter'=>'فلتر (فرز)',
 'price_range'=>'رينج الأسعار',
+'sort_by'=>'الترتيب',
+'sort_default'=>'الافتراضي',
+'price_lowest'=>'السعر: من الأقل للأعلى',
+'price_highest'=>'السعر: من الأعلى للأقل',
 'low_stock_by_location_button'=>'مخزون منخفض بالموقع أقل من 0',
 
     // Synced from en/lang_v1.php missing keys

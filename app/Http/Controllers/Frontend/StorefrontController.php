@@ -219,6 +219,9 @@ class StorefrontController extends Controller
         }
         $this->restrictStorefrontProductsBySellPrice($query, $business_location_ids, $priceMin, $priceMax);
 
+        $sort = (string) $request->input('sort', '');
+        $this->applyStorefrontPriceSort($query, $sort, $business_location_ids);
+
         $products = $query->paginate(20);
 
 
@@ -301,6 +304,7 @@ class StorefrontController extends Controller
             'featured' => $request->boolean('featured') ? '1' : null,
             'price_min' => $request->filled('price_min') ? (string) $request->input('price_min') : null,
             'price_max' => $request->filled('price_max') ? (string) $request->input('price_max') : null,
+            'sort' => in_array($sort, ['price_asc', 'price_desc'], true) ? $sort : null,
         ], function ($v) {
             return $v !== null && $v !== '';
         });
@@ -633,12 +637,29 @@ class StorefrontController extends Controller
         $location_id = $this->resolveLocationId($business_id, $request);
         $categoryId = $request->filled('category_id') ? $request->integer('category_id') : null;
         $subCategoryId = $request->filled('sub_category_id') ? $request->integer('sub_category_id') : null;
-        $catalog = $tab3eenCatalogService->getCatalog($categoryId ?: $subCategoryId);
+        $fullCatalog = $tab3eenCatalogService->getCatalog(null);
+        $catalog = $fullCatalog;
+
+        if ($categoryId !== null || $subCategoryId !== null) {
+            $filterId = $categoryId ?: $subCategoryId;
+            $catalog = collect($fullCatalog)
+                ->filter(function ($category) use ($filterId) {
+                    $aliasIds = array_map('intval', $category['alias_ids'] ?? []);
+
+                    return (int) ($category['id'] ?? 0) === $filterId
+                        || (int) ($category['category_id'] ?? 0) === $filterId
+                        || in_array($filterId, $aliasIds, true);
+                })
+                ->values()
+                ->all();
+        }
 
         $servoCategoryName = '';
         if ($categoryId !== null || $subCategoryId !== null) {
             $matchedCategory = collect($catalog)->first();
-            $servoCategoryName = $matchedCategory ? (string) ($matchedCategory['name'] ?? '') : '';
+            $servoCategoryName = $matchedCategory
+                ? (string) ($matchedCategory['category_name'] ?? $matchedCategory['name'] ?? '')
+                : '';
         }
 
         $items = collect($catalog)
@@ -649,8 +670,12 @@ class StorefrontController extends Controller
             ->values();
 
         if ($subCategoryId) {
-            $matchedSub = collect($catalog)
-                ->flatMap(fn ($category) => $category['sub_categories'] ?? [])
+            $matchedSub = collect($fullCatalog)
+                ->flatMap(fn ($category) => collect($category['sub_categories'] ?? [])->map(function ($sub) use ($category) {
+                    $sub['parent_id'] = (int) ($category['id'] ?? 0);
+
+                    return $sub;
+                }))
                 ->first(fn ($sub) => (int) ($sub['id'] ?? 0) === $subCategoryId);
             $productIds = collect(is_array($matchedSub) ? ($matchedSub['product_ids'] ?? []) : [])
                 ->map(fn ($id) => (int) $id)
@@ -669,6 +694,19 @@ class StorefrontController extends Controller
                 return str_contains(mb_strtolower((string) ($item['name'] ?? '')), $needle)
                     || str_contains(mb_strtolower((string) ($item['brand'] ?? '')), $needle);
             })->values();
+        }
+
+        if ($request->filled('brand_id')) {
+            $brandName = Brands::where('business_id', $business_id)
+                ->where('id', $request->integer('brand_id'))
+                ->value('name');
+            if ($brandName) {
+                $needle = mb_strtolower((string) $brandName);
+                $items = $items->filter(function ($item) use ($needle) {
+                    return str_contains(mb_strtolower((string) ($item['name'] ?? '')), $needle)
+                        || str_contains(mb_strtolower((string) ($item['brand'] ?? '')), $needle);
+                })->values();
+            }
         }
 
         $priceMin = $request->filled('price_min') ? (float) $request->input('price_min') : null;
@@ -690,6 +728,13 @@ class StorefrontController extends Controller
             })->values();
         }
 
+        $sort = (string) $request->input('sort', '');
+        if ($sort === 'price_asc') {
+            $items = $items->sortBy(fn ($item) => (float) ($item['min_price'] ?? 0))->values();
+        } elseif ($sort === 'price_desc') {
+            $items = $items->sortByDesc(fn ($item) => (float) ($item['min_price'] ?? 0))->values();
+        }
+
         $page = max(1, (int) $request->input('page', 1));
         $perPage = 20;
         $total = $items->count();
@@ -708,8 +753,10 @@ class StorefrontController extends Controller
             'q' => $request->filled('q') ? (string) $request->input('q') : null,
             'category_id' => $request->filled('category_id') ? (string) $request->input('category_id') : null,
             'sub_category_id' => $request->filled('sub_category_id') ? (string) $request->input('sub_category_id') : null,
+            'brand_id' => $request->filled('brand_id') ? (string) $request->input('brand_id') : null,
             'price_min' => $request->filled('price_min') ? (string) $request->input('price_min') : null,
             'price_max' => $request->filled('price_max') ? (string) $request->input('price_max') : null,
+            'sort' => in_array($sort, ['price_asc', 'price_desc'], true) ? $sort : null,
         ], fn ($value) => $value !== null && $value !== '');
         $filterQueryForJson = empty($filterQuery) ? new \stdClass : $filterQuery;
 
@@ -730,19 +777,48 @@ class StorefrontController extends Controller
         ];
 
         if (! $request->expectsJson()) {
-            $categories = Category::where('business_id', $business_id)
-                ->where('category_type', 'product')
-                ->where('parent_id', 0)
-                ->activeInApp()
-                ->storefrontSortOrder()
-                ->select('id', 'name')
-                ->get();
+            $categories = collect($fullCatalog)
+                ->map(function ($category) {
+                    $name = trim((string) ($category['category_name'] ?? ''));
+                    if ($name === '') {
+                        $name = trim((string) ($category['name'] ?? ''));
+                    }
+
+                    return (object) [
+                        'id' => (int) ($category['id'] ?? 0),
+                        'name' => $name,
+                    ];
+                })
+                ->filter(fn ($category) => $category->id > 0 && $category->name !== '')
+                ->values();
+
+            $subCategories = collect($fullCatalog)
+                ->flatMap(function ($category) {
+                    $parentId = (int) ($category['id'] ?? 0);
+
+                    return collect($category['sub_categories'] ?? [])->map(function ($sub) use ($parentId) {
+                        return (object) [
+                            'id' => (int) ($sub['id'] ?? 0),
+                            'name' => trim((string) ($sub['name'] ?? '')),
+                            'parent_id' => $parentId,
+                        ];
+                    });
+                })
+                ->filter(fn ($sub) => $sub->id > 0 && $sub->name !== '' && $sub->parent_id > 0)
+                ->values();
+
             $brands = Brands::where('business_id', $business_id)->select('id', 'name')->orderBy('name')->get();
-            $priceSlider = $this->getServoCatalogPriceSliderSpec($items);
+            $priceSliderSource = collect($catalog)
+                ->flatMap(fn ($category) => $category['products'] ?? [])
+                ->map(fn ($product) => $this->mapServoCatalogProductForStorefront($product, ['name' => '', 'category_name' => '', 'sub_category_name' => '']));
+            $priceSlider = $this->getServoCatalogPriceSliderSpec($priceSliderSource);
 
             return view('frontend.store.products')->with([
                 'products' => $products,
                 'categories' => $categories,
+                'sub_categories' => $subCategories,
+                'selected_category_id' => $categoryId,
+                'selected_sub_category_id' => $subCategoryId,
                 'brands' => $brands,
                 'store_price_slider_min' => $priceSlider['min'],
                 'store_price_slider_max' => $priceSlider['max'],
@@ -890,6 +966,36 @@ class StorefrontController extends Controller
                     ->where('qty_available', '>', 0);
             });
         });
+    }
+
+    /**
+     * Sort storefront product listing by lowest / highest in-stock sell price.
+     */
+    private function applyStorefrontPriceSort($query, string $sort, $business_location_ids): void
+    {
+        if (! in_array($sort, ['price_asc', 'price_desc'], true)) {
+            return;
+        }
+
+        if ($business_location_ids->isEmpty()) {
+            return;
+        }
+
+        $direction = $sort === 'price_asc' ? 'asc' : 'desc';
+        $placeholders = $business_location_ids->map(fn () => '?')->implode(',');
+
+        $query->reorder()
+            ->orderByRaw(
+                "(SELECT MIN(variations.sell_price_inc_tax)
+                    FROM variations
+                    INNER JOIN variation_location_details
+                        ON variation_location_details.variation_id = variations.id
+                    WHERE variations.product_id = products.id
+                        AND variation_location_details.location_id IN ({$placeholders})
+                        AND variation_location_details.qty_available > 0
+                ) {$direction}",
+                $business_location_ids->all()
+            );
     }
 
     /**

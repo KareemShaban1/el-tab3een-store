@@ -1420,7 +1420,6 @@
 		const wrap = $('mob-menu-categories');
 		if (!wrap) return;
 
-		const base = new URL(STORE_PRODUCTS_URL, window.location.origin);
 		categories = sortCategoriesByOrder(categories);
 		if (!categories.length) {
 			wrap.innerHTML =
@@ -1431,21 +1430,15 @@
 		wrap.innerHTML = categories.map((c, idx) => {
 			const subs = Array.isArray(c.sub_categories) ? c.sub_categories : [];
 			const icon = categoryIconByIndex(idx);
-			const parentHref = categoryCardHref({
-				...c,
-				source: 'local',
-			});
+			const parentHref = categoryCardHref(c);
 
 			if (!subs.length) {
 				return `<a href="${parentHref}" class="mm-item mm-item--link">${icon} ${megaEsc(c.name || '')}</a>`;
 			}
 
-			const subLinks = subs.map((sub) => {
-				const u = new URL(base.href);
-				u.searchParams.set('category_id', String(sub
-					.id));
-				return `<a href="${u.pathname + '?' + u.searchParams.toString()}" class="mm-sub-item">${megaEsc(sub.name || '')}</a>`;
-			}).join('');
+			const subLinks = subs.map((sub) =>
+				`<a href="${subCategoryCardHref(c, sub)}" class="mm-sub-item">${megaEsc(sub.name || '')}</a>`
+			).join('');
 
 			return `
 			<div class="mm-cat-group">
@@ -1575,7 +1568,7 @@
 		const categories = mergeStoreAndServoCategories(localCategories, servoCategories);
 		renderDynamicCategories(categories);
 		renderMegaMenuCategories(localCategories);
-		renderMobMenuCategories(localCategories);
+		renderMobMenuCategories(categories);
 	}
 
 	function renderDynamicFlashDeals(deals) {
