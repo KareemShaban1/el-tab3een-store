@@ -1427,33 +1427,49 @@
 			return;
 		}
 
-		wrap.innerHTML = categories.map((c, idx) => {
+		wrap.innerHTML = categories.map((c) => {
 			const subs = Array.isArray(c.sub_categories) ? c.sub_categories : [];
-			const icon = categoryIconByIndex(idx);
 			const parentHref = categoryCardHref(c);
+			const categoryImage = c.image_url || c.image || '';
+			const parentThumb = categoryImageHtml(c.name || '', categoryImage, 'mm-cat-img');
 
 			if (!subs.length) {
-				return `<a href="${parentHref}" class="mm-item mm-item--link">${icon} ${megaEsc(c.name || '')}</a>`;
+				return `<a href="${parentHref}" class="mm-item mm-item--link">
+					<span class="mm-cat-thumb">${parentThumb}</span>
+					<span class="mm-cat-name">${megaEsc(c.name || '')}</span>
+				</a>`;
 			}
 
-			const subLinks = subs.map((sub) =>
-				`<a href="${subCategoryCardHref(c, sub)}" class="mm-sub-item">${megaEsc(sub.name || '')}</a>`
-			).join('');
+			const subLinks = subs.map((sub) => {
+				const subImage = sub.image_url || sub.image || categoryImage;
+				return `<a href="${subCategoryCardHref(c, sub)}" class="mm-sub-item">
+					<span class="mm-sub-thumb">${categoryImageHtml(sub.name || '', subImage, 'mm-sub-img')}</span>
+					<span class="mm-sub-name">${megaEsc(sub.name || '')}</span>
+				</a>`;
+			}).join('');
 
 			return `
 			<div class="mm-cat-group">
 				<button type="button" class="mm-item mm-cat-toggle" aria-expanded="false">
-					<span class="mm-cat-label">${icon} ${megaEsc(c.name || '')}</span>
+					<span class="mm-cat-label">
+						<span class="mm-cat-thumb">${parentThumb}</span>
+						<span class="mm-cat-name">${megaEsc(c.name || '')}</span>
+					</span>
 					<span class="mm-chevron" aria-hidden="true">›</span>
 				</button>
 				<div class="mm-sub-list">
 					<div class="mm-sub-list-inner">
-						<a href="${parentHref}" class="mm-sub-item mm-sub-item--all">كل منتجات ${megaEsc(c.name || '')}</a>
+						<a href="${parentHref}" class="mm-sub-item mm-sub-item--all">
+							<span class="mm-sub-thumb">${categoryImageHtml(c.name || '', categoryImage, 'mm-sub-img')}</span>
+							<span class="mm-sub-name">كل منتجات ${megaEsc(c.name || '')}</span>
+						</a>
 						${subLinks}
 					</div>
 				</div>
 			</div>`;
 		}).join('');
+
+		bindCategoryImageFallback(wrap);
 	}
 
 	function initMobMenuCategoryAccordion() {

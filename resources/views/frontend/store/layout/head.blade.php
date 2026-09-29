@@ -2868,7 +2868,7 @@
 
 	.mm-item--link {
 		justify-content: flex-start;
-		gap: 6px;
+		gap: 10px;
 	}
 
 	.mm-cat-group {
@@ -2887,7 +2887,42 @@
 	.mm-cat-label {
 		display: inline-flex;
 		align-items: center;
-		gap: 6px;
+		gap: 10px;
+		min-width: 0;
+	}
+
+	.mm-cat-thumb,
+	.mm-sub-thumb {
+		flex: 0 0 auto;
+		width: 36px;
+		height: 36px;
+		border-radius: 10px;
+		overflow: hidden;
+		background: #f8f9fc;
+		border: 1px solid #ececf3;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+	}
+
+	.mm-sub-thumb {
+		width: 30px;
+		height: 30px;
+		border-radius: 8px;
+	}
+
+	.mm-cat-img,
+	.mm-sub-img {
+		width: 100%;
+		height: 100%;
+		object-fit: contain;
+		display: block;
+	}
+
+	.mm-cat-name,
+	.mm-sub-name {
+		min-width: 0;
+		line-height: 1.35;
 	}
 
 	.mm-chevron {
@@ -2969,8 +3004,10 @@
 	}
 
 	.mm-sub-item {
-		display: block;
-		padding: 11px 20px 11px 36px;
+		display: flex;
+		align-items: center;
+		gap: 10px;
+		padding: 11px 20px 11px 28px;
 		font-size: .85rem;
 		font-weight: 500;
 		color: var(--text);
