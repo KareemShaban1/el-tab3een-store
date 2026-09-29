@@ -1216,13 +1216,13 @@
 	}
 
 	.cat-icon {
-		width: 104px;
-		height: 104px;
+		width: 132px;
+		height: 132px;
 		border-radius: var(--r);
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		font-size: 2.1rem;
+		font-size: 2.4rem;
 		margin: 0 auto 14px;
 		transition: var(--t)
 	}
@@ -1284,8 +1284,8 @@
 	}
 
 	.cat-sub-thumb {
-		width: 68px;
-		height: 68px;
+		width: 88px;
+		height: 88px;
 		border-radius: 12px;
 		background: var(--bg-soft);
 		display: flex;
@@ -1405,8 +1405,8 @@
 	}
 
 	.cats-grid .cat-subs-head-icon {
-		width: 88px;
-		height: 88px;
+		width: 112px;
+		height: 112px;
 		border-radius: 14px;
 		background: #fff;
 		border: 1px solid var(--border);
@@ -1501,8 +1501,8 @@
 	}
 
 	.cats-grid .cat-subs-list .cat-sub-thumb {
-		width: 76px;
-		height: 76px;
+		width: 96px;
+		height: 96px;
 		margin: 0 auto;
 	}
 
@@ -3178,15 +3178,15 @@
 		}
 
 		.cats-grid .cat-icon {
-			width: 88px;
-			height: 88px;
-			font-size: 1.85rem;
+			width: 112px;
+			height: 112px;
+			font-size: 2.1rem;
 			margin-bottom: 12px;
 		}
 
 		.cats-grid .cat-subs .cat-sub-thumb {
-			width: 60px;
-			height: 60px;
+			width: 76px;
+			height: 76px;
 		}
 
 		.cats-grid .cat-card:hover,
@@ -3241,8 +3241,8 @@
 		}
 
 		.cats-grid .cat-subs-list .cat-sub-thumb {
-			width: 60px;
-			height: 60px;
+			width: 76px;
+			height: 76px;
 			margin: 0;
 		}
 
@@ -3400,15 +3400,15 @@
 		}
 
 		.cats-grid .cat-icon {
-			width: 80px;
-			height: 80px;
-			font-size: 1.7rem;
+			width: 100px;
+			height: 100px;
+			font-size: 1.9rem;
 			margin-bottom: 10px;
 		}
 
 		.cats-grid .cat-subs .cat-sub-thumb {
-			width: 56px;
-			height: 56px;
+			width: 72px;
+			height: 72px;
 		}
 
 		.cats-grid .cat-name {

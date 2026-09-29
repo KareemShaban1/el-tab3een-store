@@ -1519,7 +1519,7 @@ return [
 'continue_shopping'=>'المتابعة',
 'view_details'=>'عرض التفاصيل',
 'order_id'=>'رقم الطلب',
-'total'=>'المبلغ الإجمالي',
+'total'=>'الإجمالي',
 'my_orders'=>'طلباتي',
 'track_your_ecommerce_orders_shipping_and_payment_status'=>'تتبع طلباتك الإلكترونية، الشحن، وحالة الدفع',
 'you_do_not_have_any_ecommerce_orders_yet'=>'لا توجد طلبات إلكترونية لديك بعد',
