@@ -2119,7 +2119,9 @@
 				return;
 			}
 			box.innerHTML = items.map((r) => {
-				const meta = r.type === 'category' ? 'قسم' : 'منتج';
+				let meta = 'منتج';
+				if (r.type === 'category') meta = 'قسم';
+				else if (r.source === 'servo') meta = 'منتج تابعين';
 				const href = String(r.url || '').replace(/"/g, '&quot;');
 				return (
 					'<a class="store-search-item" role="option" href="' +
@@ -2200,7 +2202,9 @@
 		}
 
 		function renderItem(r) {
-			const meta = r.type === 'category' ? 'قسم' : 'منتج';
+			let meta = 'منتج';
+			if (r.type === 'category') meta = 'قسم';
+			else if (r.source === 'servo') meta = 'منتج تابعين';
 			const href = String(r.url || '').replace(/"/g, '&quot;');
 			return (
 				'<a class="store-search-item" href="' + href + '">' +
@@ -2244,8 +2248,10 @@
 
 			const allUrl = @json(route('store.products.index')) +
 				'?q=' + encodeURIComponent(q);
+			const servoAllUrl = allUrl + '&source=servo';
 			html +=
-				'<a class="search-page-all-link" href="' + allUrl + '">عرض كل المنتجات المطابقة ←</a>';
+				'<a class="search-page-all-link" href="' + allUrl + '">عرض كل منتجات المتجر المطابقة ←</a>' +
+				'<a class="search-page-all-link" href="' + servoAllUrl + '">عرض كل منتجات التابعين المطابقة ←</a>';
 
 			box.innerHTML = html;
 			setHint('', false);

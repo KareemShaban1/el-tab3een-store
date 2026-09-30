@@ -235,12 +235,18 @@ class Tab3eenCatalogService
                             ->all();
 
                         $defaultVariation = $variations[0] ?? null;
+                        $tags = collect($product['tags'] ?? [])
+                            ->map(fn ($tag) => trim((string) $tag))
+                            ->filter(fn ($tag) => $tag !== '')
+                            ->values()
+                            ->all();
 
                         return [
                             'id' => (int) ($product['id'] ?? 0),
                             'name' => (string) ($product['name'] ?? ''),
                             'description' => (string) ($product['description'] ?? ''),
                             'image_url' => (string) ($product['image_url'] ?? ''),
+                            'tags' => $tags,
                             'default_variation_id' => (int) ($defaultVariation['variation_id'] ?? 0),
                             'default_price' => $defaultVariation['price'] ?? null,
                             'has_price' => $defaultVariation !== null && $defaultVariation['price'] !== null,
@@ -355,6 +361,42 @@ class Tab3eenCatalogService
                 ];
             })
             ->sortBy('sort_order')
+            ->values()
+            ->all();
+    }
+
+    /**
+     * Search catalog products by name or tags (case-insensitive substring).
+     *
+     * @return array<int, array{id: int, name: string, tags: array<int, string>}>
+     */
+    public function searchProducts(string $term, int $limit = 10): array
+    {
+        $needle = mb_strtolower(trim($term));
+        if ($needle === '' || $limit <= 0) {
+            return [];
+        }
+
+        return collect($this->getCatalog(null))
+            ->flatMap(fn ($category) => $category['products'] ?? [])
+            ->unique('id')
+            ->filter(function ($product) use ($needle) {
+                $name = mb_strtolower((string) ($product['name'] ?? ''));
+                if (str_contains($name, $needle)) {
+                    return true;
+                }
+
+                $tagsHaystack = mb_strtolower(implode(' ', $product['tags'] ?? []));
+
+                return $tagsHaystack !== '' && str_contains($tagsHaystack, $needle);
+            })
+            ->take($limit)
+            ->map(fn ($product) => [
+                'id' => (int) ($product['id'] ?? 0),
+                'name' => (string) ($product['name'] ?? ''),
+                'tags' => array_values($product['tags'] ?? []),
+            ])
+            ->filter(fn ($product) => $product['id'] > 0 && $product['name'] !== '')
             ->values()
             ->all();
     }

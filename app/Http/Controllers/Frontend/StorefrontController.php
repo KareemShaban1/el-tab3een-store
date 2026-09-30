@@ -691,8 +691,11 @@ class StorefrontController extends Controller
         if ($request->filled('q')) {
             $needle = mb_strtolower(trim((string) $request->input('q')));
             $items = $items->filter(function ($item) use ($needle) {
+                $tagsHaystack = mb_strtolower(implode(' ', $item['tags'] ?? []));
+
                 return str_contains(mb_strtolower((string) ($item['name'] ?? '')), $needle)
-                    || str_contains(mb_strtolower((string) ($item['brand'] ?? '')), $needle);
+                    || str_contains(mb_strtolower((string) ($item['brand'] ?? '')), $needle)
+                    || ($tagsHaystack !== '' && str_contains($tagsHaystack, $needle));
             })->values();
         }
 
@@ -867,6 +870,7 @@ class StorefrontController extends Controller
             'image_url' => (string) ($product['image_url'] ?? ''),
             'brand' => $categoryLabel,
             'category' => $categoryLabel,
+            'tags' => array_values($product['tags'] ?? []),
             'source' => 'servo',
             'in_stock_qty' => collect($variations)->sum('qty_available'),
             'variation_id' => $defaultVariation ? (int) $defaultVariation['variation_id'] : 0,
@@ -1036,9 +1040,9 @@ class StorefrontController extends Controller
     }
 
     /**
-     * JSON autocomplete: active-in-app categories + catalog products (active, in-app, in stock).
+     * JSON autocomplete: active-in-app categories + local catalog products + Tab3een API products (name/tags).
      */
-    public function searchSuggest(Request $request)
+    public function searchSuggest(Request $request, Tab3eenCatalogService $tab3eenCatalogService)
     {
         $business_id = self::resolveBusinessId($request);
 
@@ -1089,6 +1093,16 @@ class StorefrontController extends Controller
                 'id' => $p->id,
                 'name' => $p->name,
                 'url' => route('store.products.show', ['id' => $p->id]),
+            ];
+        }
+
+        foreach ($tab3eenCatalogService->searchProducts($term, 10) as $p) {
+            $results[] = [
+                'type' => 'product',
+                'id' => $p['id'],
+                'name' => $p['name'],
+                'source' => 'servo',
+                'url' => route('store.tab3een.products.show', ['id' => $p['id']]),
             ];
         }
 
