@@ -695,11 +695,13 @@
 	}
 
 	.mega-sidebar {
-		width: 210px;
+		width: 250px;
 		background: var(--bg-soft);
 		padding: 14px 0;
 		border-left: 1px solid var(--border);
-		flex-shrink: 0
+		flex-shrink: 0;
+		overflow-y: auto;
+		max-height: min(70vh, 560px);
 	}
 
 	.mega-sitem {
@@ -760,9 +762,39 @@
 	}
 
 	.mega-sitem-ico {
-		font-size: 1.05rem;
+		width: 34px;
+		height: 34px;
+		border-radius: 10px;
+		overflow: hidden;
+		background: #fff;
+		border: 1px solid #ececf3;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
 		flex-shrink: 0;
-		line-height: 1
+		line-height: 1;
+		padding: 3px;
+	}
+
+	.mega-sitem-ico--emoji {
+		font-size: 1.05rem;
+		border: none;
+		background: transparent;
+		padding: 0;
+	}
+
+	.mega-cat-img,
+	.mega-sub-img {
+		width: 100%;
+		height: 100%;
+		object-fit: contain;
+		display: block;
+	}
+
+	.mega-cat-name,
+	.mega-sub-name {
+		min-width: 0;
+		line-height: 1.35;
 	}
 
 	.mega-cat-group {
@@ -806,18 +838,34 @@
 	}
 
 	.mega-sub-item {
-		display: block;
+		display: flex;
+		align-items: center;
+		gap: 10px;
 		width: 100%;
 		border: none;
 		background: transparent;
 		text-align: inherit;
-		padding: 10px 18px 10px 34px;
+		padding: 10px 18px 10px 24px;
 		font-size: .82rem;
 		font-weight: 500;
 		color: var(--text);
 		cursor: pointer;
 		transition: var(--t);
 		border-bottom: 1px solid #f0f0f5;
+	}
+
+	.mega-sub-thumb {
+		width: 28px;
+		height: 28px;
+		border-radius: 8px;
+		overflow: hidden;
+		background: var(--bg-soft);
+		border: 1px solid #ececf3;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		flex-shrink: 0;
+		padding: 2px;
 	}
 
 	.mega-sub-item:last-child {

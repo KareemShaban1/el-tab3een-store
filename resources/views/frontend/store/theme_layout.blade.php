@@ -507,6 +507,7 @@
 		price_unavailable: @json(__('storefront.catalog.price_unavailable')),
 	};
 	const STORE_PRODUCTS_INDEX_BASE = @json(rtrim(route('store.products.index'), '/'));
+	const STORE_TAB3EEN_PRODUCTS_BASE = @json(rtrim(url('/store/tab3een/products'), '/'));
 	const CATEGORY_PLACEHOLDER_URL = @json(asset('/img/default.png'));
 	let megaMenuCategories = [];
 	let tab3eenCatalogCache = null;
@@ -514,6 +515,10 @@
 
 	function storeProductShowUrl(id) {
 		return STORE_PRODUCTS_INDEX_BASE + '/' + encodeURIComponent(String(id));
+	}
+
+	function storeTab3eenProductShowUrl(id) {
+		return STORE_TAB3EEN_PRODUCTS_BASE + '/' + encodeURIComponent(String(id));
 	}
 
 	function saveCartToStorage() {
@@ -1355,7 +1360,7 @@
 		megaMenuCategories = categories;
 
 		const allRow =
-			`<div class="mega-sitem mega-sitem--all active" data-category-id="" role="button" tabindex="0"><span class="mega-sitem-ico" aria-hidden="true">📦</span><span>كل المنتجات</span></div>`;
+			`<div class="mega-sitem mega-sitem--all active" data-category-id="" data-source="" role="button" tabindex="0"><span class="mega-sitem-ico mega-sitem-ico--emoji" aria-hidden="true">📦</span><span>كل المنتجات</span></div>`;
 		if (!categories.length) {
 			side.innerHTML = allRow;
 			loadMegaCategoryProducts('', 'كل المنتجات');
@@ -1363,35 +1368,47 @@
 		}
 
 		const rows = [allRow].concat(
-			categories.map((c, idx) => {
+			categories.map((c) => {
 				const subs = Array.isArray(c.sub_categories) ? c.sub_categories : [];
-				const icon = categoryIconByIndex(idx);
 				const name = megaEsc(c.name || '');
+				const source = String(c.source || 'local');
+				const categoryImage = c.image_url || c.image || '';
+				const parentThumb = categoryImageHtml(c.name || '', categoryImage, 'mega-cat-img');
 
 				if (!subs.length) {
-					return `<div class="mega-sitem" data-category-id="${Number(c.id)}" role="button" tabindex="0"><span class="mega-sitem-ico" aria-hidden="true">${icon}</span><span>${name}</span></div>`;
+					return `<div class="mega-sitem" data-category-id="${Number(c.id)}" data-source="${megaEsc(source)}" role="button" tabindex="0"><span class="mega-sitem-ico">${parentThumb}</span><span class="mega-cat-name">${name}</span></div>`;
 				}
 
 				const parentLabel = `كل منتجات ${name}`;
-				const subRows = subs.map((sub) =>
-					`<button type="button" class="mega-sub-item" data-category-id="${Number(sub.id)}" data-category-label="${megaEsc(sub.name || '')}">${megaEsc(sub.name || '')}</button>`
-				).join('');
+				const subRows = subs.map((sub) => {
+					const subImage = sub.image_url || sub.image || categoryImage;
+					return `<button type="button" class="mega-sub-item" data-category-id="${Number(c.id)}" data-sub-category-id="${Number(sub.id)}" data-source="${megaEsc(source)}" data-category-label="${megaEsc(sub.name || '')}">
+						<span class="mega-sub-thumb">${categoryImageHtml(sub.name || '', subImage, 'mega-sub-img')}</span>
+						<span class="mega-sub-name">${megaEsc(sub.name || '')}</span>
+					</button>`;
+				}).join('');
 
 				return `
 				<div class="mega-cat-group">
 					<button type="button" class="mega-sitem mega-cat-toggle" aria-expanded="false">
-						<span class="mega-sitem-ico" aria-hidden="true">${icon}</span>
-						<span class="mega-cat-label">${name}</span>
+						<span class="mega-cat-label">
+							<span class="mega-sitem-ico">${parentThumb}</span>
+							<span class="mega-cat-name">${name}</span>
+						</span>
 						<span class="mega-chevron" aria-hidden="true">›</span>
 					</button>
 					<div class="mega-sub-list" hidden>
-						<button type="button" class="mega-sub-item mega-sub-item--parent" data-category-id="${Number(c.id)}" data-category-label="${parentLabel}">${parentLabel}</button>
+						<button type="button" class="mega-sub-item mega-sub-item--parent" data-category-id="${Number(c.id)}" data-source="${megaEsc(source)}" data-category-label="${parentLabel}">
+							<span class="mega-sub-thumb">${categoryImageHtml(c.name || '', categoryImage, 'mega-sub-img')}</span>
+							<span class="mega-sub-name">${parentLabel}</span>
+						</button>
 						${subRows}
 					</div>
 				</div>`;
 			})
 		);
 		side.innerHTML = rows.join('');
+		bindCategoryImageFallback(side);
 		clearMegaSidebarActive(side);
 		const allEl = side.querySelector('.mega-sitem--all');
 		if (allEl) allEl.classList.add('active');
@@ -1547,11 +1564,13 @@
 		});
 	}
 
-	async function loadMegaCategoryProducts(categoryId, titleText) {
+	async function loadMegaCategoryProducts(categoryId, titleText, options = {}) {
 		const grid = $('mega-products-grid');
 		const title = $('mega-content-title');
 		const viewAll = $('mega-view-all');
 		if (!grid || !title) return;
+		const source = String(options.source || '').trim();
+		const subCategoryId = options.subCategoryId;
 		title.textContent = titleText || 'المنتجات';
 		grid.innerHTML =
 			'<div class="mega-loading" style="grid-column:1/-1;text-align:center;padding:24px;color:var(--muted);font-weight:700;">جاري التحميل…</div>';
@@ -1560,6 +1579,12 @@
 		const url = new URL(STORE_PRODUCTS_URL, window.location.origin);
 		if (categoryId !== '' && categoryId !== null && !Number.isNaN(Number(categoryId))) {
 			url.searchParams.set('category_id', String(categoryId));
+		}
+		if (subCategoryId !== '' && subCategoryId !== null && subCategoryId !== undefined && !Number.isNaN(Number(subCategoryId)) && Number(subCategoryId) > 0) {
+			url.searchParams.set('sub_category_id', String(subCategoryId));
+		}
+		if (source === 'servo') {
+			url.searchParams.set('source', 'servo');
 		}
 		const fetchUrl = url.pathname + (url.search ? '?' + url.searchParams.toString() : '');
 		try {
@@ -1589,7 +1614,9 @@
 							/"/g, '');
 						const name = megaEsc(p.name || '');
 						const pid = Number(p.id);
-						return `<a href="${storeProductShowUrl(pid)}" class="mega-item mega-item--product">
+						const productSource = String(p.source || source || '');
+						const href = productSource === 'servo' ? storeTab3eenProductShowUrl(pid) : storeProductShowUrl(pid);
+						return `<a href="${href}" class="mega-item mega-item--product">
 						<div class="mega-pthumb"><img src="${img}" alt=""></div>
 						<div class="mega-pmeta">
 							<span class="mega-pname">${name}</span>
@@ -1616,7 +1643,7 @@
 		]);
 		const categories = mergeStoreAndServoCategories(localCategories, servoCategories);
 		renderDynamicCategories(categories);
-		renderMegaMenuCategories(localCategories);
+		renderMegaMenuCategories(categories);
 		renderMobMenuCategories(categories);
 	}
 
@@ -2007,6 +2034,8 @@
 			if (subItem && sidebar.contains(subItem)) {
 				e.preventDefault();
 				const id = subItem.dataset.categoryId;
+				const subId = subItem.dataset.subCategoryId;
+				const source = subItem.dataset.source || '';
 				const label = subItem.dataset.categoryLabel || subItem.textContent
 					.trim();
 				clearMegaSidebarActive(sidebar);
@@ -2015,7 +2044,10 @@
 					'.mega-cat-toggle');
 				closeAllMegaCategoryGroups(sidebar);
 				if (toggle) openMegaCategoryGroup(toggle);
-				loadMegaCategoryProducts(id, label);
+				loadMegaCategoryProducts(id, label, {
+					source,
+					subCategoryId: subId,
+				});
 				return;
 			}
 
@@ -2041,13 +2073,16 @@
 			closeAllMegaCategoryGroups(sidebar);
 			item.classList.add('active');
 			const raw = item.dataset.categoryId;
+			const source = item.dataset.source || '';
 			const id = raw === undefined || raw === '' ? '' : Number(raw);
 			let label = 'كل المنتجات';
 			if (id !== '' && !Number.isNaN(id)) {
-				const cat = megaMenuCategories.find((c) => Number(c.id) === id);
+				const cat = megaMenuCategories.find((c) => Number(c.id) === id && String(c.source || 'local') === String(source || 'local'));
 				label = cat ? String(cat.name || '') : 'المنتجات';
 			}
-			loadMegaCategoryProducts(id === '' || Number.isNaN(id) ? '' : id, label);
+			loadMegaCategoryProducts(id === '' || Number.isNaN(id) ? '' : id, label, {
+				source,
+			});
 		});
 		sidebar?.addEventListener('keydown', (e) => {
 			if (e.key !== 'Enter' && e.key !== ' ') return;
