@@ -975,14 +975,19 @@
 	}
 
 	function mergeServoSubCategories(current, incoming, sumCounts) {
-		const map = new Map((current || []).map((sub) => [sub.id, { ...sub }]));
+		const map = new Map((current || []).map((sub) => [sub.id, {
+			...sub
+		}]));
 		(incoming || []).forEach((sub) => {
 			const prev = map.get(sub.id);
 			if (!prev) {
-				map.set(sub.id, { ...sub });
+				map.set(sub.id, {
+					...sub
+				});
 				return;
 			}
-			prev.count = sumCounts ? prev.count + Number(sub.count || 0) : Math.max(prev.count, Number(sub.count || 0));
+			prev.count = sumCounts ? prev.count + Number(sub.count || 0) : Math.max(prev
+				.count, Number(sub.count || 0));
 			if (!prev.name) prev.name = sub.name;
 			if (!prev.image_url) prev.image_url = sub.image_url || '';
 		});
@@ -996,32 +1001,43 @@
 			const count = products.length || Number(c.count || 0);
 			if (count <= 0) return;
 			const categoryId = Number(c.category_id || 0);
-			const key = categoryId > 0 ? 'category-' + categoryId : 'row-' + Number(c.id || c.sub_category_id || 0);
+			const key = categoryId > 0 ? 'category-' + categoryId : 'row-' + Number(c.id ||
+				c.sub_category_id || 0);
 			const incomingSubs = subsFromServoRow(c);
-			const aggregatedSubs = Array.isArray(c.sub_categories) && c.sub_categories.length > 0;
+			const aggregatedSubs = Array.isArray(c.sub_categories) && c.sub_categories
+				.length > 0;
 			const existing = groups.get(key);
 			if (!existing) {
 				groups.set(key, {
-					id: categoryId > 0 ? categoryId : Number(c.id || c.sub_category_id || 0),
+					id: categoryId > 0 ? categoryId :
+						Number(c.id || c
+							.sub_category_id ||
+							0),
 					name: servoCategoryDisplayName(c),
 					count,
-					image_url: String(c.image_url || c.image || ''),
+					image_url: String(c.image_url || c
+						.image || ''),
 					source: 'servo',
 					sub_categories: incomingSubs,
 				});
 				return;
 			}
-			const seen = new Set((existing._productIds || []).concat(products.map((p) => Number(p.id))));
+			const seen = new Set((existing._productIds || []).concat(products.map((p) =>
+				Number(p.id))));
 			existing._productIds = [...seen];
 			existing.count = products.length ? seen.size : existing.count + count;
 			if (!existing.image_url) {
 				existing.image_url = String(c.image_url || c.image || '');
 			}
-			existing.sub_categories = mergeServoSubCategories(existing.sub_categories, incomingSubs, !aggregatedSubs);
+			existing.sub_categories = mergeServoSubCategories(existing.sub_categories,
+				incomingSubs, !aggregatedSubs);
 		});
 
 		return [...groups.values()]
-			.map(({ _productIds, ...category }) => category)
+			.map(({
+				_productIds,
+				...category
+			}) => category)
 			.filter((c) => c.id > 0 && c.name && c.count > 0);
 	}
 
@@ -1126,12 +1142,18 @@
 		requestAnimationFrame(() => {
 			requestAnimationFrame(() => {
 				panel.classList.add('is-open', 'is-animating');
-				const rows = panel.querySelectorAll('.cat-sub-row').length;
+				const rows = panel.querySelectorAll(
+					'.cat-sub-row').length;
 				const settleMs = 220 + ((rows + 1) * 130) + 1000;
-				if (panel._catsAnimTimer) clearTimeout(panel._catsAnimTimer);
+				if (panel._catsAnimTimer) clearTimeout(panel
+					._catsAnimTimer);
 				panel._catsAnimTimer = setTimeout(() => {
-					panel.classList.remove('is-animating');
-					panel._catsAnimTimer = null;
+					panel.classList
+						.remove(
+							'is-animating'
+							);
+					panel._catsAnimTimer =
+						null;
 				}, settleMs);
 			});
 		});
@@ -1146,18 +1168,23 @@
 			const card = e.target.closest('.cat-card');
 			if (!card || !grid.contains(card)) return;
 			const key = card.dataset.catKey || '';
-			const panel = key ? grid.querySelector('.cat-subs[data-cat-key="' + key + '"]') : null;
+			const panel = key ? grid.querySelector('.cat-subs[data-cat-key="' + key +
+				'"]') : null;
 			if (!panel) return;
 
 			e.preventDefault();
 			const wasOpen = card.classList.contains('is-open');
-			closeHomeCategorySubs(grid, { animate: wasOpen });
+			closeHomeCategorySubs(grid, {
+				animate: wasOpen
+			});
 			if (wasOpen) return;
 
 			openHomeCategorySubs(grid, card, panel);
 		});
 
-		const onViewportChange = () => closeHomeCategorySubs(grid, { animate: false });
+		const onViewportChange = () => closeHomeCategorySubs(grid, {
+			animate: false
+		});
 		const mqTablet = window.matchMedia('(max-width: 1024px)');
 		if (mqTablet.addEventListener) mqTablet.addEventListener('change', onViewportChange);
 		else mqTablet.addListener(onViewportChange);
@@ -1199,9 +1226,11 @@
 		grid.innerHTML = categories.map((c) => {
 			const href = categoryCardHref(c);
 			const subs = (Array.isArray(c.sub_categories) ? c.sub_categories : [])
-				.filter((sub) => sub && Number(sub.id) > 0 && String(sub.name || '').trim() !== '');
+				.filter((sub) => sub && Number(sub.id) > 0 && String(sub.name || '')
+					.trim() !== '');
 			const categoryImage = c.image_url || c.image || '';
-			const iconHtml = categoryImageHtml(c.name || '', categoryImage, 'cat-icon-img');
+			const iconHtml = categoryImageHtml(c.name || '', categoryImage,
+				'cat-icon-img');
 			const key = categoryGridKey(c);
 			const card = `
 			<a href="${href}" class="cat-card${subs.length ? ' cat-card--has-subs' : ''}" data-cat-key="${key}"${subs.length ? ' aria-expanded="false"' : ''}>
@@ -1211,7 +1240,8 @@
 			</a>`;
 			if (!subs.length) return card;
 
-			const parentThumb = categoryImageHtml(c.name || '', categoryImage, 'cat-subs-head-img');
+			const parentThumb = categoryImageHtml(c.name || '', categoryImage,
+				'cat-subs-head-img');
 			const head = `
 				<div class="cat-subs-head">
 					<div class="cat-subs-head-icon">${parentThumb}</div>
@@ -1228,7 +1258,8 @@
 					<span class="cat-sub-count">${Number(sub.count || 0).toLocaleString('ar-EG')}</span>
 				</a>`).join('');
 
-			return card + `<div class="cat-subs" data-cat-key="${key}"><div class="cat-subs-inner">${head}<div class="cat-subs-list">${rows}</div></div></div>`;
+			return card +
+				`<div class="cat-subs" data-cat-key="${key}"><div class="cat-subs-inner">${head}<div class="cat-subs-list">${rows}</div></div></div>`;
 		}).join('');
 		bindCategoryImageFallback(grid);
 		bindHomeCategoryAccordion(grid);
@@ -1431,7 +1462,8 @@
 			const subs = Array.isArray(c.sub_categories) ? c.sub_categories : [];
 			const parentHref = categoryCardHref(c);
 			const categoryImage = c.image_url || c.image || '';
-			const parentThumb = categoryImageHtml(c.name || '', categoryImage, 'mm-cat-img');
+			const parentThumb = categoryImageHtml(c.name || '', categoryImage,
+				'mm-cat-img');
 
 			if (!subs.length) {
 				return `<a href="${parentHref}" class="mm-item mm-item--link">
@@ -1441,7 +1473,8 @@
 			}
 
 			const subLinks = subs.map((sub) => {
-				const subImage = sub.image_url || sub.image || categoryImage;
+				const subImage = sub.image_url || sub.image ||
+					categoryImage;
 				return `<a href="${subCategoryCardHref(c, sub)}" class="mm-sub-item">
 					<span class="mm-sub-thumb">${categoryImageHtml(sub.name || '', subImage, 'mm-sub-img')}</span>
 					<span class="mm-sub-name">${megaEsc(sub.name || '')}</span>
@@ -1793,7 +1826,8 @@
 						name: d.name,
 						brand: d.brand || prev.brand || '',
 						category: d.category || prev.category || '',
-						sub_category: d.sub_category || prev.sub_category || '',
+						sub_category: d.sub_category || prev
+							.sub_category || '',
 						unit: d.unit || prev.unit || '',
 						price: defPrice,
 						old: prev.old != null ? prev.old : null,
@@ -1856,7 +1890,8 @@
 			})
 			.join('');
 
-		const crumb = [p.brand, p.category, p.sub_category].filter((x) => String(x || '').trim()).join(' · ');
+		const crumb = [p.brand, p.category, p.sub_category].filter((x) => String(x || '').trim()).join(
+			' · ');
 		const imgSrc = String(p.img || '').replace(/"/g, '');
 		const unitLine = p.unit ?
 			`<div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;">الوحدة: ${modalEsc(p.unit)}</div>` :
@@ -2128,8 +2163,7 @@
 					href + '">' +
 					'<span class="store-search-item-name">' + esc(r
 						.name) + '</span>' +
-					'<span class="store-search-item-meta">' + meta +
-					'</span>' +
+
 					'</a>'
 				);
 			}).join('');
@@ -2209,7 +2243,7 @@
 			return (
 				'<a class="store-search-item" href="' + href + '">' +
 				'<span class="store-search-item-name">' + esc(r.name) + '</span>' +
-				'<span class="store-search-item-meta">' + meta + '</span>' +
+
 				'</a>'
 			);
 		}
@@ -2250,8 +2284,10 @@
 				'?q=' + encodeURIComponent(q);
 			const servoAllUrl = allUrl + '&source=servo';
 			html +=
-				'<a class="search-page-all-link" href="' + allUrl + '">عرض كل منتجات المتجر المطابقة ←</a>' +
-				'<a class="search-page-all-link" href="' + servoAllUrl + '">عرض كل منتجات التابعين المطابقة ←</a>';
+				'<a class="search-page-all-link" href="' + allUrl +
+				'">عرض كل منتجات المتجر المطابقة ←</a>' +
+				'<a class="search-page-all-link" href="' + servoAllUrl +
+				'">عرض كل منتجات التابعين المطابقة ←</a>';
 
 			box.innerHTML = html;
 			setHint('', false);
