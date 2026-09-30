@@ -1335,7 +1335,13 @@
 			btn.setAttribute('aria-expanded', 'false');
 			btn.classList.remove('mega-cat-toggle--open', 'active');
 			const list = btn.closest('.mega-cat-group')?.querySelector('.mega-sub-list');
-			if (list) list.hidden = true;
+			if (list) {
+				if (list._megaAnimTimer) {
+					clearTimeout(list._megaAnimTimer);
+					list._megaAnimTimer = null;
+				}
+				list.classList.remove('is-open', 'is-animating');
+			}
 		});
 	}
 
@@ -1344,7 +1350,20 @@
 		btn.setAttribute('aria-expanded', 'true');
 		btn.classList.add('mega-cat-toggle--open', 'active');
 		const list = btn.closest('.mega-cat-group')?.querySelector('.mega-sub-list');
-		if (list) list.hidden = false;
+		if (!list) return;
+
+		const items = [...list.querySelectorAll('.mega-sub-item')];
+		items.forEach((item, index) => {
+			item.style.setProperty('--mega-stagger', String(index));
+		});
+		list.classList.remove('is-animating');
+		void list.offsetWidth;
+		list.classList.add('is-open', 'is-animating');
+		if (list._megaAnimTimer) clearTimeout(list._megaAnimTimer);
+		list._megaAnimTimer = setTimeout(() => {
+			list.classList.remove('is-animating');
+			list._megaAnimTimer = null;
+		}, 120 + (items.length * 90) + 750);
 	}
 
 	function clearMegaSidebarActive(side) {
@@ -1397,12 +1416,14 @@
 						</span>
 						<span class="mega-chevron" aria-hidden="true">›</span>
 					</button>
-					<div class="mega-sub-list" hidden>
-						<button type="button" class="mega-sub-item mega-sub-item--parent" data-category-id="${Number(c.id)}" data-source="${megaEsc(source)}" data-category-label="${parentLabel}">
-							<span class="mega-sub-thumb">${categoryImageHtml(c.name || '', categoryImage, 'mega-sub-img')}</span>
-							<span class="mega-sub-name">${parentLabel}</span>
-						</button>
-						${subRows}
+					<div class="mega-sub-list">
+						<div class="mega-sub-list-inner">
+							<button type="button" class="mega-sub-item mega-sub-item--parent" data-category-id="${Number(c.id)}" data-source="${megaEsc(source)}" data-category-label="${parentLabel}">
+								<span class="mega-sub-thumb">${categoryImageHtml(c.name || '', categoryImage, 'mega-sub-img')}</span>
+								<span class="mega-sub-name">${parentLabel}</span>
+							</button>
+							${subRows}
+						</div>
 					</div>
 				</div>`;
 			})
