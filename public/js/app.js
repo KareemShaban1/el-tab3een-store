@@ -2466,17 +2466,37 @@ $(document).on('click', 'a.load_notifications', function(e) {
         });
 });
 
-$(document).on('click', '#notifications_list a[data-notification-id]', function() {
-    var notification_id = $(this).data('notification-id');
-    var $item = $(this).closest('li.notification-li');
+$(document).on('click', '#notifications_list a[data-notification-id]', function(e) {
+    var $link = $(this);
+    var notification_id = $link.attr('data-notification-id') || $link.data('notification-id');
+    var $item = $link.closest('li.notification-li');
+    var href = $link.attr('href') || '';
+    var hasDestination = href && href !== '#' && href.indexOf('javascript:') !== 0;
+    var openInNewTab = e.metaKey || e.ctrlKey || e.shiftKey || e.which === 2 || $link.attr('target') === '_blank';
 
     if (!notification_id || !$item.hasClass('unread')) {
         return;
     }
 
+    // Stop navigation first: otherwise the mark-as-read request is aborted
+    // before the server updates read_at / unread count.
+    e.preventDefault();
+    e.stopPropagation();
+
+    function goToNotification() {
+        if (!hasDestination) {
+            return;
+        }
+        if (openInNewTab) {
+            window.open(href, '_blank');
+        } else {
+            window.location.href = href;
+        }
+    }
+
     $.ajax({
         method: 'POST',
-        url: '/notifications/' + notification_id + '/read',
+        url: '/notifications/' + encodeURIComponent(notification_id) + '/read',
         dataType: 'json',
         global: false,
         data: {
@@ -2485,6 +2505,12 @@ $(document).on('click', '#notifications_list a[data-notification-id]', function(
         success: function(data) {
             $item.removeClass('unread');
             updateNotificationCounts(data);
+        },
+        error: function() {
+            // Still leave the unread state if the request fails.
+        },
+        complete: function() {
+            goToNotification();
         },
     });
 });

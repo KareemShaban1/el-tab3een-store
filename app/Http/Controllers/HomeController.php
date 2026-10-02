@@ -513,15 +513,22 @@ class HomeController extends Controller
     public function markNotificationRead($id)
     {
         $notification = auth()->user()->notifications()->where('id', $id)->firstOrFail();
-        $notification->markAsRead();
 
-        return [
-            'total_unread' => auth()->user()->unreadNotifications()->count(),
+        if (is_null($notification->read_at)) {
+            $notification->markAsRead();
+        }
+
+        // Fresh query after markAsRead so the badge count is accurate.
+        $user = auth()->user()->fresh() ?? auth()->user();
+
+        return response()->json([
+            'success' => true,
+            'total_unread' => $user->unreadNotifications()->count(),
             'store_order_counts' => app(StoreOrderNotificationUtil::class)->getSidebarCounts(
-                auth()->user(),
-                (int) session('business.id', 0)
+                $user,
+                (int) session('user.business_id', session('business.id', 0))
             ),
-        ];
+        ]);
     }
 
     private function __chartOptions($title)
