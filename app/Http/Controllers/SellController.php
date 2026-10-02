@@ -271,16 +271,15 @@ class SellController extends Controller
                             $html .= '<li><a href="#" data-href="'.action([\App\Http\Controllers\SellController::class, 'show'], [$row->id]).'" class="btn-modal" data-container=".view_modal"><i class="fas fa-eye" aria-hidden="true"></i> '.__('messages.view').'</a></li>';
                         }
                         if (! $only_shipments) {
-                            $is_ecommerce_order = $is_ecommerce_context || (! empty($row->source) && $row->source === 'ecommerce');
-                            if (! $is_ecommerce_order && $row->is_direct_sale == 0) {
+                            if ($row->is_direct_sale == 0) {
                                 if (auth()->user()->can('sell.update')) {
                                     $html .= '<li><a target="_blank" href="'.action([\App\Http\Controllers\SellPosController::class, 'edit'], [$row->id]).'"><i class="fas fa-edit"></i> '.__('messages.edit').'</a></li>';
                                 }
-                            } elseif (! $is_ecommerce_order && $row->type == 'sales_order') {
+                            } elseif ($row->type == 'sales_order') {
                                 if (auth()->user()->can('so.update')) {
                                     $html .= '<li><a target="_blank" href="'.action([\App\Http\Controllers\SellController::class, 'edit'], [$row->id]).'"><i class="fas fa-edit"></i> '.__('messages.edit').'</a></li>';
                                 }
-                            } elseif (! $is_ecommerce_order) {
+                            } else {
                                 if (auth()->user()->can('direct_sell.update')) {
                                     $html .= '<li><a target="_blank" href="'.action([\App\Http\Controllers\SellController::class, 'edit'], [$row->id]).'"><i class="fas fa-edit"></i> '.__('messages.edit').'</a></li>';
                                 }
