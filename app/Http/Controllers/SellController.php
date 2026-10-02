@@ -613,7 +613,11 @@ class SellController extends Controller
                         } else {
                             return '';
                         }
-                    }, ]);
+                    },
+                    'data-transaction-id' => function ($row) {
+                        return $row->id;
+                    },
+                ]);
 
             $rawColumns = ['final_total', 'action', 'view_order', 'total_paid', 'total_remaining', 'payment_status', 'invoice_no', 'discount_amount', 'tax_amount', 'total_before_tax', 'shipping_status', 'ecommerce_order_status_label', 'types_of_service_name', 'payment_methods', 'return_due', 'conatct_name', 'status', 'zatca_status'];
 

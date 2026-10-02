@@ -113,7 +113,7 @@ if ($sPmax <= $sPmin) { $sPmax=$sPmin + 1; } $sliderRngLo=$sPmin; $sliderRngHi=$
 
 	.filter-actions {
 		display: grid;
-		grid-template-columns: 1fr 1fr;
+		grid-template-columns: 1fr;
 		gap: 8px;
 	}
 
@@ -844,7 +844,6 @@ if ($sPmax <= $sPmin) { $sPmax=$sPmin + 1; } $sliderRngLo=$sPmin; $sliderRngHi=$
 						value="{{ $hiddenPriceMax }}">
 				</div>
 				<div class="filter-actions">
-					<button class="btn" type="submit">{{ __('lang_v1.apply') }}</button>
 					<button type="button"
 						class="btn-soft js-store-filters-reset">{{ __('lang_v1.reset') }}</button>
 				</div>
@@ -1175,7 +1174,6 @@ if ($sPmax <= $sPmin) { $sPmax=$sPmin + 1; } $sliderRngLo=$sPmin; $sliderRngHi=$
 					value="{{ $hiddenPriceMax }}">
 			</div>
 			<div class="filter-actions">
-				<button class="btn" type="submit">{{ __('lang_v1.apply') }}</button>
 				<button type="button"
 					class="btn-soft js-store-filters-reset">{{ __('lang_v1.reset') }}</button>
 			</div>
@@ -1867,32 +1865,37 @@ if ($sPmax <= $sPmin) { $sPmax=$sPmin + 1; } $sliderRngLo=$sPmin; $sliderRngHi=$
 			}
 		}
 
+		function closeMobileFilterSheet() {
+			const sheet = document.getElementById('filter-sheet');
+			const backdrop = document.getElementById('filter-backdrop');
+			if (sheet && backdrop) {
+				sheet.classList.remove('open');
+				backdrop.classList.remove('open');
+				document.body.style.overflow = '';
+			}
+		}
+
+		function applyFiltersFromForm(sourceFormId, options) {
+			const opts = options || {};
+			if (sourceFormId === 'store-products-filters-mobile') {
+				syncMobileToDesktop();
+			} else {
+				syncDesktopToMobile();
+			}
+			const p = readFiltersFromDesktopForm();
+			if (STORE_IS_SERVO_CATALOG && !p.get('source')) {
+				p.set('source', 'servo');
+			}
+			fetchStoreProducts(buildUrlFromParams(p));
+			if (opts.closeSheet !== false && sourceFormId === 'store-products-filters-mobile') {
+				closeMobileFilterSheet();
+			}
+		}
+
 		document.querySelectorAll('.js-store-filter-form').forEach((form) => {
 			form.addEventListener('submit', (e) => {
 				e.preventDefault();
-				if (form.id ===
-					'store-products-filters-mobile'
-					) {
-					syncMobileToDesktop();
-				} else {
-					syncDesktopToMobile();
-				}
-				const p = readFiltersFromDesktopForm();
-				fetchStoreProducts(buildUrlFromParams(
-					p));
-				const sheet = document.getElementById(
-					'filter-sheet');
-				const backdrop = document
-					.getElementById(
-						'filter-backdrop');
-				if (sheet && backdrop) {
-					sheet.classList.remove(
-						'open');
-					backdrop.classList.remove(
-						'open');
-					document.body.style
-						.overflow = '';
-				}
+				applyFiltersFromForm(form.id);
 			});
 		});
 
@@ -1942,6 +1945,7 @@ if ($sPmax <= $sPmin) { $sPmax=$sPmin + 1; } $sliderRngLo=$sPmin; $sliderRngHi=$
 					? (STORE_PRODUCTS_URL + '?source=servo')
 					: STORE_PRODUCTS_URL;
 				fetchStoreProducts(resetUrl);
+				closeMobileFilterSheet();
 			});
 		});
 
@@ -1969,19 +1973,56 @@ if ($sPmax <= $sPmin) { $sPmax=$sPmin + 1; } $sliderRngLo=$sPmin; $sliderRngHi=$
 			});
 
 		['desktop', 'mobile'].forEach((suffix) => {
-			const category = document.getElementById('filter-category-' +
-			suffix);
-			if (!category) return;
-			category.addEventListener('change', () => {
-				fillSubCategorySelect(document
-					.getElementById(
-						'filter-sub-category-' +
-						suffix),
-					category.value, '');
-			});
+			const category = document.getElementById('filter-category-' + suffix);
+			const subCategory = document.getElementById('filter-sub-category-' + suffix);
+			const brand = document.getElementById('filter-brand-' + suffix);
+			const search = document.getElementById('filter-q-' + suffix);
+			const formId = 'store-products-filters-' + suffix;
+
+			if (category) {
+				category.addEventListener('change', () => {
+					fillSubCategorySelect(
+						document.getElementById('filter-sub-category-' + suffix),
+						category.value,
+						''
+					);
+					applyFiltersFromForm(formId);
+				});
+			}
+			if (subCategory) {
+				subCategory.addEventListener('change', () => applyFiltersFromForm(formId));
+			}
+			if (brand) {
+				brand.addEventListener('change', () => applyFiltersFromForm(formId));
+			}
+			if (search) {
+				let searchTimer = null;
+				search.addEventListener('input', () => {
+					clearTimeout(searchTimer);
+					searchTimer = setTimeout(() => {
+						applyFiltersFromForm(formId, { closeSheet: false });
+					}, 450);
+				});
+			}
 		});
 
+		let priceApplyTimer = null;
+		function schedulePriceFilterApply(suffix) {
+			clearTimeout(priceApplyTimer);
+			priceApplyTimer = setTimeout(() => {
+				applyFiltersFromForm('store-products-filters-' + suffix);
+			}, 350);
+		}
+
 		bindPriceSliders();
+		['desktop', 'mobile'].forEach((suffix) => {
+			['range-price-min-' + suffix, 'range-price-max-' + suffix].forEach((id) => {
+				const el = document.getElementById(id);
+				if (!el) return;
+				el.addEventListener('change', () => schedulePriceFilterApply(suffix));
+				el.addEventListener('pointerup', () => schedulePriceFilterApply(suffix));
+			});
+		});
 
 		const openFilterBtn = document.getElementById('open-filter-sheet');
 		if (openFilterBtn) {

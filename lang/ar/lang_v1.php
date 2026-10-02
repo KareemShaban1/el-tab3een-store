@@ -1543,7 +1543,7 @@ return [
 'back_to_products'=>'العودة إلى المنتجات',
 'choose_variation'=>'اختر المنتج',
 'buy_now'=>'اشتري الآن',
-'login_to_purchase'=>'تسجيل الدخول للشراء',
+'login_to_purchase'=>'شراء الأن',
 'availability'=>'المتاح',
 'low_stock'=>'مخزون منخفض',
 'sku'=>'رمز المنتج',

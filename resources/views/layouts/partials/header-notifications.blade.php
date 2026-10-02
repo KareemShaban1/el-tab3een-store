@@ -35,3 +35,7 @@
 </li>
 
 <input type="hidden" id="notification_page" value="1">
+<audio id="notification-audio" preload="auto">
+    <source src="{{ asset('/audio/warning.ogg?v=' . ($asset_v ?? time())) }}" type="audio/ogg">
+    <source src="{{ asset('/audio/warning.mp3?v=' . ($asset_v ?? time())) }}" type="audio/mpeg">
+</audio>

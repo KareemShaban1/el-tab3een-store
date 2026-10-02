@@ -133,7 +133,7 @@
 									d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
 								<circle cx="12" cy="7" r="4" />
 							</svg>
-							<span>حسابي</span>
+							<span>{{ auth('customer')->user()->name }}</span>
 						</button>
 						<div class="account-menu">
 							<a href="{{ route('store.account.profile') }}">الملف
@@ -149,7 +149,7 @@
 						</div>
 					</div>
 					@else
-					<a href="{{ route('store.auth.login.form') }}" class="h-action">
+					<a href="{{ route('store.auth.login.form', ['redirect' => url()->full()]) }}" class="h-action">
 						<svg fill="none" stroke="currentColor" stroke-width="1.9"
 							viewBox="0 0 24 24">
 							<path
@@ -328,7 +328,7 @@
 						<a href="{{ route('store.account.orders') }}"
 							class="f-link">تتبع طلبي</a>
 						@else
-						<a href="{{ route('store.auth.login.form') }}"
+						<a href="{{ route('store.auth.login.form', ['redirect' => url()->full()]) }}"
 							class="f-link">حسابي</a>
 						@endauth
 						@foreach(($storeFooterPages[\App\StorePage::FOOTER_GROUP_CUSTOMER_SERVICE]
@@ -466,7 +466,7 @@
 				حسابي
 			</a>
 			@else
-			<a class="mob-nav-item" href="{{ route('store.auth.login.form') }}">
+			<a class="mob-nav-item" href="{{ route('store.auth.login.form', ['redirect' => url()->full()]) }}">
 				<svg fill="none" stroke="currentColor" stroke-width="1.9" viewBox="0 0 24 24">
 					<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
 					<circle cx="12" cy="7" r="4" />
@@ -492,6 +492,14 @@
 	}
 	const IS_CUSTOMER_AUTHED = "{{ auth('customer')->check() ? '1' : '0' }}" === "1";
 	const STORE_LOGIN_URL = "{{ route('store.auth.login.form') }}";
+	function storeLoginUrl(returnUrl) {
+		const target = returnUrl || (window.location.pathname + window.location.search + window.location.hash);
+		try {
+			return STORE_LOGIN_URL + '?redirect=' + encodeURIComponent(target);
+		} catch (e) {
+			return STORE_LOGIN_URL;
+		}
+	}
 	const STORE_CHECKOUT_URL = "{{ route('store.checkout') }}";
 	const STORE_CHECKOUT_FORM_URL = "{{ route('store.checkout.form') }}";
 	const STORE_CATEGORIES_URL = "{{ route('store.categories.index') }}";
@@ -732,7 +740,7 @@
 			return;
 		}
 		if (!IS_CUSTOMER_AUTHED) {
-			window.location.href = STORE_LOGIN_URL;
+			window.location.href = storeLoginUrl(STORE_CHECKOUT_FORM_URL);
 			return;
 		}
 		window.location.href = STORE_CHECKOUT_FORM_URL;

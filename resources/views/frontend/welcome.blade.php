@@ -1,6 +1,36 @@
 @extends('frontend.store.theme_layout')
 
 @section('content')
+@auth('customer')
+<style>
+	.home-welcome-banner {
+		padding: 14px 0 0;
+	}
+	.home-welcome-banner__inner {
+		display: flex;
+		align-items: center;
+		gap: 10px;
+		padding: 12px 16px;
+		border-radius: 14px;
+		background: linear-gradient(135deg, rgba(234, 84, 26, 0.1), rgba(61, 56, 104, 0.08));
+		border: 1px solid rgba(234, 84, 26, 0.18);
+		color: #1f2937;
+		font-weight: 700;
+	}
+	.home-welcome-banner__name {
+		color: #ea541a;
+	}
+</style>
+<div class="home-welcome-banner">
+	<div class="container">
+		<div class="home-welcome-banner__inner">
+			{!! __('storefront.auth.hello_name', [
+				'name' => '<span class="home-welcome-banner__name">'.e(auth('customer')->user()->name).'</span>',
+			]) !!}
+		</div>
+	</div>
+</div>
+@endauth
 <!-- ===================== HERO ===================== -->
 <section class="hero" id="store-hero">
 	<div class="container">

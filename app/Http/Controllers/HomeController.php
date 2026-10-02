@@ -482,6 +482,7 @@ class HomeController extends Controller
     {
         $unread_notifications = auth()->user()->unreadNotifications;
         $total_unread = $unread_notifications->count();
+        $latest_unread = $unread_notifications->sortByDesc('created_at')->first();
         $store_order_counts = app(StoreOrderNotificationUtil::class)->getSidebarCounts(
             auth()->user(),
             (int) session('business.id', 0)
@@ -490,6 +491,7 @@ class HomeController extends Controller
         $notification_html = '';
         $modal_notifications = [];
         foreach ($unread_notifications as $unread_notification) {
+            $data = $unread_notification->data ?? [];
             if (isset($data['show_popup'])) {
                 $modal_notifications[] = $unread_notification;
                 $unread_notification->markAsRead();
@@ -501,6 +503,8 @@ class HomeController extends Controller
 
         return [
             'total_unread' => $total_unread,
+            'latest_unread_id' => $latest_unread?->id,
+            'latest_unread_at' => $latest_unread?->created_at?->toIso8601String(),
             'notification_html' => $notification_html,
             'store_order_counts' => $store_order_counts,
         ];

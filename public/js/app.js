@@ -2735,6 +2735,60 @@ $(document).on('click', 'button.activate-deactivate-location', function(){
     });
 });
 
+var __notificationAudioUnlocked = false;
+var __lastUnreadNotificationId = null;
+var __lastUnreadNotificationCount = null;
+
+function unlockNotificationAudio() {
+    var audio = document.getElementById('notification-audio') || document.getElementById('warning-audio');
+    if (!audio || __notificationAudioUnlocked) {
+        return;
+    }
+
+    var previousMuted = audio.muted;
+    audio.muted = true;
+    var playPromise = audio.play();
+    if (playPromise && typeof playPromise.then === 'function') {
+        playPromise
+            .then(function() {
+                audio.pause();
+                audio.currentTime = 0;
+                audio.muted = previousMuted;
+                __notificationAudioUnlocked = true;
+            })
+            .catch(function() {
+                audio.muted = previousMuted;
+            });
+    } else {
+        audio.muted = previousMuted;
+        __notificationAudioUnlocked = true;
+    }
+}
+
+function playNotificationSound() {
+    var audio = document.getElementById('notification-audio') || document.getElementById('warning-audio');
+    if (!audio) {
+        return;
+    }
+
+    try {
+        audio.pause();
+        audio.currentTime = 0;
+        var playPromise = audio.play();
+        if (playPromise && typeof playPromise.catch === 'function') {
+            playPromise.catch(function() {
+                // Browsers block autoplay until a user gesture unlocks audio.
+            });
+        }
+    } catch (e) {
+        // ignore playback errors
+    }
+}
+
+$(document).on('click keydown touchstart', function() {
+    unlockNotificationAudio();
+});
+
 function updateNotificationCounts(data) {
     var $badge = $('span.notifications_count');
     if (!$badge.length || typeof data === 'undefined') {
@@ -2778,7 +2832,27 @@ function getTotalUnreadNotifications(){
             dataType: 'json',
             global: false,
             success: function(data) {
+                var total_unread = parseInt(data.total_unread, 10) || 0;
+                var latest_id = data.latest_unread_id || null;
+                var shouldPlaySound = false;
+
+                if (__lastUnreadNotificationCount !== null) {
+                    if (total_unread > __lastUnreadNotificationCount) {
+                        shouldPlaySound = true;
+                    } else if (latest_id && latest_id !== __lastUnreadNotificationId) {
+                        shouldPlaySound = true;
+                    }
+                }
+
+                __lastUnreadNotificationCount = total_unread;
+                __lastUnreadNotificationId = latest_id;
+
                 updateNotificationCounts(data);
+
+                if (shouldPlaySound) {
+                    playNotificationSound();
+                }
+
                 if (data.notification_html) {
                     $('.view_modal').html(data.notification_html);
                     $('.view_modal').modal('show');

@@ -29,11 +29,13 @@ class StoreCustomerAuthController extends Controller
         return view('frontend.store.auth.register');
     }
 
-    public function showLogin()
+    public function showLogin(Request $request)
     {
         if (Auth::guard('customer')->check()) {
             return redirect()->route('welcome');
         }
+
+        $this->rememberPreviousStoreUrl($request);
 
         return view('frontend.store.auth.login');
     }
@@ -242,14 +244,22 @@ class StoreCustomerAuthController extends Controller
         }
 
         Auth::guard('customer')->login($contact, $remember);
+        $request->session()->regenerate();
+
+        $welcomeMsg = __('storefront.auth.welcome_back', ['name' => $contact->name]);
 
         if (! $request->expectsJson()) {
-            return redirect()->intended(route('welcome'));
+            return redirect()
+                ->intended(route('welcome'))
+                ->with('status', [
+                    'success' => true,
+                    'msg' => $welcomeMsg,
+                ]);
         }
 
         return $this->respond([
             'success' => true,
-            'msg' => __('storefront.auth.logged_in_success'),
+            'msg' => $welcomeMsg,
             'customer' => $this->customerPayload($contact),
         ]);
     }
@@ -434,6 +444,46 @@ return 273;
 //         }
 
 //         return (int) Business::query()->value('id');
+    }
+
+    /**
+     * Remember the page the customer came from so login can send them back.
+     */
+    private function rememberPreviousStoreUrl(Request $request): void
+    {
+        if ($request->session()->has('url.intended')) {
+            return;
+        }
+
+        $candidate = $request->query('redirect') ?: $request->headers->get('referer');
+        if (empty($candidate) || ! is_string($candidate)) {
+            return;
+        }
+
+        if (Str::startsWith($candidate, '/')) {
+            $candidate = $request->getSchemeAndHttpHost().$candidate;
+        }
+
+        $candidateHost = parse_url($candidate, PHP_URL_HOST);
+        $requestHost = $request->getHost();
+        if (empty($candidateHost) || strcasecmp((string) $candidateHost, (string) $requestHost) !== 0) {
+            return;
+        }
+
+        $path = (string) (parse_url($candidate, PHP_URL_PATH) ?: '');
+        $authPrefixes = [
+            '/store/login',
+            '/store/register',
+            '/store/password',
+        ];
+
+        foreach ($authPrefixes as $prefix) {
+            if (Str::startsWith($path, $prefix)) {
+                return;
+            }
+        }
+
+        $request->session()->put('url.intended', $candidate);
     }
 }
 

@@ -1358,10 +1358,14 @@ class Util
                     );
                 }
 
-                if ($order_type === 'servo' && ! empty($data['servo_order_log_id'])) {
+                if (! empty($data['transaction_id'])) {
+                    $orderLinkParams = ['highlight' => $data['transaction_id']];
+                    if (! empty($data['invoice_no'])) {
+                        $orderLinkParams['invoice_no'] = $data['invoice_no'];
+                    }
+                    $link = route('sells.ecommerce.orders', $orderLinkParams);
+                } elseif ($order_type === 'servo' && ! empty($data['servo_order_log_id'])) {
                     $link = route('servo-orders.show', $data['servo_order_log_id']);
-                } elseif (! empty($data['transaction_id'])) {
-                    $link = action([\App\Http\Controllers\SellController::class, 'show'], [$data['transaction_id']]);
                 } else {
                     $link = route('sells.ecommerce.orders');
                 }
