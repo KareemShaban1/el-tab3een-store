@@ -550,8 +550,7 @@ window.__SSR_STORE_PRODUCTS__[{
                 </div>
             </div> -->
 
-			@if($isServoProduct && ($sfStr($product['brand'] ?? '') || $sfStr($product['category'] ??
-			'') || $sfStr($product['sub_category'] ?? '')))
+			@if($sfStr($product['brand'] ?? '') || $sfStr($product['category'] ?? '') || $sfStr($product['sub_category'] ?? ''))
 			<div class="meta-grid">
 				@if($sfStr($product['brand'] ?? ''))
 				<div class="meta-box">

@@ -388,7 +388,7 @@ class StorefrontController extends Controller
             ->productForSales()
             ->activeInApp()
             ->inStockByBusiness($business_id)
-            ->with(['brand:id,name', 'category:id,name', 'unit:id,actual_name,short_name', 'warranty'])
+            ->with(['brand:id,name', 'category:id,name', 'sub_category:id,name', 'unit:id,actual_name,short_name', 'warranty'])
             ->findOrFail($id);
 
         $location_records = BusinessLocation::where('business_id', $business_id)
@@ -472,6 +472,7 @@ class StorefrontController extends Controller
 
         $brandName = optional($product->brand)->name;
         $categoryName = optional($product->category)->name;
+        $subCategoryName = optional($product->sub_category)->name;
         $unitShort = optional($product->unit)->short_name;
         $warranty = $product->warranty;
 
@@ -494,6 +495,7 @@ class StorefrontController extends Controller
                 'image_url' => $product->image_url,
                 'brand' => is_scalar($brandName) ? (string) $brandName : null,
                 'category' => is_scalar($categoryName) ? (string) $categoryName : null,
+                'sub_category' => is_scalar($subCategoryName) ? (string) $subCategoryName : null,
                 'unit' => is_scalar($unitShort) ? (string) $unitShort : null,
                 'variations' => $variations,
             ],
