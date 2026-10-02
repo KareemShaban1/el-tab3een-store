@@ -531,6 +531,46 @@ class HomeController extends Controller
         ]);
     }
 
+    /**
+     * Mark a notification as read, then redirect to its destination.
+     * Works without JS (reliable on production with cached assets).
+     */
+    public function openNotification(Request $request, $id)
+    {
+        $notification = auth()->user()->notifications()->where('id', $id)->firstOrFail();
+
+        if (is_null($notification->read_at)) {
+            $notification->markAsRead();
+        }
+
+        $redirect = (string) $request->query('redirect', '');
+        if ($redirect === '') {
+            $parsed = $this->commonUtil->parseNotifications(collect([$notification]));
+            $redirect = (string) ($parsed[0]['link'] ?? '');
+        }
+
+        if ($redirect === '' || $redirect === '#') {
+            return redirect()->to('/home');
+        }
+
+        if (str_starts_with($redirect, '/')) {
+            $redirect = $request->getSchemeAndHttpHost().$redirect;
+        }
+
+        $redirectHost = parse_url($redirect, PHP_URL_HOST);
+        if (empty($redirectHost) || strcasecmp((string) $redirectHost, (string) $request->getHost()) !== 0) {
+            return redirect()->to('/home');
+        }
+
+        // Prevent open loop back into this endpoint.
+        $redirectPath = (string) (parse_url($redirect, PHP_URL_PATH) ?: '');
+        if (str_contains($redirectPath, '/notifications/') && str_ends_with($redirectPath, '/open')) {
+            return redirect()->to('/home');
+        }
+
+        return redirect()->to($redirect);
+    }
+
     private function __chartOptions($title)
     {
         return [

@@ -631,6 +631,7 @@ Route::middleware(['setData', 'auth', 'SetSessionData', 'language', 'timezone'])
     Route::get('/load-more-notifications', [HomeController::class, 'loadMoreNotifications']);
     Route::get('/get-total-unread', [HomeController::class, 'getTotalUnreadNotifications']);
     Route::post('/notifications/{id}/read', [HomeController::class, 'markNotificationRead']);
+    Route::get('/notifications/{id}/open', [HomeController::class, 'openNotification'])->name('notifications.open');
     Route::get('/purchases/print/{id}', [PurchaseController::class, 'printInvoice']);
     Route::get('/purchases/{id}', [PurchaseController::class, 'show']);
     Route::get('/download-purchase-order/{id}/pdf', [PurchaseOrderController::class, 'downloadPdf'])->name('purchaseOrder.downloadPdf');
