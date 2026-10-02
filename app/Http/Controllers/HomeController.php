@@ -512,14 +512,9 @@ class HomeController extends Controller
 
     public function markNotificationRead($id)
     {
-        $notification = auth()->user()->notifications()->where('id', $id)->firstOrFail();
+        $this->markUserNotificationAsRead((string) $id);
 
-        if (is_null($notification->read_at)) {
-            $notification->markAsRead();
-        }
-
-        // Fresh query after markAsRead so the badge count is accurate.
-        $user = auth()->user()->fresh() ?? auth()->user();
+        $user = auth()->user();
 
         return response()->json([
             'success' => true,
@@ -537,16 +532,15 @@ class HomeController extends Controller
      */
     public function openNotification(Request $request, $id)
     {
-        $notification = auth()->user()->notifications()->where('id', $id)->firstOrFail();
-
-        if (is_null($notification->read_at)) {
-            $notification->markAsRead();
-        }
+        $this->markUserNotificationAsRead((string) $id);
 
         $redirect = (string) $request->query('redirect', '');
         if ($redirect === '') {
-            $parsed = $this->commonUtil->parseNotifications(collect([$notification]));
-            $redirect = (string) ($parsed[0]['link'] ?? '');
+            $notification = auth()->user()->notifications()->where('id', $id)->first();
+            if ($notification) {
+                $parsed = $this->commonUtil->parseNotifications(collect([$notification]), false);
+                $redirect = (string) ($parsed[0]['destination_link'] ?? $parsed[0]['link'] ?? '');
+            }
         }
 
         if ($redirect === '' || $redirect === '#') {
@@ -554,21 +548,64 @@ class HomeController extends Controller
         }
 
         if (str_starts_with($redirect, '/')) {
-            $redirect = $request->getSchemeAndHttpHost().$redirect;
+            return redirect()->to($redirect);
         }
 
-        $redirectHost = parse_url($redirect, PHP_URL_HOST);
-        if (empty($redirectHost) || strcasecmp((string) $redirectHost, (string) $request->getHost()) !== 0) {
+        if (! $this->isSafeInternalRedirect($redirect, $request)) {
             return redirect()->to('/home');
         }
 
-        // Prevent open loop back into this endpoint.
         $redirectPath = (string) (parse_url($redirect, PHP_URL_PATH) ?: '');
         if (str_contains($redirectPath, '/notifications/') && str_ends_with($redirectPath, '/open')) {
             return redirect()->to('/home');
         }
 
-        return redirect()->to($redirect);
+        return redirect()->away($redirect);
+    }
+
+    private function markUserNotificationAsRead(string $id): void
+    {
+        if ($id === '') {
+            return;
+        }
+
+        $user = auth()->user();
+        if (empty($user)) {
+            return;
+        }
+
+        // Direct DB update — avoids relation/cache edge cases on production.
+        DB::table('notifications')
+            ->where('id', $id)
+            ->where('notifiable_id', $user->id)
+            ->where('notifiable_type', $user->getMorphClass())
+            ->whereNull('read_at')
+            ->update(['read_at' => now()]);
+
+        // Keep in-memory relations consistent for the rest of the request.
+        $notification = $user->notifications()->where('id', $id)->first();
+        if ($notification && is_null($notification->read_at)) {
+            $notification->markAsRead();
+        }
+    }
+
+    private function isSafeInternalRedirect(string $redirect, Request $request): bool
+    {
+        $host = parse_url($redirect, PHP_URL_HOST);
+        if (empty($host)) {
+            return false;
+        }
+
+        $normalize = static function ($value) {
+            return strtolower((string) preg_replace('/^www\./i', '', (string) $value));
+        };
+
+        $allowed = array_filter([
+            $normalize($request->getHost()),
+            $normalize(parse_url((string) config('app.url'), PHP_URL_HOST)),
+        ]);
+
+        return in_array($normalize($host), $allowed, true);
     }
 
     private function __chartOptions($title)

@@ -2466,62 +2466,15 @@ $(document).on('click', 'a.load_notifications', function(e) {
         });
 });
 
-$(document).on('click', '#notifications_list a[data-notification-id]', function(e) {
-    var $link = $(this);
-    var notification_id = $link.attr('data-notification-id') || $link.data('notification-id');
-    var $item = $link.closest('li.notification-li');
-    var href = $link.attr('href') || '';
-
-    if (!notification_id || !$item.hasClass('unread')) {
-        return;
-    }
-
-    // Server route /notifications/{id}/open already marks as read then redirects.
-    // Do not intercept those links (works even with old/cached JS).
-    if (href.indexOf('/notifications/') !== -1 && href.indexOf('/open') !== -1) {
+// Do NOT intercept notification link clicks.
+// Unread links are generated as /notifications/{id}/open?redirect=...
+// so the server marks them read, then redirects. Intercepting with AJAX
+// broke mark-as-read on production (cached JS / aborted requests).
+$(document).on('click', '#notifications_list a[data-notification-id]', function() {
+    var $item = $(this).closest('li.notification-li');
+    if ($item.hasClass('unread')) {
         $item.removeClass('unread');
-        return;
     }
-
-    // Popup notifications are handled by show-notification-in-popup.
-    if ($link.hasClass('show-notification-in-popup')) {
-        return;
-    }
-
-    // Fallback for links that are not using the open endpoint.
-    var hasDestination = href && href !== '#' && href.indexOf('javascript:') !== 0;
-    var openInNewTab = e.metaKey || e.ctrlKey || e.shiftKey || e.which === 2 || $link.attr('target') === '_blank';
-
-    e.preventDefault();
-    e.stopPropagation();
-
-    function goToNotification() {
-        if (!hasDestination) {
-            return;
-        }
-        if (openInNewTab) {
-            window.open(href, '_blank');
-        } else {
-            window.location.href = href;
-        }
-    }
-
-    $.ajax({
-        method: 'POST',
-        url: '/notifications/' + encodeURIComponent(notification_id) + '/read',
-        dataType: 'json',
-        global: false,
-        data: {
-            _token: $('meta[name="csrf-token"]').attr('content'),
-        },
-        success: function(data) {
-            $item.removeClass('unread');
-            updateNotificationCounts(data);
-        },
-        complete: function() {
-            goToNotification();
-        },
-    });
 });
 
 $(document).on('click', 'a.delete_purchase_return', function(e) {
