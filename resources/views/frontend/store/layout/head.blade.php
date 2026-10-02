@@ -559,6 +559,7 @@
 
 	.account-dropdown {
 		position: relative;
+		z-index: 230;
 	}
 
 	.account-toggle {
@@ -577,16 +578,37 @@
 		padding: 6px;
 		opacity: 0;
 		visibility: hidden;
+		pointer-events: none;
 		transform: translateY(6px);
 		transition: var(--t);
 		z-index: 220;
 	}
 
 	.account-dropdown:hover .account-menu,
-	.account-dropdown:focus-within .account-menu {
+	.account-dropdown:focus-within .account-menu,
+	.account-dropdown.is-open .account-menu {
 		opacity: 1;
 		visibility: visible;
+		pointer-events: auto;
 		transform: translateY(0);
+	}
+
+	@media (hover: none), (pointer: coarse) {
+		/* Touch devices: rely on click toggle, not hover */
+		.account-dropdown:hover .account-menu {
+			opacity: 0;
+			visibility: hidden;
+			pointer-events: none;
+			transform: translateY(6px);
+		}
+
+		.account-dropdown.is-open .account-menu,
+		.account-dropdown:focus-within .account-menu {
+			opacity: 1;
+			visibility: visible;
+			pointer-events: auto;
+			transform: translateY(0);
+		}
 	}
 
 	.account-menu a,
@@ -3237,7 +3259,7 @@
 			width: auto;
 			margin-inline-start: auto;
 			justify-content: flex-end;
-			overflow-x: auto;
+			overflow: visible;
 			padding-bottom: 0;
 			-ms-overflow-style: none;
 			scrollbar-width: none;
@@ -3245,6 +3267,17 @@
 
 		.header-actions::-webkit-scrollbar {
 			display: none;
+		}
+
+		.site-header,
+		.header-inner {
+			overflow: visible;
+		}
+
+		.account-menu {
+			right: 0;
+			left: auto;
+			min-width: 180px;
 		}
 
 		.header-search {

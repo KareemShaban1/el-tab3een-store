@@ -137,7 +137,7 @@
                         <div class="form-group">
                            {!! Form::label('security_pwd', __('repair::lang.repair_passcode') . ':') !!}
                             <div class="input-group">
-                                {!! Form::text('security_pwd', $job_sheet->security_pwd, ['class' => 'form-control', 'id' => 'security_pwd', 'placeholder' => __('lang_v1.password')]); !!}
+                                {!! Form::text('security_pwd', $job_sheet->security_pwd, ['class' => 'form-control', 'id' => 'security_pwd', 'placeholder' => __('lang_v1.password'), 'readonly' => 'readonly']); !!}
                                 <span class="input-group-btn">
                                     <button type="button" class="btn btn-info btn-flat generate_security_pwd" title="@lang('repair::lang.generate_passcode')">
                                         <i class="fas fa-random"></i> @lang('repair::lang.generate_passcode')

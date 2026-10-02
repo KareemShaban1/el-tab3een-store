@@ -126,7 +126,7 @@
 				<div class="header-actions">
 					@auth('customer')
 					<div class="account-dropdown">
-						<button type="button" class="h-action account-toggle">
+						<button type="button" class="h-action account-toggle" aria-haspopup="true" aria-expanded="false">
 							<svg fill="none" stroke="currentColor"
 								stroke-width="1.9" viewBox="0 0 24 24">
 								<path
@@ -135,7 +135,7 @@
 							</svg>
 							<span>{{ auth('customer')->user()->name }}</span>
 						</button>
-						<div class="account-menu">
+						<div class="account-menu" role="menu">
 							<a href="{{ route('store.account.profile') }}">الملف
 								الشخصي</a>
 							<a
@@ -2186,6 +2186,37 @@
 		initMobMenuCategoryAccordion();
 	}
 
+	/* ── Account dropdown (works on touch / mobile) ── */
+	function initAccountDropdown() {
+		const dropdown = document.querySelector('.account-dropdown');
+		const toggle = dropdown?.querySelector('.account-toggle');
+		if (!dropdown || !toggle) return;
+
+		toggle.setAttribute('aria-haspopup', 'true');
+		toggle.setAttribute('aria-expanded', 'false');
+
+		toggle.addEventListener('click', (e) => {
+			e.preventDefault();
+			e.stopPropagation();
+			const isOpen = dropdown.classList.toggle('is-open');
+			toggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+		});
+
+		document.addEventListener('click', (e) => {
+			if (!dropdown.contains(e.target)) {
+				dropdown.classList.remove('is-open');
+				toggle.setAttribute('aria-expanded', 'false');
+			}
+		});
+
+		document.addEventListener('keydown', (e) => {
+			if (e.key === 'Escape') {
+				dropdown.classList.remove('is-open');
+				toggle.setAttribute('aria-expanded', 'false');
+			}
+		});
+	}
+
 	/* ── Header search: autocomplete (categories + products) ── */
 	function initStoreHeaderSearch() {
 		const input = document.getElementById('store-search-q');
@@ -2475,6 +2506,7 @@
 				initCategoriesAutoScroll, 150);
 		});
 		initMobMenu();
+		initAccountDropdown();
 		initStoreHeaderSearch();
 		initStorePageSearch();
 		initNewsletter();
