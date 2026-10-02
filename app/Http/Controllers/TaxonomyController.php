@@ -4,8 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Category;
 use App\Media;
+use App\Product;
 use App\Utils\ModuleUtil;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Yajra\DataTables\Facades\DataTables;
 
 class TaxonomyController extends Controller
@@ -413,16 +415,46 @@ class TaxonomyController extends Controller
 
         try {
             $business_id = request()->session()->get('user.business_id');
+
+            DB::beginTransaction();
+
             $updated = Category::where('business_id', $business_id)
                 ->where('id', $id)
                 ->update(['active_in_app' => $value]);
 
-            if ($updated) {
-                return ['success' => true, 'msg' => __('lang_v1.updated_success')];
+            if (! $updated) {
+                DB::rollBack();
+
+                return ['success' => false, 'msg' => __('messages.something_went_wrong')];
             }
 
-            return ['success' => false, 'msg' => __('messages.something_went_wrong')];
+            // Keep child categories in sync when a parent category is toggled.
+            $child_category_ids = Category::where('business_id', $business_id)
+                ->where('parent_id', $id)
+                ->pluck('id')
+                ->all();
+
+            if (! empty($child_category_ids)) {
+                Category::where('business_id', $business_id)
+                    ->whereIn('id', $child_category_ids)
+                    ->update(['active_in_app' => $value]);
+            }
+
+            $category_ids = array_values(array_unique(array_merge([(int) $id], $child_category_ids)));
+
+            // Sync products assigned to this category or its subcategories.
+            Product::where('business_id', $business_id)
+                ->where(function ($query) use ($category_ids) {
+                    $query->whereIn('category_id', $category_ids)
+                        ->orWhereIn('sub_category_id', $category_ids);
+                })
+                ->update(['active_in_app' => $value]);
+
+            DB::commit();
+
+            return ['success' => true, 'msg' => __('lang_v1.updated_success')];
         } catch (\Exception $e) {
+            DB::rollBack();
             \Log::emergency('File:'.$e->getFile().'Line:'.$e->getLine().'Message:'.$e->getMessage());
 
             return ['success' => false, 'msg' => __('messages.something_went_wrong')];
