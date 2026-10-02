@@ -137,8 +137,11 @@
                         <div class="form-group">
                            {!! Form::label('security_pwd', __('repair::lang.repair_passcode') . ':') !!}
                             <div class="input-group">
-                                {!! Form::text('security_pwd', $job_sheet->security_pwd, ['class' => 'form-control', 'placeholder' => __('lang_v1.password')]); !!}
+                                {!! Form::text('security_pwd', $job_sheet->security_pwd, ['class' => 'form-control', 'id' => 'security_pwd', 'placeholder' => __('lang_v1.password')]); !!}
                                 <span class="input-group-btn">
+                                    <button type="button" class="btn btn-info btn-flat generate_security_pwd" title="@lang('repair::lang.generate_passcode')">
+                                        <i class="fas fa-random"></i> @lang('repair::lang.generate_passcode')
+                                    </button>
                                     <button type="button" class="btn btn-primary btn-flat" data-toggle="modal" data-target="#security_pattern">
                                         <i class="fas fa-lock"></i>
                                         @lang('repair::lang.pattern_lock')
@@ -390,6 +393,11 @@
             @if(!empty($job_sheet->security_pattern))
                 lock.setPattern("{{$job_sheet->security_pattern}}");
             @endif
+
+            $(document).on('click', '.generate_security_pwd', function() {
+                var code = String(Math.floor(1000 + Math.random() * 9000));
+                $('input#security_pwd').val(code).trigger('change').focus();
+            });
 
             //filter device model id based on brand & device
             $(document).on('change', '#brand_id', function() {

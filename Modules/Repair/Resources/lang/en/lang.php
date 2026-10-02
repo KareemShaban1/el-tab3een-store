@@ -117,6 +117,7 @@ return [
     'condition_of_product' => 'Condition Of The Product',
     'assign_service_staff' => 'Assign Operator/Technician',
     'repair_passcode' => 'Password/Pattern Lock',
+    'generate_passcode' => 'Generate',
     'view_job_sheet' => 'View job sheet',
     'job_sheet_no' => 'Job sheet number',
     'job_sheet_prefix' => 'Job sheet number prefix',

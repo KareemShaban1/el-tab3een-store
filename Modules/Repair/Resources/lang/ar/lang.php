@@ -117,6 +117,7 @@ return [
 "condition_of_product"=>"حالة المنتج",
 "assign_service_staff"=>"تعيين المشغل / الفني",
 "repair_passcode"=>"كلمة المرور / قفل النمط",
+"generate_passcode"=>"توليد",
 "view_job_sheet"=>"عرض ورقة العمل",
 "job_sheet_no"=>"ورقة العمل الرقم",
 "job_sheet_prefix"=>"بادئة رقم ورقة العمل",
