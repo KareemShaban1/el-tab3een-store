@@ -75,6 +75,7 @@ use App\Http\Controllers\LocationsFees\LocationFeeController;
 use App\Http\Controllers\StoreHeroBannerController;
 use App\Http\Controllers\StorePageController;
 use App\Http\Controllers\StorefrontAppearanceController;
+use App\Http\Controllers\StorefrontSeoController;
 use App\Http\Controllers\StorefrontWhatsAppController;
 /*
 |--------------------------------------------------------------------------
@@ -304,6 +305,8 @@ Route::middleware(['setData', 'auth', 'SetSessionData', 'language', 'timezone', 
     Route::resource('store-pages', StorePageController::class)->except(['show']);
     Route::get('/storefront-appearance', [StorefrontAppearanceController::class, 'edit'])->name('storefront-appearance.edit');
     Route::put('/storefront-appearance', [StorefrontAppearanceController::class, 'update'])->name('storefront-appearance.update');
+    Route::get('/storefront-seo', [StorefrontSeoController::class, 'edit'])->name('storefront-seo.edit');
+    Route::put('/storefront-seo', [StorefrontSeoController::class, 'update'])->name('storefront-seo.update');
     Route::get('/storefront-whatsapp', [StorefrontWhatsAppController::class, 'edit'])->name('storefront-whatsapp.edit');
     Route::put('/storefront-whatsapp', [StorefrontWhatsAppController::class, 'update'])->name('storefront-whatsapp.update');
 

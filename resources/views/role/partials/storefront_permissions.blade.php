@@ -21,6 +21,7 @@
             'hero_banners.access',
             'store_pages.access',
             'storefront_appearance.access',
+            'storefront_seo.access',
             'storefront_whatsapp.access',
         ] as $storefront_permission)
             <div class="col-md-12">

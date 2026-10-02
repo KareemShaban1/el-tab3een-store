@@ -67,6 +67,7 @@
      'hero_banners.access' => 'الوصول إلى بانرات الصفحة الرئيسية',
      'store_pages.access' => 'الوصول إلى صفحات المتجر',
      'storefront_appearance.access' => 'الوصول إلى مظهر المتجر',
+     'storefront_seo.access' => 'الوصول إلى تحسين محركات البحث (SEO)',
      'storefront_whatsapp.access' => 'الوصول إلى زر واتساب',
      'invoice_settings.access' => 'الوصول إلى إعدادات الفواتير',
      'brand.view' => 'عرض العلامة التجارية',

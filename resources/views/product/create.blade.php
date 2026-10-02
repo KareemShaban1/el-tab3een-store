@@ -155,6 +155,22 @@
                 </div>
                 {!! Form::textarea('product_description', !empty($duplicate_product->product_description) ? $duplicate_product->product_description : null, ['class' => 'form-control']); !!}
             </div>
+            @if(is_storefront_business())
+            <div class="form-group tw-mt-3">
+                {!! Form::label('meta_title', __('lang_v1.product_meta_title') . ':') !!}
+                {!! Form::text('meta_title', !empty($duplicate_product->meta_title) ? $duplicate_product->meta_title : null, ['class' => 'form-control', 'maxlength' => 191, 'placeholder' => __('lang_v1.product_meta_title_placeholder')]); !!}
+                <p class="help-block">@lang('lang_v1.product_meta_title_help')</p>
+            </div>
+            <div class="form-group tw-mt-3">
+                {!! Form::label('meta_description', __('lang_v1.product_meta_description') . ':') !!}
+                {!! Form::textarea('meta_description', !empty($duplicate_product->meta_description) ? $duplicate_product->meta_description : null, ['class' => 'form-control', 'rows' => 2, 'maxlength' => 500]); !!}
+                <p class="help-block">@lang('lang_v1.product_meta_description_help')</p>
+            </div>
+            <div class="form-group tw-mt-3">
+                {!! Form::label('meta_keywords', __('lang_v1.product_meta_keywords') . ':') !!}
+                {!! Form::text('meta_keywords', !empty($duplicate_product->meta_keywords) ? $duplicate_product->meta_keywords : null, ['class' => 'form-control', 'maxlength' => 255]); !!}
+            </div>
+            @endif
             <div class="form-group tw-mt-3">
                 {!! Form::label('tags', __('lang_v1.product_tags') . ':') !!}
                 {!! Form::text('tags', !empty($duplicate_product->tags) ? $duplicate_product->tags : null, ['class' => 'form-control', 'placeholder' => __('lang_v1.product_tags_help')]); !!}

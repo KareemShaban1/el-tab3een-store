@@ -2,9 +2,41 @@
  <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>{{ $title ?? 'El Tab3een Store' }}</title>
-    @if (! empty($metaDescription))
-    <meta name="description" content="{{ e(strip_tags((string) $metaDescription)) }}">
+    @php
+        $seoPageTitle = $title ?? 'El Tab3een Store';
+        $seoDesc = ! empty($metaDescription) ? e(strip_tags((string) $metaDescription)) : null;
+        $seoKeys = ! empty($metaKeywords) ? e(strip_tags((string) $metaKeywords)) : null;
+        $seoImage = ! empty($seoOgImage) ? e((string) $seoOgImage) : null;
+        $seoRobotsContent = ! empty($seoRobots) ? e(strip_tags((string) $seoRobots)) : null;
+        $seoCanonicalUrl = ! empty($seoCanonical) ? e((string) $seoCanonical) : e(url()->current());
+    @endphp
+    <title>{{ $seoPageTitle }}</title>
+    @if ($seoDesc)
+    <meta name="description" content="{{ $seoDesc }}">
+    @endif
+    @if ($seoKeys)
+    <meta name="keywords" content="{{ $seoKeys }}">
+    @endif
+    @if ($seoRobotsContent)
+    <meta name="robots" content="{{ $seoRobotsContent }}">
+    @endif
+    <link rel="canonical" href="{{ $seoCanonicalUrl }}">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="{{ e(strip_tags((string) $seoPageTitle)) }}">
+    @if ($seoDesc)
+    <meta property="og:description" content="{{ $seoDesc }}">
+    @endif
+    @if ($seoImage)
+    <meta property="og:image" content="{{ $seoImage }}">
+    @endif
+    <meta property="og:url" content="{{ $seoCanonicalUrl }}">
+    <meta name="twitter:card" content="{{ $seoImage ? 'summary_large_image' : 'summary' }}">
+    <meta name="twitter:title" content="{{ e(strip_tags((string) $seoPageTitle)) }}">
+    @if ($seoDesc)
+    <meta name="twitter:description" content="{{ $seoDesc }}">
+    @endif
+    @if ($seoImage)
+    <meta name="twitter:image" content="{{ $seoImage }}">
     @endif
     @stack('meta')
     <link rel="preconnect" href="https://fonts.googleapis.com">

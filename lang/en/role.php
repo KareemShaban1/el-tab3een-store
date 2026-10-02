@@ -86,6 +86,7 @@ return [
     'hero_banners.access' => 'Access hero banners',
     'store_pages.access' => 'Access store pages',
     'storefront_appearance.access' => 'Access storefront appearance',
+    'storefront_seo.access' => 'Access storefront SEO',
     'storefront_whatsapp.access' => 'Access storefront WhatsApp button',
 
     'brand.view' => 'View brand',

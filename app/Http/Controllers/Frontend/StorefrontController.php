@@ -12,6 +12,7 @@ use App\StoreHeroBanner;
 use App\StorePage;
 use App\StorefrontSetting;
 use App\Services\Tab3eenCatalogService;
+use App\Utils\StorefrontSeoUtil;
 use App\Variation;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
@@ -102,9 +103,19 @@ class StorefrontController extends Controller
             return response()->json($payload);
         }
 
+        $seo = app(StorefrontSeoUtil::class)->forProduct(
+            is_array($product) ? $product : (array) $product,
+            $request->url()
+        );
+
         return view('frontend.store.product', [
             'payload' => $payload,
             'isServoProduct' => true,
+            'title' => $seo['meta_title'],
+            'metaDescription' => $seo['meta_description'],
+            'metaKeywords' => $seo['meta_keywords'],
+            'seoOgImage' => $seo['og_image'],
+            'seoCanonical' => $seo['canonical'],
         ]);
     }
 
@@ -489,8 +500,15 @@ class StorefrontController extends Controller
         ];
 
         if (! $request->expectsJson()) {
+            $seo = app(StorefrontSeoUtil::class)->forProduct($product, $request->url());
+
             return view('frontend.store.product')->with([
                 'payload' => $payload,
+                'title' => $seo['meta_title'],
+                'metaDescription' => $seo['meta_description'],
+                'metaKeywords' => $seo['meta_keywords'],
+                'seoOgImage' => $seo['og_image'],
+                'seoCanonical' => $seo['canonical'],
             ]);
         }
 
@@ -1036,6 +1054,7 @@ class StorefrontController extends Controller
             'page' => $page,
             'title' => $page->meta_title ?: $page->title,
             'metaDescription' => $page->meta_description ?: $page->excerpt,
+            'seoCanonical' => $request->url(),
         ]);
     }
 

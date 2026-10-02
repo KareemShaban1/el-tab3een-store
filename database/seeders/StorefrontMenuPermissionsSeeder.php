@@ -26,6 +26,7 @@ class StorefrontMenuPermissionsSeeder extends Seeder
             'hero_banners.access',
             'store_pages.access',
             'storefront_appearance.access',
+            'storefront_seo.access',
             'storefront_whatsapp.access',
         ];
 

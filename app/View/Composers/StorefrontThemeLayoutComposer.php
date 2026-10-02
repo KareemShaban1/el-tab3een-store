@@ -6,6 +6,7 @@ use App\Category;
 use App\Http\Controllers\Frontend\StorefrontController;
 use App\StorefrontSetting;
 use App\StorePage;
+use App\Utils\StorefrontSeoUtil;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\View\View;
 
@@ -57,6 +58,29 @@ class StorefrontThemeLayoutComposer
                 .'. جميع الحقوق محفوظة.';
         }
 
+        $viewData = $view->getData();
+        $seo = app(StorefrontSeoUtil::class)->forCurrentRequest($request);
+
+        // Controllers (CMS pages / products) may already provide title & description.
+        if (empty($viewData['title']) && ! empty($seo['meta_title'])) {
+            $view->with('title', $seo['meta_title']);
+        }
+        if (empty($viewData['metaDescription']) && ! empty($seo['meta_description'])) {
+            $view->with('metaDescription', $seo['meta_description']);
+        }
+        if (empty($viewData['metaKeywords']) && ! empty($seo['meta_keywords'])) {
+            $view->with('metaKeywords', $seo['meta_keywords']);
+        }
+        if (empty($viewData['seoOgImage']) && ! empty($seo['og_image'])) {
+            $view->with('seoOgImage', $seo['og_image']);
+        }
+        if (empty($viewData['seoRobots']) && ! empty($seo['robots'])) {
+            $view->with('seoRobots', $seo['robots']);
+        }
+        if (empty($viewData['seoCanonical']) && ! empty($seo['canonical'])) {
+            $view->with('seoCanonical', $seo['canonical']);
+        }
+
         $view->with([
             'storeHeaderFeaturedCategories' => $storeHeaderFeaturedCategories,
             'storeSearchSuggestUrl' => route('store.search.suggest'),
@@ -64,6 +88,7 @@ class StorefrontThemeLayoutComposer
             'storeHeaderPages' => $storeHeaderPages,
             'storeAppearance' => $storeAppearance,
             'storeAppearanceSettings' => $storeAppearanceModel,
+            'storefrontSeo' => $seo,
         ]);
     }
 }
