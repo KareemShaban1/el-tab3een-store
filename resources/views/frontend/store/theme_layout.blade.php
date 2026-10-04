@@ -2530,6 +2530,8 @@
 	window.openModal = openModal;
 	window.toast = toast;
 	</script>
+
+	@include('frontend.store.partials.visit_tracker')
 </body>
 
 </html>

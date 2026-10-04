@@ -69,6 +69,7 @@
      'storefront_appearance.access' => 'الوصول إلى مظهر المتجر',
      'storefront_seo.access' => 'الوصول إلى تحسين محركات البحث (SEO)',
      'storefront_whatsapp.access' => 'الوصول إلى زر واتساب',
+     'website_logs.access' => 'الوصول إلى سجلات زيارات الموقع',
      'invoice_settings.access' => 'الوصول إلى إعدادات الفواتير',
      'brand.view' => 'عرض العلامة التجارية',
      'brand.create' => 'أضف علامة تجارية',

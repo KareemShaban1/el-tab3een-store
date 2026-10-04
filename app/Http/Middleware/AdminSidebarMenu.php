@@ -439,8 +439,9 @@ $is_superadmin = auth()->user()->can('superadmin');
             $can_storefront_appearance = $is_admin || auth()->user()->can('storefront_appearance.access');
             $can_storefront_seo = $is_admin || auth()->user()->can('storefront_seo.access');
             $can_storefront_whatsapp = $is_admin || auth()->user()->can('storefront_whatsapp.access');
+            $can_website_logs = $is_admin || auth()->user()->can('website_logs.access');
 
-            if (is_storefront_business() && ($can_tab3een_orders || $can_servo_orders || $can_hero_banners || $can_store_pages || $can_storefront_appearance || $can_storefront_seo || $can_storefront_whatsapp)) {
+            if (is_storefront_business() && ($can_tab3een_orders || $can_servo_orders || $can_hero_banners || $can_store_pages || $can_storefront_appearance || $can_storefront_seo || $can_storefront_whatsapp || $can_website_logs)) {
                 $storeOrderNotificationUtil = app(StoreOrderNotificationUtil::class);
                 $store_order_counts = $storeOrderNotificationUtil->getSidebarCounts(auth()->user());
                 $tab3een_badge = $storeOrderNotificationUtil->sidebarBadgeHtml($store_order_counts['tab3een'], 'sidebar-tab3een-orders-badge');
@@ -448,7 +449,7 @@ $is_superadmin = auth()->user()->can('superadmin');
 
                 $menu->dropdown(
                     __('lang_v1.orders'),
-                    function ($sub) use ($can_tab3een_orders, $can_servo_orders, $can_hero_banners, $can_store_pages, $can_storefront_appearance, $can_storefront_seo, $can_storefront_whatsapp, $tab3een_badge, $servo_badge) {
+                    function ($sub) use ($can_tab3een_orders, $can_servo_orders, $can_hero_banners, $can_store_pages, $can_storefront_appearance, $can_storefront_seo, $can_storefront_whatsapp, $can_website_logs, $tab3een_badge, $servo_badge) {
                         if ($can_tab3een_orders) {
                             $sub->url(
                                 action([\App\Http\Controllers\SellController::class, 'ecommerceOrders']),
@@ -496,6 +497,13 @@ $is_superadmin = auth()->user()->can('superadmin');
                                 action([\App\Http\Controllers\StorefrontWhatsAppController::class, 'edit']),
                                 __('lang_v1.storefront_whatsapp'),
                                 ['icon' => '', 'active' => request()->segment(1) == 'storefront-whatsapp']
+                            );
+                        }
+                        if ($can_website_logs) {
+                            $sub->url(
+                                action([\App\Http\Controllers\WebsiteVisitLogController::class, 'index']),
+                                __('website_logs.website_logs'),
+                                ['icon' => '', 'active' => request()->segment(1) == 'website-logs']
                             );
                         }
                     },

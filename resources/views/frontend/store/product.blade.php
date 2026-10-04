@@ -550,26 +550,12 @@ window.__SSR_STORE_PRODUCTS__[{
                 </div>
             </div> -->
 
-			@if($sfStr($product['brand'] ?? '') || $sfStr($product['category'] ?? '') || $sfStr($product['sub_category'] ?? ''))
+			@if($sfStr($product['brand'] ?? ''))
 			<div class="meta-grid">
-				@if($sfStr($product['brand'] ?? ''))
 				<div class="meta-box">
 					<p class="meta-label">{{ __('storefront.catalog.brand') }}</p>
 					<p class="meta-value">{{ $sfStr($product['brand'] ?? '') }}</p>
 				</div>
-				@endif
-				@if($sfStr($product['category'] ?? ''))
-				<div class="meta-box">
-					<p class="meta-label">{{ __('storefront.catalog.category') }}</p>
-					<p class="meta-value">{{ $sfStr($product['category'] ?? '') }}</p>
-				</div>
-				@endif
-				@if($sfStr($product['sub_category'] ?? ''))
-				<div class="meta-box">
-					<p class="meta-label">{{ __('product.sub_category') }}</p>
-					<p class="meta-value">{{ $sfStr($product['sub_category'] ?? '') }}</p>
-				</div>
-				@endif
 			</div>
 			@endif
 

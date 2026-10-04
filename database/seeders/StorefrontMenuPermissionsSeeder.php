@@ -28,6 +28,7 @@ class StorefrontMenuPermissionsSeeder extends Seeder
             'storefront_appearance.access',
             'storefront_seo.access',
             'storefront_whatsapp.access',
+            'website_logs.access',
         ];
 
         $permissions = array_merge(

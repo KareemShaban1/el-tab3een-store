@@ -1817,6 +1817,64 @@ if ($sPmax <= $sPmin) { $sPmax=$sPmin + 1; } $sliderRngLo=$sPmin; $sliderRngHi=$
 
 		let storeAjaxBusy = false;
 
+		function summarizeFiltersFromParams(searchParams) {
+			const parts = [];
+			const q = (searchParams.get('q') || '').trim();
+			const categoryId = searchParams.get('category_id') || '';
+			const subCategoryId = searchParams.get('sub_category_id') || '';
+			const brandId = searchParams.get('brand_id') || '';
+			const priceMin = searchParams.get('price_min') || '';
+			const priceMax = searchParams.get('price_max') || '';
+			const sort = searchParams.get('sort') || '';
+			const page = searchParams.get('page') || '';
+
+			if (q) parts.push('Search: “' + q + '”');
+			if (categoryId) {
+				const name = STORE_CATEGORY_NAMES[categoryId] || STORE_CATEGORY_NAMES[String(categoryId)] ||
+					(STORE_IS_SERVO_CATALOG ? (STORE_SERVO_CATEGORY_NAME || categoryId) : categoryId);
+				parts.push('Category: ' + name);
+			}
+			if (subCategoryId) {
+				const sub = (STORE_SUBCATEGORIES || []).find((s) => String(s.id) === String(subCategoryId));
+				parts.push((STORE_SUBCATEGORY_LABEL || 'Subcategory') + ': ' + (sub && sub.name ? sub.name : subCategoryId));
+			}
+			if (brandId) {
+				const name = STORE_BRAND_NAMES[brandId] || STORE_BRAND_NAMES[String(brandId)] || brandId;
+				parts.push('Brand: ' + name);
+			}
+			if (priceMin || priceMax) {
+				if (priceMin && priceMax) parts.push('Price: ' + priceMin + ' – ' + priceMax);
+				else if (priceMin) parts.push('Price: ≥ ' + priceMin);
+				else parts.push('Price: ≤ ' + priceMax);
+			}
+			if (sort && STORE_SORT_LABELS[sort]) {
+				parts.push((STORE_SORT_BY_LABEL || 'Sort') + ': ' + STORE_SORT_LABELS[sort]);
+			}
+			if (page && String(page) !== '1') {
+				parts.push('Page: ' + page);
+			}
+
+			return {
+				summary: parts.length ? parts.join(' · ') : 'Cleared filters',
+				filters: {
+					q: q || null,
+					category_id: categoryId || null,
+					sub_category_id: subCategoryId || null,
+					brand_id: brandId || null,
+					price_min: priceMin || null,
+					price_max: priceMax || null,
+					sort: sort || null,
+					page: page || null,
+				},
+			};
+		}
+
+		function trackProductsFilterVisit(searchParams) {
+			if (typeof window.trackStoreVisitEvent !== 'function') return;
+			const info = summarizeFiltersFromParams(searchParams);
+			window.trackStoreVisitEvent('filter_applied', info.summary, info.filters);
+		}
+
 		async function fetchStoreProducts(url) {
 			if (storeAjaxBusy) return;
 			storeAjaxBusy = true;
@@ -1858,6 +1916,8 @@ if ($sPmax <= $sPmin) { $sPmax=$sPmin + 1; } $sliderRngLo=$sPmin; $sliderRngHi=$
 				history.pushState({
 					storeProducts: true
 				}, '', qs ? (pathOnly + '?' + qs) : pathOnly);
+
+				trackProductsFilterVisit(u.searchParams);
 			} catch (e) {
 				if (pagWrap) pagWrap.classList.remove('is-loading');
 			} finally {

@@ -23,6 +23,7 @@
             'storefront_appearance.access',
             'storefront_seo.access',
             'storefront_whatsapp.access',
+            'website_logs.access',
         ] as $storefront_permission)
             <div class="col-md-12">
                 <div class="checkbox">

@@ -88,6 +88,7 @@ return [
     'storefront_appearance.access' => 'Access storefront appearance',
     'storefront_seo.access' => 'Access storefront SEO',
     'storefront_whatsapp.access' => 'Access storefront WhatsApp button',
+    'website_logs.access' => 'Access website visit logs',
 
     'brand.view' => 'View brand',
     'brand.create' => 'Add brand',

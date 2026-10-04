@@ -56,6 +56,8 @@ use App\Http\Controllers\Frontend\StoreCheckoutController;
 use App\Http\Controllers\Frontend\StorefrontLocationController;
 use App\Http\Controllers\Frontend\StoreCustomerAuthController;
 use App\Http\Controllers\Frontend\StorefrontController;
+use App\Http\Controllers\Frontend\WebsiteVisitTrackingController;
+use App\Http\Controllers\WebsiteVisitLogController;
 use App\Http\Controllers\TaxonomyController;
 use App\Http\Controllers\TaxRateController;
 use App\Http\Controllers\TransactionPaymentController;
@@ -92,7 +94,7 @@ include_once 'install_r.php';
 
 Route::middleware(['setData'])->group(function () {
     Route::get('/', [StorefrontController::class, 'welcome'])
-        ->middleware('storefront.locale')
+        ->middleware(['storefront.locale', 'website.visit.log'])
         ->name('welcome');
 
     Auth::routes();
@@ -118,42 +120,50 @@ Route::middleware(['setData'])->group(function () {
     |--------------------------------------------------------------------------
     */
     Route::prefix('store')->middleware('storefront.locale')->name('store.')->group(function () {
-        Route::get('/', [StorefrontController::class, 'home'])->name('home');
-        Route::get('/products', [StorefrontController::class, 'products'])->name('products.index');
-        Route::get('/products/{id}', [StorefrontController::class, 'product'])->name('products.show');
-        Route::get('/categories', [StorefrontController::class, 'categories'])->name('categories.index');
-        Route::get('/flash-deals', [StorefrontController::class, 'flashDeals'])->name('flash_deals.index');
-        Route::get('/tab3een/catalog', [StorefrontController::class, 'tab3eenCatalog'])
-            ->middleware('throttle:60,1')
-            ->name('tab3een.catalog');
-        Route::get('/tab3een/products/{id}', [StorefrontController::class, 'tab3eenProduct'])
-            ->whereNumber('id')
-            ->name('tab3een.products.show');
-        Route::get('/search', [StorefrontController::class, 'search'])->name('search');
+        Route::post('/visit-logs/{token}', [WebsiteVisitTrackingController::class, 'update'])
+            ->middleware('throttle:120,1')
+            ->name('visit_logs.update');
+
+        Route::middleware('website.visit.log')->group(function () {
+            Route::get('/', [StorefrontController::class, 'home'])->name('home');
+            Route::get('/products', [StorefrontController::class, 'products'])->name('products.index');
+            Route::get('/products/{id}', [StorefrontController::class, 'product'])->name('products.show');
+            Route::get('/categories', [StorefrontController::class, 'categories'])->name('categories.index');
+            Route::get('/flash-deals', [StorefrontController::class, 'flashDeals'])->name('flash_deals.index');
+            Route::get('/tab3een/catalog', [StorefrontController::class, 'tab3eenCatalog'])
+                ->middleware('throttle:60,1')
+                ->name('tab3een.catalog');
+            Route::get('/tab3een/products/{id}', [StorefrontController::class, 'tab3eenProduct'])
+                ->whereNumber('id')
+                ->name('tab3een.products.show');
+            Route::get('/search', [StorefrontController::class, 'search'])->name('search');
+            Route::get('/pages/{slug}', [StorefrontController::class, 'page'])->name('pages.show');
+
+            Route::get('/register', [StoreCustomerAuthController::class, 'showRegister'])->name('auth.register.form');
+            Route::get('/login', [StoreCustomerAuthController::class, 'showLogin'])->name('auth.login.form');
+            Route::get('/password/forgot', [StoreCustomerAuthController::class, 'showForgotPassword'])->name('auth.password.request');
+            Route::get('/password/reset/{token}', [StoreCustomerAuthController::class, 'showResetPassword'])->name('auth.password.reset.form');
+
+            Route::middleware('store.customer.auth')->group(function () {
+                Route::get('/account/profile', [StoreAccountController::class, 'profile'])->name('account.profile');
+                Route::get('/account/orders', [StoreAccountController::class, 'orders'])->name('account.orders');
+                Route::get('/account/orders/servo/{id}', [StoreAccountController::class, 'servoOrderDetails'])->name('account.orders.servo.show');
+                Route::get('/account/orders/{id}', [StoreAccountController::class, 'orderDetails'])->name('account.orders.show');
+                Route::get('/checkout', [StoreCheckoutController::class, 'show'])->name('checkout.form');
+            });
+        });
+
         Route::get('/search/suggest', [StorefrontController::class, 'searchSuggest'])
             ->middleware('throttle:90,1')
             ->name('search.suggest');
-        Route::get('/pages/{slug}', [StorefrontController::class, 'page'])->name('pages.show');
-
-        Route::get('/register', [StoreCustomerAuthController::class, 'showRegister'])->name('auth.register.form');
-        Route::get('/login', [StoreCustomerAuthController::class, 'showLogin'])->name('auth.login.form');
-        Route::get('/password/forgot', [StoreCustomerAuthController::class, 'showForgotPassword'])->name('auth.password.request');
         Route::post('/password/email', [StoreCustomerAuthController::class, 'sendResetLinkEmail'])->name('auth.password.email');
-        Route::get('/password/reset/{token}', [StoreCustomerAuthController::class, 'showResetPassword'])->name('auth.password.reset.form');
         Route::post('/password/reset', [StoreCustomerAuthController::class, 'resetPassword'])->name('auth.password.update');
         Route::post('/register', [StoreCustomerAuthController::class, 'register'])->name('auth.register');
         Route::post('/login', [StoreCustomerAuthController::class, 'login'])->name('auth.login');
 
         Route::middleware('store.customer.auth')->group(function () {
             Route::post('/logout', [StoreCustomerAuthController::class, 'logout'])->name('auth.logout');
-
-            Route::get('/account/profile', [StoreAccountController::class, 'profile'])->name('account.profile');
             Route::put('/account/profile', [StoreAccountController::class, 'updateProfile'])->name('account.profile.update');
-            Route::get('/account/orders', [StoreAccountController::class, 'orders'])->name('account.orders');
-            Route::get('/account/orders/servo/{id}', [StoreAccountController::class, 'servoOrderDetails'])->name('account.orders.servo.show');
-            Route::get('/account/orders/{id}', [StoreAccountController::class, 'orderDetails'])->name('account.orders.show');
-
-            Route::get('/checkout', [StoreCheckoutController::class, 'show'])->name('checkout.form');
             Route::post('/checkout', [StoreCheckoutController::class, 'checkout'])->name('checkout');
 
             Route::get('/locations/governorates', [StorefrontLocationController::class, 'governorates'])->name('locations.governorates');
@@ -309,6 +319,10 @@ Route::middleware(['setData', 'auth', 'SetSessionData', 'language', 'timezone', 
     Route::put('/storefront-seo', [StorefrontSeoController::class, 'update'])->name('storefront-seo.update');
     Route::get('/storefront-whatsapp', [StorefrontWhatsAppController::class, 'edit'])->name('storefront-whatsapp.edit');
     Route::put('/storefront-whatsapp', [StorefrontWhatsAppController::class, 'update'])->name('storefront-whatsapp.update');
+    Route::get('/website-logs', [WebsiteVisitLogController::class, 'index'])->name('website-logs.index');
+    Route::get('/website-logs/stats', [WebsiteVisitLogController::class, 'stats'])->name('website-logs.stats');
+    Route::post('/website-logs/bulk-delete', [WebsiteVisitLogController::class, 'bulkDestroy'])->name('website-logs.bulk-destroy');
+    Route::delete('/website-logs/{id}', [WebsiteVisitLogController::class, 'destroy'])->name('website-logs.destroy');
 
     Route::prefix('locations-fees')->group(function () {
         Route::get('/', [LocationFeeController::class, 'index'])->name('locations-fees.index');
