@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\WebsiteVisitLogger;
+use App\System;
 use App\Utils\Util;
 use App\WebsiteVisitLog;
 use Illuminate\Http\Request;
@@ -144,6 +146,24 @@ class WebsiteVisitLogController extends Controller
         return view('website_logs.index', [
             'stats' => $stats,
             'pageTypes' => WebsiteVisitLog::pageTypes(),
+            'visitorLogMode' => WebsiteVisitLogger::visitorLogMode(),
+        ]);
+    }
+
+    public function updateSettings(Request $request)
+    {
+        $this->authorizeAccess();
+
+        $validated = $request->validate([
+            'visitor_mode' => 'required|in:humans,bots,both',
+        ]);
+
+        System::addProperty('website_logs_visitor_mode', $validated['visitor_mode']);
+
+        return response()->json([
+            'success' => true,
+            'msg' => __('website_logs.settings_saved'),
+            'visitor_mode' => $validated['visitor_mode'],
         ]);
     }
 

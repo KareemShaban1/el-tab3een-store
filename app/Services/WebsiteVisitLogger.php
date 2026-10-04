@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Http\Controllers\Frontend\StorefrontController;
+use App\System;
 use App\WebsiteVisitLog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -57,6 +58,11 @@ class WebsiteVisitLogger
 
         $userAgent = (string) $request->userAgent();
         [$isBot, $botName] = $this->detectBot($userAgent);
+
+        if (! $this->shouldLogVisitorType($isBot)) {
+            return null;
+        }
+
         $pageMeta = $this->resolvePageMeta($request);
         $ip = app(ClientIpResolver::class)->resolve($request);
         $countryHint = $request->headers->get('CF-IPCountry')
@@ -97,6 +103,31 @@ class WebsiteVisitLogger
         }
 
         return $log;
+    }
+
+    /**
+     * Logging mode from website-logs settings page: humans | bots | both.
+     */
+    public static function visitorLogMode(): string
+    {
+        $mode = (string) (System::getProperty('website_logs_visitor_mode') ?: 'both');
+
+        return in_array($mode, ['humans', 'bots', 'both'], true) ? $mode : 'both';
+    }
+
+    protected function shouldLogVisitorType(bool $isBot): bool
+    {
+        $mode = self::visitorLogMode();
+
+        if ($mode === 'humans') {
+            return ! $isBot;
+        }
+
+        if ($mode === 'bots') {
+            return $isBot;
+        }
+
+        return true;
     }
 
     /**

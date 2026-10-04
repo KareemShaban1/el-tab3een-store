@@ -10,7 +10,7 @@ use Illuminate\Support\Str;
 
 class IpGeolocationService
 {
-    private const CACHE_PREFIX = 'ip_geo_v2:';
+    private const CACHE_PREFIX = 'ip_geo_v3:';
 
     /**
      * @return array{
@@ -46,6 +46,7 @@ class IpGeolocationService
         }
 
         $result = $this->lookupFromProviders($ip);
+        $result = app(EgyptGovernorateNormalizer::class)->normalize($result);
 
         if (! empty($result['location_label']) || ! empty($result['city']) || ! empty($result['country'])) {
             Cache::put($cacheKey, $result, now()->addDays(14));
@@ -104,7 +105,17 @@ class IpGeolocationService
                 $q->whereNull('location_label')
                     ->orWhere('location_label', '')
                     ->orWhereNull('city')
-                    ->orWhere('city', '');
+                    ->orWhere('city', '')
+                    // Re-normalize Egypt rows that still have English / transliterated regions.
+                    ->orWhere(function ($egypt) {
+                        $egypt->where('country_code', 'EG')
+                            ->where(function ($region) {
+                                $region->whereNull('region')
+                                    ->orWhere('region', 'not like', '%ا%')
+                                    ->orWhere('region', 'like', '%Muhafazat%')
+                                    ->orWhere('region', 'like', '%Governorate%');
+                            });
+                    });
             });
         }
 
@@ -113,12 +124,10 @@ class IpGeolocationService
 
         foreach ($logs as $log) {
             $ip = trim((string) $log->ip_address);
-            if ($forceRefresh && $ip !== '') {
-                Cache::forget(self::CACHE_PREFIX.md5($ip));
-            }
+            Cache::forget(self::CACHE_PREFIX.md5($ip));
 
-            $hadCache = $ip !== '' && Cache::has(self::CACHE_PREFIX.md5($ip));
-            $this->fillVisitLog((int) $log->id, $ip, null, $forceRefresh);
+            $hadCache = false;
+            $this->fillVisitLog((int) $log->id, $ip, null, true);
             $count++;
 
             if (! $hadCache) {

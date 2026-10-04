@@ -321,6 +321,7 @@ Route::middleware(['setData', 'auth', 'SetSessionData', 'language', 'timezone', 
     Route::put('/storefront-whatsapp', [StorefrontWhatsAppController::class, 'update'])->name('storefront-whatsapp.update');
     Route::get('/website-logs', [WebsiteVisitLogController::class, 'index'])->name('website-logs.index');
     Route::get('/website-logs/stats', [WebsiteVisitLogController::class, 'stats'])->name('website-logs.stats');
+    Route::post('/website-logs/settings', [WebsiteVisitLogController::class, 'updateSettings'])->name('website-logs.settings');
     Route::post('/website-logs/bulk-delete', [WebsiteVisitLogController::class, 'bulkDestroy'])->name('website-logs.bulk-destroy');
     Route::delete('/website-logs/{id}', [WebsiteVisitLogController::class, 'destroy'])->name('website-logs.destroy');
 

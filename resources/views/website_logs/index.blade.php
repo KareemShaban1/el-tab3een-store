@@ -10,6 +10,34 @@
 </section>
 
 <section class="content">
+    @component('components.widget', ['class' => 'box-info', 'title' => __('website_logs.logging_settings')])
+        <p class="text-muted" style="margin-top:0;">@lang('website_logs.logging_settings_help')</p>
+        <form id="website_logs_settings_form" class="form-inline">
+            @csrf
+            <div class="form-group" style="margin-inline-end:16px; margin-bottom:10px;">
+                <label class="radio-inline">
+                    <input type="radio" name="visitor_mode" value="humans" @checked(($visitorLogMode ?? 'both') === 'humans')>
+                    @lang('website_logs.log_humans_only')
+                </label>
+            </div>
+            <div class="form-group" style="margin-inline-end:16px; margin-bottom:10px;">
+                <label class="radio-inline">
+                    <input type="radio" name="visitor_mode" value="bots" @checked(($visitorLogMode ?? 'both') === 'bots')>
+                    @lang('website_logs.log_bots_only')
+                </label>
+            </div>
+            <div class="form-group" style="margin-inline-end:16px; margin-bottom:10px;">
+                <label class="radio-inline">
+                    <input type="radio" name="visitor_mode" value="both" @checked(($visitorLogMode ?? 'both') === 'both')>
+                    @lang('website_logs.log_both')
+                </label>
+            </div>
+            <button type="submit" class="btn btn-primary btn-sm" id="website_logs_save_settings">
+                <i class="fa fa-save"></i> @lang('messages.save')
+            </button>
+        </form>
+    @endcomponent
+
     @component('components.filters', ['title' => __('report.filters')])
         <div class="col-md-3">
             <div class="form-group">
@@ -309,6 +337,26 @@ $(document).ready(function() {
     var startDate = moment().subtract(29, 'days');
     var endDate = moment();
     var pageTypes = @json($pageTypes);
+
+    $('#website_logs_settings_form').on('submit', function(e) {
+        e.preventDefault();
+        $.ajax({
+            method: 'POST',
+            url: '{{ action([\App\Http\Controllers\WebsiteVisitLogController::class, 'updateSettings']) }}',
+            data: $(this).serialize(),
+            dataType: 'json',
+            success: function(result) {
+                if (result.success) {
+                    toastr.success(result.msg);
+                } else {
+                    toastr.error(result.msg || LANG.something_went_wrong);
+                }
+            },
+            error: function() {
+                toastr.error(LANG.something_went_wrong);
+            }
+        });
+    });
 
     if (typeof dateRangeSettings !== 'undefined') {
         dateRangeSettings.startDate = startDate;
