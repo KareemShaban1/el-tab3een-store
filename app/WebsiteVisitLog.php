@@ -42,6 +42,21 @@ class WebsiteVisitLog extends Model
         return $query->where('is_bot', true);
     }
 
+    public function locationDisplay(): string
+    {
+        if (! empty($this->location_label)) {
+            return (string) $this->location_label;
+        }
+
+        $parts = array_values(array_filter([
+            $this->city,
+            $this->region && $this->region !== $this->city ? $this->region : null,
+            $this->country ?: $this->country_code,
+        ]));
+
+        return $parts !== [] ? implode(', ', $parts) : '';
+    }
+
     public static function pageTypes(): array
     {
         return [

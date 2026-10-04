@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Http\Controllers\Frontend\StorefrontController;
 use App\WebsiteVisitLog;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 
 class WebsiteVisitLogger
@@ -58,11 +59,16 @@ class WebsiteVisitLogger
         $userAgent = (string) $request->userAgent();
         [$isBot, $botName] = $this->detectBot($userAgent);
         $pageMeta = $this->resolvePageMeta($request);
+        $ip = $request->ip();
+        $countryHint = $request->headers->get('CF-IPCountry')
+            ?: $request->headers->get('CloudFront-Viewer-Country');
 
-        return WebsiteVisitLog::create([
+        $geo = $this->cachedGeoOrEmpty($ip, $countryHint);
+
+        $log = WebsiteVisitLog::create(array_merge([
             'business_id' => $businessId,
             'visit_token' => (string) Str::uuid(),
-            'ip_address' => $request->ip(),
+            'ip_address' => $ip,
             'user_agent' => Str::limit($userAgent, 1000, ''),
             'is_bot' => $isBot,
             'bot_name' => $botName,
@@ -78,7 +84,62 @@ class WebsiteVisitLogger
             'events' => [],
             'events_count' => 0,
             'last_activity_at' => now(),
-        ]);
+        ], $geo));
+
+        // Always enrich after response when city is missing (even if CF country code was set).
+        if (empty($log->city) && ! empty($ip)) {
+            $logId = (int) $log->id;
+            dispatch(function () use ($logId, $ip, $countryHint) {
+                app(IpGeolocationService::class)->fillVisitLog($logId, $ip, $countryHint);
+            })->afterResponse();
+        }
+
+        return $log;
+    }
+
+    /**
+     * Use cached geolocation instantly when available; otherwise fill after response.
+     *
+     * @return array<string, mixed>
+     */
+    protected function cachedGeoOrEmpty(?string $ip, ?string $countryHint): array
+    {
+        $empty = [
+            'country' => null,
+            'country_code' => null,
+            'region' => null,
+            'city' => null,
+            'latitude' => null,
+            'longitude' => null,
+            'location_label' => null,
+        ];
+
+        $ip = trim((string) $ip);
+        if ($ip === '') {
+            return $empty;
+        }
+
+        $cacheKey = 'ip_geo_v1:'.md5($ip);
+        if (Cache::has($cacheKey)) {
+            return app(IpGeolocationService::class)->lookup($ip, $countryHint);
+        }
+
+        // Private / local IPs can be labeled without an external call.
+        if (! filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
+            return app(IpGeolocationService::class)->lookup($ip, $countryHint);
+        }
+
+        if ($countryHint && strtoupper($countryHint) !== 'XX') {
+            $code = Str::upper(Str::limit($countryHint, 8, ''));
+
+            return array_merge($empty, [
+                'country_code' => $code,
+                'country' => $code,
+                'location_label' => $code,
+            ]);
+        }
+
+        return $empty;
     }
 
     /**

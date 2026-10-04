@@ -34,6 +34,11 @@ class WebsiteVisitLogController extends Controller
                     'website_visit_logs.id',
                     'website_visit_logs.created_at',
                     'website_visit_logs.ip_address',
+                    'website_visit_logs.country',
+                    'website_visit_logs.country_code',
+                    'website_visit_logs.region',
+                    'website_visit_logs.city',
+                    'website_visit_logs.location_label',
                     'website_visit_logs.page_path',
                     'website_visit_logs.page_title',
                     'website_visit_logs.page_type',
@@ -57,6 +62,18 @@ class WebsiteVisitLogController extends Controller
                 })
                 ->editColumn('ip_address', function ($row) {
                     return e($row->ip_address ?: '-');
+                })
+                ->addColumn('location', function ($row) {
+                    $label = $row->locationDisplay();
+                    if ($label === '') {
+                        return '<span class="text-muted">'.__('website_logs.location_unknown').'</span>';
+                    }
+
+                    $code = $row->country_code
+                        ? ' <small class="text-muted">('.e($row->country_code).')</small>'
+                        : '';
+
+                    return '<span title="'.e($label).'"><i class="fa fa-map-marker"></i> '.e($label).$code.'</span>';
                 })
                 ->editColumn('page_path', function ($row) {
                     $label = $row->page_title ?: $row->page_path ?: '-';
@@ -111,9 +128,18 @@ class WebsiteVisitLogController extends Controller
                 ->addColumn('action', function ($row) {
                     return '<button type="button" data-href="'.action([self::class, 'destroy'], [$row->id]).'" class="btn btn-xs btn-danger delete_website_log_button"><i class="glyphicon glyphicon-trash"></i> '.__('messages.delete').'</button>';
                 })
-                ->rawColumns(['page_path', 'visitor_type', 'events_preview', 'referer', 'action'])
+                ->rawColumns(['page_path', 'location', 'visitor_type', 'events_preview', 'referer', 'action'])
                 ->make(true);
         }
+
+        // Backfill older rows missing location without blocking the page render.
+        dispatch(function () {
+            try {
+                app(\App\Services\IpGeolocationService::class)->backfillMissing(25);
+            } catch (\Throwable $e) {
+                report($e);
+            }
+        })->afterResponse();
 
         $stats = $this->buildStats($business_id, request());
 
@@ -181,6 +207,17 @@ class WebsiteVisitLogController extends Controller
 
         if ($request->filled('ip_address')) {
             $query->where('website_visit_logs.ip_address', 'like', '%'.$request->input('ip_address').'%');
+        }
+
+        if ($request->filled('location')) {
+            $location = $request->input('location');
+            $query->where(function ($q) use ($location) {
+                $q->where('website_visit_logs.location_label', 'like', '%'.$location.'%')
+                    ->orWhere('website_visit_logs.city', 'like', '%'.$location.'%')
+                    ->orWhere('website_visit_logs.region', 'like', '%'.$location.'%')
+                    ->orWhere('website_visit_logs.country', 'like', '%'.$location.'%')
+                    ->orWhere('website_visit_logs.country_code', 'like', '%'.$location.'%');
+            });
         }
 
         if ($request->filled('page_filter')) {

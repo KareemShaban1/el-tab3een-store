@@ -48,6 +48,12 @@
                 {!! Form::text('ip_filter', null, ['class' => 'form-control', 'id' => 'ip_filter', 'placeholder' => __('website_logs.ip')]) !!}
             </div>
         </div>
+        <div class="col-md-2">
+            <div class="form-group">
+                {!! Form::label('location_filter', __('website_logs.location') . ':') !!}
+                {!! Form::text('location_filter', null, ['class' => 'form-control', 'id' => 'location_filter', 'placeholder' => __('website_logs.location_placeholder')]) !!}
+            </div>
+        </div>
         <div class="col-md-3">
             <div class="form-group">
                 {!! Form::label('page_filter', __('website_logs.page') . ':') !!}
@@ -229,6 +235,7 @@
                 <tr>
                     <th>@lang('website_logs.date_time')</th>
                     <th>@lang('website_logs.ip')</th>
+                    <th>@lang('website_logs.location')</th>
                     <th>@lang('website_logs.page')</th>
                     <th>@lang('website_logs.page_type')</th>
                     <th>@lang('website_logs.visitor_type')</th>
@@ -282,6 +289,7 @@ $(document).ready(function() {
         d.visitor_type = $('#visitor_type_filter').val();
         d.page_type = $('#page_type_filter').val();
         d.ip_address = $('#ip_filter').val();
+        d.location = $('#location_filter').val();
         d.page_filter = $('#page_filter').val();
         d.product = $('#product_filter').val();
         d.referer = $('#referer_filter').val();
@@ -348,6 +356,7 @@ $(document).ready(function() {
         columns: [
             { data: 'created_at', name: 'website_visit_logs.created_at' },
             { data: 'ip_address', name: 'website_visit_logs.ip_address' },
+            { data: 'location', name: 'website_visit_logs.location_label', orderable: true, searchable: true },
             { data: 'page_path', name: 'website_visit_logs.page_path' },
             { data: 'page_type', name: 'website_visit_logs.page_type' },
             { data: 'visitor_type', name: 'website_visit_logs.is_bot', orderable: true, searchable: false },
@@ -372,7 +381,7 @@ $(document).ready(function() {
     });
 
     var textFilterTimer;
-    $('#ip_filter, #page_filter, #product_filter, #referer_filter').on('keyup', function() {
+    $('#ip_filter, #location_filter, #page_filter, #product_filter, #referer_filter').on('keyup', function() {
         clearTimeout(textFilterTimer);
         textFilterTimer = setTimeout(reloadAll, 400);
     });
