@@ -81,6 +81,11 @@ class IpGeolocationService
             return;
         }
 
+        // Never overwrite precise browser / cloudflare city locations with ISP IP lookup.
+        if (in_array((string) $log->location_source, ['browser', 'cloudflare'], true) && ! $force) {
+            return;
+        }
+
         if (! $force && (! empty($log->city) || (! empty($log->location_label) && ! empty($log->region)))) {
             return;
         }
@@ -90,6 +95,7 @@ class IpGeolocationService
             return;
         }
 
+        $geo['location_source'] = 'ip';
         $log->fill($geo);
         $log->save();
     }
@@ -98,6 +104,10 @@ class IpGeolocationService
     {
         $query = WebsiteVisitLog::query()
             ->whereNotNull('ip_address')
+            ->where(function ($q) {
+                $q->whereNull('location_source')
+                    ->orWhere('location_source', 'ip');
+            })
             ->orderByDesc('id')
             ->limit($limit);
 
@@ -106,34 +116,22 @@ class IpGeolocationService
                 $q->whereNull('location_label')
                     ->orWhere('location_label', '')
                     ->orWhereNull('city')
-                    ->orWhere('city', '')
-                    // Re-normalize Egypt rows that still have English / transliterated regions.
-                    ->orWhere(function ($egypt) {
-                        $egypt->where('country_code', 'EG')
-                            ->where(function ($region) {
-                                $region->whereNull('region')
-                                    ->orWhere('region', 'not like', '%ا%')
-                                    ->orWhere('region', 'like', '%Muhafazat%')
-                                    ->orWhere('region', 'like', '%Governorate%');
-                            });
-                    });
+                    ->orWhere('city', '');
             });
         }
 
-        $logs = $query->get(['id', 'ip_address']);
+        $logs = $query->get(['id', 'ip_address', 'location_source']);
         $count = 0;
 
         foreach ($logs as $log) {
-            $ip = trim((string) $log->ip_address);
-            Cache::forget(self::CACHE_PREFIX.md5($ip));
-
-            $hadCache = false;
-            $this->fillVisitLog((int) $log->id, $ip, null, true);
-            $count++;
-
-            if (! $hadCache) {
-                usleep(150000);
+            if (in_array((string) $log->location_source, ['browser', 'cloudflare'], true)) {
+                continue;
             }
+
+            $ip = trim((string) $log->ip_address);
+            $this->fillVisitLog((int) $log->id, $ip, null, false);
+            $count++;
+            usleep(100000);
         }
 
         return $count;

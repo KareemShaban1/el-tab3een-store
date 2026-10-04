@@ -155,7 +155,7 @@ class WebsiteVisitLogController extends Controller
         $this->authorizeAccess();
 
         $validated = $request->validate([
-            'display_mode' => 'required|in:humans,bots,both',
+            'display_mode' => 'required|in:human,bot,both',
         ]);
 
         System::addProperty('website_logs_display_mode', $validated['display_mode']);
@@ -251,12 +251,12 @@ class WebsiteVisitLogController extends Controller
             $query->where('website_visit_logs.page_type', $request->input('page_type'));
         }
 
-        if ($request->filled('visitor_type')) {
-            if ($request->input('visitor_type') === 'bot') {
-                $query->where('website_visit_logs.is_bot', true);
-            } elseif ($request->input('visitor_type') === 'human') {
-                $query->where('website_visit_logs.is_bot', false);
-            }
+        // Display settings control what appears in the table (source of truth).
+        $displayMode = WebsiteVisitLogger::visitorDisplayMode();
+        if ($displayMode === 'bot') {
+            $query->where('website_visit_logs.is_bot', true);
+        } elseif ($displayMode === 'human') {
+            $query->where('website_visit_logs.is_bot', false);
         }
 
         if ($request->filled('referer')) {

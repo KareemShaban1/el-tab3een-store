@@ -16,13 +16,13 @@
             @csrf
             <div class="form-group" style="margin-inline-end:16px; margin-bottom:10px;">
                 <label class="radio-inline">
-                    <input type="radio" name="display_mode" value="humans" @checked(($visitorDisplayMode ?? 'both') === 'humans')>
+                    <input type="radio" name="display_mode" value="human" @checked(($visitorDisplayMode ?? 'both') === 'human')>
                     @lang('website_logs.show_humans_only')
                 </label>
             </div>
             <div class="form-group" style="margin-inline-end:16px; margin-bottom:10px;">
                 <label class="radio-inline">
-                    <input type="radio" name="display_mode" value="bots" @checked(($visitorDisplayMode ?? 'both') === 'bots')>
+                    <input type="radio" name="display_mode" value="bot" @checked(($visitorDisplayMode ?? 'both') === 'bot')>
                     @lang('website_logs.show_bots_only')
                 </label>
             </div>
@@ -48,16 +48,6 @@
                     'id' => 'website_logs_date_range',
                     'readonly',
                 ]) !!}
-            </div>
-        </div>
-        <div class="col-md-2">
-            <div class="form-group">
-                {!! Form::label('visitor_type_filter', __('website_logs.visitor_type') . ':') !!}
-                {!! Form::select('visitor_type_filter', [
-                    '' => __('website_logs.all_visitors'),
-                    'human' => __('website_logs.human'),
-                    'bot' => __('website_logs.bot'),
-                ], null, ['class' => 'form-control select2', 'style' => 'width:100%', 'id' => 'visitor_type_filter']) !!}
             </div>
         </div>
         <div class="col-md-2">
@@ -339,13 +329,6 @@ $(document).ready(function() {
     var pageTypes = @json($pageTypes);
     var defaultDisplayMode = @json($visitorDisplayMode ?? 'both');
 
-    // Apply saved display preference to the visitor-type filter (show only).
-    if (defaultDisplayMode === 'humans' || defaultDisplayMode === 'bots') {
-        $('#visitor_type_filter').val(defaultDisplayMode);
-    } else {
-        $('#visitor_type_filter').val('');
-    }
-
     if (typeof dateRangeSettings !== 'undefined') {
         dateRangeSettings.startDate = startDate;
         dateRangeSettings.endDate = endDate;
@@ -375,7 +358,6 @@ $(document).ready(function() {
         if (endDate) {
             d.end_date = endDate.format('YYYY-MM-DD');
         }
-        d.visitor_type = $('#visitor_type_filter').val();
         d.page_type = $('#page_type_filter').val();
         d.ip_address = $('#ip_filter').val();
         d.location = $('#location_filter').val();
@@ -473,14 +455,6 @@ $(document).ready(function() {
                 if (result.success) {
                     toastr.success(result.msg);
                     defaultDisplayMode = result.display_mode || 'both';
-                    if (defaultDisplayMode === 'humans' || defaultDisplayMode === 'bots') {
-                        $('#visitor_type_filter').val(defaultDisplayMode);
-                    } else {
-                        $('#visitor_type_filter').val('');
-                    }
-                    if ($('#visitor_type_filter').hasClass('select2-hidden-accessible')) {
-                        $('#visitor_type_filter').trigger('change.select2');
-                    }
                     reloadAll();
                 } else {
                     toastr.error(result.msg || LANG.something_went_wrong);
@@ -492,7 +466,12 @@ $(document).ready(function() {
         });
     });
 
-    $('#website_logs_apply_filters, #visitor_type_filter, #page_type_filter').on('change click', function(e) {
+    // Auto-save display settings when radio changes, and refresh table.
+    $('#website_logs_settings_form input[name="display_mode"]').on('change', function() {
+        $('#website_logs_settings_form').trigger('submit');
+    });
+
+    $('#website_logs_apply_filters, #page_type_filter').on('change click', function(e) {
         if (e.type === 'click' && this.id !== 'website_logs_apply_filters') {
             return;
         }

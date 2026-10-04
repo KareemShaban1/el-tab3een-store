@@ -66,7 +66,7 @@ class WebsiteVisitLogger
             $countryHint = null;
         }
 
-        $geo = $this->resolveGeoForIp($ip, $countryHint);
+        $geo = $this->resolveInitialGeo($request, $ip, $countryHint);
 
         $log = WebsiteVisitLog::create(array_merge([
             'business_id' => $businessId,
@@ -89,8 +89,12 @@ class WebsiteVisitLogger
             'last_activity_at' => now(),
         ], $geo));
 
-        // Always enrich after response when city is missing (even if CF country code was set).
-        if (empty($log->city) && ! empty($ip)) {
+        // Enrich from IP only when we still have no useful location and it wasn't browser/CF city.
+        if (
+            ($geo['location_source'] ?? null) === 'ip'
+            && empty($log->region)
+            && ! empty($ip)
+        ) {
             $logId = (int) $log->id;
             dispatch(function () use ($logId, $ip, $countryHint) {
                 app(IpGeolocationService::class)->fillVisitLog($logId, $ip, $countryHint);
@@ -101,8 +105,8 @@ class WebsiteVisitLogger
     }
 
     /**
-     * Display preference for website-logs page: humans | bots | both.
-     * Controls what is shown by default, not what is recorded.
+     * Display preference for website-logs page: human | bot | both.
+     * Controls what is shown in the table, not what is recorded.
      */
     public static function visitorDisplayMode(): string
     {
@@ -112,7 +116,52 @@ class WebsiteVisitLogger
             ?: 'both'
         );
 
-        return in_array($mode, ['humans', 'bots', 'both'], true) ? $mode : 'both';
+        // Normalize legacy values.
+        if ($mode === 'humans') {
+            $mode = 'human';
+        }
+        if ($mode === 'bots') {
+            $mode = 'bot';
+        }
+
+        return in_array($mode, ['human', 'bot', 'both'], true) ? $mode : 'both';
+    }
+
+    /**
+     * Prefer Cloudflare city/region headers, then IP lookup.
+     *
+     * @return array<string, mixed>
+     */
+    protected function resolveInitialGeo(Request $request, ?string $ip, ?string $countryHint): array
+    {
+        $cfCity = trim((string) ($request->headers->get('CF-IPCity') ?: ''));
+        $cfRegion = trim((string) (
+            $request->headers->get('CF-Region')
+            ?: $request->headers->get('CF-Region-Code')
+            ?: ''
+        ));
+
+        if ($cfCity !== '' || $cfRegion !== '') {
+            $geo = app(EgyptGovernorateNormalizer::class)->normalize([
+                'country' => $countryHint === 'EG' ? 'مصر' : $countryHint,
+                'country_code' => $countryHint,
+                'region' => $cfRegion !== '' ? $cfRegion : null,
+                'city' => $cfCity !== '' ? $cfCity : null,
+                'latitude' => null,
+                'longitude' => null,
+                'location_label' => null,
+            ], false);
+            $geo['location_source'] = 'cloudflare';
+
+            if (! empty($geo['location_label']) || ! empty($geo['region']) || ! empty($geo['city'])) {
+                return $geo;
+            }
+        }
+
+        $geo = $this->resolveGeoForIp($ip, $countryHint);
+        $geo['location_source'] = 'ip';
+
+        return $geo;
     }
 
     /**

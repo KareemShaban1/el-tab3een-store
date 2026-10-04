@@ -37,6 +37,10 @@ class WebsiteVisitTrackingController extends Controller
             'latitude' => 'nullable|numeric|between:-90,90',
             'longitude' => 'nullable|numeric|between:-180,180',
             'location_accuracy' => 'nullable|numeric|min:0|max:100000',
+            'browser_city' => 'nullable|string|max:120',
+            'browser_region' => 'nullable|string|max:120',
+            'browser_country' => 'nullable|string|max:120',
+            'browser_country_code' => 'nullable|string|max:8',
         ]);
 
         if (array_key_exists('time_spent_seconds', $validated) && $validated['time_spent_seconds'] !== null) {
@@ -61,14 +65,48 @@ class WebsiteVisitTrackingController extends Controller
             $log->events_count = count($merged);
         }
 
-        if (isset($validated['latitude'], $validated['longitude'])) {
+        $hasBrowserLocation = isset($validated['latitude'], $validated['longitude'])
+            || ! empty($validated['browser_city'])
+            || ! empty($validated['browser_region']);
+
+        if ($hasBrowserLocation) {
             $accuracy = isset($validated['location_accuracy']) ? (float) $validated['location_accuracy'] : null;
-            // Ignore very inaccurate browser positions.
             if ($accuracy === null || $accuracy <= 50000) {
-                $geo = app(EgyptGovernorateNormalizer::class)->fromCoordinates(
-                    (float) $validated['latitude'],
-                    (float) $validated['longitude']
-                );
+                $normalizer = app(EgyptGovernorateNormalizer::class);
+                if (isset($validated['latitude'], $validated['longitude'])) {
+                    $geo = $normalizer->fromCoordinates(
+                        (float) $validated['latitude'],
+                        (float) $validated['longitude']
+                    );
+                } else {
+                    $geo = $normalizer->normalize([
+                        'country' => $validated['browser_country'] ?? null,
+                        'country_code' => $validated['browser_country_code'] ?? null,
+                        'region' => $validated['browser_region'] ?? null,
+                        'city' => $validated['browser_city'] ?? null,
+                        'latitude' => null,
+                        'longitude' => null,
+                        'location_label' => null,
+                    ], false);
+                }
+
+                // Prefer reverse-geocoded city/region names when available.
+                if (! empty($validated['browser_city']) || ! empty($validated['browser_region'])) {
+                    $named = $normalizer->normalize([
+                        'country' => $validated['browser_country'] ?? ($geo['country'] ?? 'مصر'),
+                        'country_code' => $validated['browser_country_code'] ?? ($geo['country_code'] ?? 'EG'),
+                        'region' => $validated['browser_region'] ?? ($geo['region'] ?? null),
+                        'city' => $validated['browser_city'] ?? ($geo['city'] ?? null),
+                        'latitude' => $geo['latitude'] ?? ($validated['latitude'] ?? null),
+                        'longitude' => $geo['longitude'] ?? ($validated['longitude'] ?? null),
+                        'location_label' => null,
+                    ], ! empty($validated['latitude']));
+                    if (! empty($named['location_label'])) {
+                        $geo = $named;
+                    }
+                }
+
+                $geo['location_source'] = 'browser';
                 $log->fill($geo);
             }
         }

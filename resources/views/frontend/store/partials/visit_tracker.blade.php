@@ -170,13 +170,12 @@
 		}
 	});
 
-	function sendBrowserLocation(position) {
-		if (!position || !position.coords) return;
-		const lat = position.coords.latitude;
-		const lon = position.coords.longitude;
-		const accuracy = position.coords.accuracy;
-		if (typeof lat !== 'number' || typeof lon !== 'number') return;
+	let browserLocationSent = false;
 
+	function postLocationPayload(payload) {
+		if (browserLocationSent) return;
+		browserLocationSent = true;
+		payload.time_spent_seconds = elapsedSeconds();
 		try {
 			fetch(UPDATE_URL, {
 				method: 'POST',
@@ -188,25 +187,69 @@
 				},
 				credentials: 'same-origin',
 				keepalive: true,
-				body: JSON.stringify({
-					latitude: lat,
-					longitude: lon,
-					location_accuracy: accuracy || null,
-					time_spent_seconds: elapsedSeconds(),
-				}),
-			}).catch(function() {});
-		} catch (e) {}
+				body: JSON.stringify(payload),
+			}).catch(function() {
+				browserLocationSent = false;
+			});
+		} catch (e) {
+			browserLocationSent = false;
+		}
+	}
+
+	async function reverseGeocode(lat, lon) {
+		try {
+			const url = 'https://api.bigdatacloud.net/data/reverse-geocode-client'
+				+ '?latitude=' + encodeURIComponent(lat)
+				+ '&longitude=' + encodeURIComponent(lon)
+				+ '&localityLanguage=ar';
+			const res = await fetch(url);
+			if (!res.ok) return null;
+			return await res.json();
+		} catch (e) {
+			return null;
+		}
+	}
+
+	async function sendBrowserLocation(position) {
+		if (!position || !position.coords) return;
+		const lat = position.coords.latitude;
+		const lon = position.coords.longitude;
+		const accuracy = position.coords.accuracy;
+		if (typeof lat !== 'number' || typeof lon !== 'number') return;
+
+		const payload = {
+			latitude: lat,
+			longitude: lon,
+			location_accuracy: accuracy || null,
+		};
+
+		const place = await reverseGeocode(lat, lon);
+		if (place) {
+			payload.browser_city = place.city || place.locality || place.localityInfo?.administrative?.[3]?.name || null;
+			payload.browser_region = place.principalSubdivision || place.localityInfo?.administrative?.[1]?.name || null;
+			payload.browser_country = place.countryName || null;
+			payload.browser_country_code = place.countryCode || null;
+		}
+
+		postLocationPayload(payload);
 	}
 
 	function requestBrowserLocation() {
 		if (!navigator.geolocation) return;
 		navigator.geolocation.getCurrentPosition(
-			sendBrowserLocation,
-			function() {},
+			function(pos) { sendBrowserLocation(pos); },
+			function() {
+				// Retry once with lower accuracy if first attempt fails.
+				navigator.geolocation.getCurrentPosition(
+					function(pos) { sendBrowserLocation(pos); },
+					function() {},
+					{ enableHighAccuracy: false, timeout: 10000, maximumAge: 600000 }
+				);
+			},
 			{
 				enableHighAccuracy: true,
-				timeout: 12000,
-				maximumAge: 300000,
+				timeout: 15000,
+				maximumAge: 60000,
 			}
 		);
 	}
@@ -215,7 +258,15 @@
 	setTimeout(function() {
 		flush(false);
 		requestBrowserLocation();
-	}, 1500);
+	}, 800);
+
+	// Also request location on first user interaction (helps some browsers).
+	['click', 'touchstart', 'scroll'].forEach(function(evt) {
+		window.addEventListener(evt, function once() {
+			requestBrowserLocation();
+			window.removeEventListener(evt, once, true);
+		}, true);
+	});
 })();
 </script>
 @endif

@@ -16,7 +16,7 @@ return [
     'log_bots_only' => 'Bots / crawlers only',
     'log_both' => 'Both (true visits + bots)',
     'display_settings' => 'Display settings',
-    'display_settings_help' => 'Choose what this page shows by default. Recording is not changed — all visits are still logged.',
+    'display_settings_help' => 'Choose what appears in the table below. This does not change recording — all visits are still logged.',
     'show_humans_only' => 'Show true visits only',
     'show_bots_only' => 'Show bots / crawlers only',
     'show_both' => 'Show both',
