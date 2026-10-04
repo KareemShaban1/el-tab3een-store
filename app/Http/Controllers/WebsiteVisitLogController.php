@@ -130,10 +130,10 @@ class WebsiteVisitLogController extends Controller
                 ->make(true);
         }
 
-        // Backfill older rows missing location without blocking the page render.
+        // Backfill older rows missing city/location without blocking the page render.
         dispatch(function () {
             try {
-                app(\App\Services\IpGeolocationService::class)->backfillMissing(25);
+                app(\App\Services\IpGeolocationService::class)->backfillMissing(40, false);
             } catch (\Throwable $e) {
                 report($e);
             }

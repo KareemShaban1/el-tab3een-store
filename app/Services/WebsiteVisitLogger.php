@@ -5,7 +5,6 @@ namespace App\Services;
 use App\Http\Controllers\Frontend\StorefrontController;
 use App\WebsiteVisitLog;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 
 class WebsiteVisitLogger
@@ -59,11 +58,14 @@ class WebsiteVisitLogger
         $userAgent = (string) $request->userAgent();
         [$isBot, $botName] = $this->detectBot($userAgent);
         $pageMeta = $this->resolvePageMeta($request);
-        $ip = $request->ip();
+        $ip = app(ClientIpResolver::class)->resolve($request);
         $countryHint = $request->headers->get('CF-IPCountry')
             ?: $request->headers->get('CloudFront-Viewer-Country');
+        if ($countryHint && strtoupper($countryHint) === 'XX') {
+            $countryHint = null;
+        }
 
-        $geo = $this->cachedGeoOrEmpty($ip, $countryHint);
+        $geo = $this->resolveGeoForIp($ip, $countryHint);
 
         $log = WebsiteVisitLog::create(array_merge([
             'business_id' => $businessId,
@@ -98,11 +100,11 @@ class WebsiteVisitLogger
     }
 
     /**
-     * Use cached geolocation instantly when available; otherwise fill after response.
+     * Resolve location for an IP immediately when possible.
      *
      * @return array<string, mixed>
      */
-    protected function cachedGeoOrEmpty(?string $ip, ?string $countryHint): array
+    protected function resolveGeoForIp(?string $ip, ?string $countryHint): array
     {
         $empty = [
             'country' => null,
@@ -119,17 +121,17 @@ class WebsiteVisitLogger
             return $empty;
         }
 
-        $cacheKey = 'ip_geo_v1:'.md5($ip);
-        if (Cache::has($cacheKey)) {
-            return app(IpGeolocationService::class)->lookup($ip, $countryHint);
+        // Lookup synchronously; providers are cached and have short timeouts.
+        try {
+            $geo = app(IpGeolocationService::class)->lookup($ip, $countryHint);
+            if (! empty($geo['location_label']) || ! empty($geo['city']) || ! empty($geo['country'])) {
+                return $geo;
+            }
+        } catch (\Throwable $e) {
+            report($e);
         }
 
-        // Private / local IPs can be labeled without an external call.
-        if (! filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
-            return app(IpGeolocationService::class)->lookup($ip, $countryHint);
-        }
-
-        if ($countryHint && strtoupper($countryHint) !== 'XX') {
+        if ($countryHint) {
             $code = Str::upper(Str::limit($countryHint, 8, ''));
 
             return array_merge($empty, [

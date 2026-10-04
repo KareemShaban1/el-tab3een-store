@@ -5,10 +5,13 @@ namespace App\Services;
 use App\WebsiteVisitLog;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 class IpGeolocationService
 {
+    private const CACHE_PREFIX = 'ip_geo_v2:';
+
     /**
      * @return array{
      *     country: ?string,
@@ -22,79 +25,61 @@ class IpGeolocationService
      */
     public function lookup(?string $ip, ?string $countryHint = null): array
     {
-        $empty = [
-            'country' => null,
-            'country_code' => null,
-            'region' => null,
-            'city' => null,
-            'latitude' => null,
-            'longitude' => null,
-            'location_label' => null,
-        ];
+        $empty = $this->emptyResult();
 
         $ip = trim((string) $ip);
-        if ($ip === '' || $this->isPrivateIp($ip)) {
+        if ($ip === '' || ! filter_var($ip, FILTER_VALIDATE_IP)) {
+            return $empty;
+        }
+
+        if ($this->isPrivateIp($ip)) {
             return array_merge($empty, [
                 'country' => __('website_logs.local_network'),
                 'location_label' => __('website_logs.local_network'),
             ]);
         }
 
-        $cacheKey = 'ip_geo_v1:'.md5($ip);
+        $cacheKey = self::CACHE_PREFIX.md5($ip);
+        $cached = Cache::get($cacheKey);
+        if (is_array($cached) && ! empty($cached['location_label'])) {
+            return $cached;
+        }
 
-        return Cache::remember($cacheKey, now()->addDays(7), function () use ($ip, $countryHint, $empty) {
-            try {
-                $response = Http::timeout(3)
-                    ->acceptJson()
-                    ->get('http://ip-api.com/json/'.$ip, [
-                        'fields' => 'status,message,country,countryCode,regionName,city,lat,lon',
-                    ]);
+        $result = $this->lookupFromProviders($ip);
 
-                if ($response->successful() && ($response->json('status') === 'success')) {
-                    $country = $response->json('country');
-                    $countryCode = $response->json('countryCode');
-                    $region = $response->json('regionName');
-                    $city = $response->json('city');
-                    $lat = $response->json('lat');
-                    $lon = $response->json('lon');
+        if (! empty($result['location_label']) || ! empty($result['city']) || ! empty($result['country'])) {
+            Cache::put($cacheKey, $result, now()->addDays(14));
 
-                    return [
-                        'country' => $country ? Str::limit((string) $country, 120, '') : null,
-                        'country_code' => $countryCode ? Str::upper(Str::limit((string) $countryCode, 8, '')) : null,
-                        'region' => $region ? Str::limit((string) $region, 120, '') : null,
-                        'city' => $city ? Str::limit((string) $city, 120, '') : null,
-                        'latitude' => is_numeric($lat) ? (float) $lat : null,
-                        'longitude' => is_numeric($lon) ? (float) $lon : null,
-                        'location_label' => $this->buildLabel($city, $region, $country),
-                    ];
-                }
-            } catch (\Throwable $e) {
-                report($e);
-            }
+            return $result;
+        }
 
-            if ($countryHint) {
-                $code = Str::upper(Str::limit($countryHint, 8, ''));
+        if ($countryHint && strtoupper($countryHint) !== 'XX') {
+            $code = Str::upper(Str::limit($countryHint, 8, ''));
+            $hinted = array_merge($empty, [
+                'country_code' => $code,
+                'country' => $code,
+                'location_label' => $code,
+            ]);
+            // Short cache for hint-only so we retry full lookup later.
+            Cache::put($cacheKey, $hinted, now()->addHours(6));
 
-                return array_merge($empty, [
-                    'country_code' => $code,
-                    'country' => $code,
-                    'location_label' => $code,
-                ]);
-            }
+            return $hinted;
+        }
 
-            return $empty;
-        });
+        // Do not cache hard failures for long.
+        Cache::put($cacheKey, $empty, now()->addMinutes(30));
+
+        return $empty;
     }
 
-    public function fillVisitLog(int $logId, ?string $ip = null, ?string $countryHint = null): void
+    public function fillVisitLog(int $logId, ?string $ip = null, ?string $countryHint = null, bool $force = false): void
     {
         $log = WebsiteVisitLog::query()->find($logId);
         if (! $log) {
             return;
         }
 
-        // Skip only when we already have a detailed location (city/region), not just a country code hint.
-        if (! empty($log->city) || (! empty($log->location_label) && ! empty($log->region))) {
+        if (! $force && (! empty($log->city) || (! empty($log->location_label) && ! empty($log->region)))) {
             return;
         }
 
@@ -107,39 +92,156 @@ class IpGeolocationService
         $log->save();
     }
 
-    public function backfillMissing(int $limit = 50): int
+    public function backfillMissing(int $limit = 50, bool $forceRefresh = false): int
     {
-        $logs = WebsiteVisitLog::query()
-            ->where(function ($q) {
-                $q->whereNull('location_label')
-                    ->orWhere('location_label', '');
-            })
+        $query = WebsiteVisitLog::query()
             ->whereNotNull('ip_address')
             ->orderByDesc('id')
-            ->limit($limit)
-            ->get(['id', 'ip_address']);
+            ->limit($limit);
 
+        if (! $forceRefresh) {
+            $query->where(function ($q) {
+                $q->whereNull('location_label')
+                    ->orWhere('location_label', '')
+                    ->orWhereNull('city')
+                    ->orWhere('city', '');
+            });
+        }
+
+        $logs = $query->get(['id', 'ip_address']);
         $count = 0;
+
         foreach ($logs as $log) {
             $ip = trim((string) $log->ip_address);
-            $hadCache = $ip !== '' && Cache::has('ip_geo_v1:'.md5($ip));
-            $this->fillVisitLog((int) $log->id, $ip);
+            if ($forceRefresh && $ip !== '') {
+                Cache::forget(self::CACHE_PREFIX.md5($ip));
+            }
+
+            $hadCache = $ip !== '' && Cache::has(self::CACHE_PREFIX.md5($ip));
+            $this->fillVisitLog((int) $log->id, $ip, null, $forceRefresh);
             $count++;
-            // Stay under free API rate limits when cache misses.
+
             if (! $hadCache) {
-                usleep(200000);
+                usleep(150000);
             }
         }
 
         return $count;
     }
 
+    /**
+     * @return array<string, mixed>
+     */
+    protected function lookupFromProviders(string $ip): array
+    {
+        $providers = [
+            fn () => $this->fromIpWhoIs($ip),
+            fn () => $this->fromIpApi($ip),
+        ];
+
+        foreach ($providers as $provider) {
+            try {
+                $result = $provider();
+                if (! empty($result['location_label']) || ! empty($result['city']) || ! empty($result['country'])) {
+                    return $result;
+                }
+            } catch (\Throwable $e) {
+                Log::warning('IP geolocation provider failed', [
+                    'ip' => $ip,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        return $this->emptyResult();
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    protected function fromIpWhoIs(string $ip): array
+    {
+        $response = Http::timeout(4)
+            ->acceptJson()
+            ->get('https://ipwho.is/'.$ip);
+
+        if (! $response->successful() || ! $response->json('success')) {
+            return $this->emptyResult();
+        }
+
+        $country = $response->json('country');
+        $countryCode = $response->json('country_code');
+        $region = $response->json('region');
+        $city = $response->json('city');
+        $lat = $response->json('latitude');
+        $lon = $response->json('longitude');
+
+        return [
+            'country' => $country ? Str::limit((string) $country, 120, '') : null,
+            'country_code' => $countryCode ? Str::upper(Str::limit((string) $countryCode, 8, '')) : null,
+            'region' => $region ? Str::limit((string) $region, 120, '') : null,
+            'city' => $city ? Str::limit((string) $city, 120, '') : null,
+            'latitude' => is_numeric($lat) ? (float) $lat : null,
+            'longitude' => is_numeric($lon) ? (float) $lon : null,
+            'location_label' => $this->buildLabel($city, $region, $country),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    protected function fromIpApi(string $ip): array
+    {
+        $response = Http::timeout(4)
+            ->acceptJson()
+            ->get('http://ip-api.com/json/'.$ip, [
+                'fields' => 'status,message,country,countryCode,regionName,city,lat,lon',
+            ]);
+
+        if (! $response->successful() || $response->json('status') !== 'success') {
+            return $this->emptyResult();
+        }
+
+        $country = $response->json('country');
+        $countryCode = $response->json('countryCode');
+        $region = $response->json('regionName');
+        $city = $response->json('city');
+        $lat = $response->json('lat');
+        $lon = $response->json('lon');
+
+        return [
+            'country' => $country ? Str::limit((string) $country, 120, '') : null,
+            'country_code' => $countryCode ? Str::upper(Str::limit((string) $countryCode, 8, '')) : null,
+            'region' => $region ? Str::limit((string) $region, 120, '') : null,
+            'city' => $city ? Str::limit((string) $city, 120, '') : null,
+            'latitude' => is_numeric($lat) ? (float) $lat : null,
+            'longitude' => is_numeric($lon) ? (float) $lon : null,
+            'location_label' => $this->buildLabel($city, $region, $country),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    protected function emptyResult(): array
+    {
+        return [
+            'country' => null,
+            'country_code' => null,
+            'region' => null,
+            'city' => null,
+            'latitude' => null,
+            'longitude' => null,
+            'location_label' => null,
+        ];
+    }
+
     protected function buildLabel(?string $city, ?string $region, ?string $country): ?string
     {
         $parts = array_values(array_filter([
-            $city ? trim($city) : null,
-            $region && $region !== $city ? trim($region) : null,
-            $country ? trim($country) : null,
+            $city ? trim((string) $city) : null,
+            $region && $region !== $city ? trim((string) $region) : null,
+            $country ? trim((string) $country) : null,
         ]));
 
         if ($parts === []) {
@@ -151,10 +253,6 @@ class IpGeolocationService
 
     protected function isPrivateIp(string $ip): bool
     {
-        if (! filter_var($ip, FILTER_VALIDATE_IP)) {
-            return true;
-        }
-
         return ! filter_var(
             $ip,
             FILTER_VALIDATE_IP,
