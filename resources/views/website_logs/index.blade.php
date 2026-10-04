@@ -10,26 +10,26 @@
 </section>
 
 <section class="content">
-    @component('components.widget', ['class' => 'box-info', 'title' => __('website_logs.logging_settings')])
-        <p class="text-muted" style="margin-top:0;">@lang('website_logs.logging_settings_help')</p>
+    @component('components.widget', ['class' => 'box-info', 'title' => __('website_logs.display_settings')])
+        <p class="text-muted" style="margin-top:0;">@lang('website_logs.display_settings_help')</p>
         <form id="website_logs_settings_form" class="form-inline">
             @csrf
             <div class="form-group" style="margin-inline-end:16px; margin-bottom:10px;">
                 <label class="radio-inline">
-                    <input type="radio" name="visitor_mode" value="humans" @checked(($visitorLogMode ?? 'both') === 'humans')>
-                    @lang('website_logs.log_humans_only')
+                    <input type="radio" name="display_mode" value="humans" @checked(($visitorDisplayMode ?? 'both') === 'humans')>
+                    @lang('website_logs.show_humans_only')
                 </label>
             </div>
             <div class="form-group" style="margin-inline-end:16px; margin-bottom:10px;">
                 <label class="radio-inline">
-                    <input type="radio" name="visitor_mode" value="bots" @checked(($visitorLogMode ?? 'both') === 'bots')>
-                    @lang('website_logs.log_bots_only')
+                    <input type="radio" name="display_mode" value="bots" @checked(($visitorDisplayMode ?? 'both') === 'bots')>
+                    @lang('website_logs.show_bots_only')
                 </label>
             </div>
             <div class="form-group" style="margin-inline-end:16px; margin-bottom:10px;">
                 <label class="radio-inline">
-                    <input type="radio" name="visitor_mode" value="both" @checked(($visitorLogMode ?? 'both') === 'both')>
-                    @lang('website_logs.log_both')
+                    <input type="radio" name="display_mode" value="both" @checked(($visitorDisplayMode ?? 'both') === 'both')>
+                    @lang('website_logs.show_both')
                 </label>
             </div>
             <button type="submit" class="btn btn-primary btn-sm" id="website_logs_save_settings">
@@ -337,26 +337,14 @@ $(document).ready(function() {
     var startDate = moment().subtract(29, 'days');
     var endDate = moment();
     var pageTypes = @json($pageTypes);
+    var defaultDisplayMode = @json($visitorDisplayMode ?? 'both');
 
-    $('#website_logs_settings_form').on('submit', function(e) {
-        e.preventDefault();
-        $.ajax({
-            method: 'POST',
-            url: '{{ action([\App\Http\Controllers\WebsiteVisitLogController::class, 'updateSettings']) }}',
-            data: $(this).serialize(),
-            dataType: 'json',
-            success: function(result) {
-                if (result.success) {
-                    toastr.success(result.msg);
-                } else {
-                    toastr.error(result.msg || LANG.something_went_wrong);
-                }
-            },
-            error: function() {
-                toastr.error(LANG.something_went_wrong);
-            }
-        });
-    });
+    // Apply saved display preference to the visitor-type filter (show only).
+    if (defaultDisplayMode === 'humans' || defaultDisplayMode === 'bots') {
+        $('#visitor_type_filter').val(defaultDisplayMode);
+    } else {
+        $('#visitor_type_filter').val('');
+    }
 
     if (typeof dateRangeSettings !== 'undefined') {
         dateRangeSettings.startDate = startDate;
@@ -473,6 +461,36 @@ $(document).ready(function() {
         website_logs_table.ajax.reload();
         refreshStats();
     }
+
+    $('#website_logs_settings_form').on('submit', function(e) {
+        e.preventDefault();
+        $.ajax({
+            method: 'POST',
+            url: '{{ action([\App\Http\Controllers\WebsiteVisitLogController::class, 'updateSettings']) }}',
+            data: $(this).serialize(),
+            dataType: 'json',
+            success: function(result) {
+                if (result.success) {
+                    toastr.success(result.msg);
+                    defaultDisplayMode = result.display_mode || 'both';
+                    if (defaultDisplayMode === 'humans' || defaultDisplayMode === 'bots') {
+                        $('#visitor_type_filter').val(defaultDisplayMode);
+                    } else {
+                        $('#visitor_type_filter').val('');
+                    }
+                    if ($('#visitor_type_filter').hasClass('select2-hidden-accessible')) {
+                        $('#visitor_type_filter').trigger('change.select2');
+                    }
+                    reloadAll();
+                } else {
+                    toastr.error(result.msg || LANG.something_went_wrong);
+                }
+            },
+            error: function() {
+                toastr.error(LANG.something_went_wrong);
+            }
+        });
+    });
 
     $('#website_logs_apply_filters, #visitor_type_filter, #page_type_filter').on('change click', function(e) {
         if (e.type === 'click' && this.id !== 'website_logs_apply_filters') {

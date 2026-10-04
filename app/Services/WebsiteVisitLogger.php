@@ -58,11 +58,6 @@ class WebsiteVisitLogger
 
         $userAgent = (string) $request->userAgent();
         [$isBot, $botName] = $this->detectBot($userAgent);
-
-        if (! $this->shouldLogVisitorType($isBot)) {
-            return null;
-        }
-
         $pageMeta = $this->resolvePageMeta($request);
         $ip = app(ClientIpResolver::class)->resolve($request);
         $countryHint = $request->headers->get('CF-IPCountry')
@@ -106,28 +101,18 @@ class WebsiteVisitLogger
     }
 
     /**
-     * Logging mode from website-logs settings page: humans | bots | both.
+     * Display preference for website-logs page: humans | bots | both.
+     * Controls what is shown by default, not what is recorded.
      */
-    public static function visitorLogMode(): string
+    public static function visitorDisplayMode(): string
     {
-        $mode = (string) (System::getProperty('website_logs_visitor_mode') ?: 'both');
+        $mode = (string) (
+            System::getProperty('website_logs_display_mode')
+            ?: System::getProperty('website_logs_visitor_mode')
+            ?: 'both'
+        );
 
         return in_array($mode, ['humans', 'bots', 'both'], true) ? $mode : 'both';
-    }
-
-    protected function shouldLogVisitorType(bool $isBot): bool
-    {
-        $mode = self::visitorLogMode();
-
-        if ($mode === 'humans') {
-            return ! $isBot;
-        }
-
-        if ($mode === 'bots') {
-            return $isBot;
-        }
-
-        return true;
     }
 
     /**

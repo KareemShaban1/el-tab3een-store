@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Frontend;
 
 use App\Http\Controllers\Controller;
+use App\Services\EgyptGovernorateNormalizer;
 use App\WebsiteVisitLog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -33,6 +34,9 @@ class WebsiteVisitTrackingController extends Controller
             'events.*.label' => 'nullable|string|max:255',
             'events.*.at' => 'nullable|string|max:40',
             'events.*.meta' => 'nullable|array',
+            'latitude' => 'nullable|numeric|between:-90,90',
+            'longitude' => 'nullable|numeric|between:-180,180',
+            'location_accuracy' => 'nullable|numeric|min:0|max:100000',
         ]);
 
         if (array_key_exists('time_spent_seconds', $validated) && $validated['time_spent_seconds'] !== null) {
@@ -55,6 +59,18 @@ class WebsiteVisitTrackingController extends Controller
             $merged = array_slice(array_merge($existing, $this->sanitizeEvents($validated['events'])), 0, 100);
             $log->events = $merged;
             $log->events_count = count($merged);
+        }
+
+        if (isset($validated['latitude'], $validated['longitude'])) {
+            $accuracy = isset($validated['location_accuracy']) ? (float) $validated['location_accuracy'] : null;
+            // Ignore very inaccurate browser positions.
+            if ($accuracy === null || $accuracy <= 50000) {
+                $geo = app(EgyptGovernorateNormalizer::class)->fromCoordinates(
+                    (float) $validated['latitude'],
+                    (float) $validated['longitude']
+                );
+                $log->fill($geo);
+            }
         }
 
         $log->last_activity_at = now();

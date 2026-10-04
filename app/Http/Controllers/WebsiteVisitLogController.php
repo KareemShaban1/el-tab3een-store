@@ -146,7 +146,7 @@ class WebsiteVisitLogController extends Controller
         return view('website_logs.index', [
             'stats' => $stats,
             'pageTypes' => WebsiteVisitLog::pageTypes(),
-            'visitorLogMode' => WebsiteVisitLogger::visitorLogMode(),
+            'visitorDisplayMode' => WebsiteVisitLogger::visitorDisplayMode(),
         ]);
     }
 
@@ -155,15 +155,15 @@ class WebsiteVisitLogController extends Controller
         $this->authorizeAccess();
 
         $validated = $request->validate([
-            'visitor_mode' => 'required|in:humans,bots,both',
+            'display_mode' => 'required|in:humans,bots,both',
         ]);
 
-        System::addProperty('website_logs_visitor_mode', $validated['visitor_mode']);
+        System::addProperty('website_logs_display_mode', $validated['display_mode']);
 
         return response()->json([
             'success' => true,
             'msg' => __('website_logs.settings_saved'),
-            'visitor_mode' => $validated['visitor_mode'],
+            'display_mode' => $validated['display_mode'],
         ]);
     }
 

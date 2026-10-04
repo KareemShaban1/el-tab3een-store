@@ -170,9 +170,51 @@
 		}
 	});
 
+	function sendBrowserLocation(position) {
+		if (!position || !position.coords) return;
+		const lat = position.coords.latitude;
+		const lon = position.coords.longitude;
+		const accuracy = position.coords.accuracy;
+		if (typeof lat !== 'number' || typeof lon !== 'number') return;
+
+		try {
+			fetch(UPDATE_URL, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					'Accept': 'application/json',
+					'X-CSRF-TOKEN': CSRF,
+					'X-Requested-With': 'XMLHttpRequest',
+				},
+				credentials: 'same-origin',
+				keepalive: true,
+				body: JSON.stringify({
+					latitude: lat,
+					longitude: lon,
+					location_accuracy: accuracy || null,
+					time_spent_seconds: elapsedSeconds(),
+				}),
+			}).catch(function() {});
+		} catch (e) {}
+	}
+
+	function requestBrowserLocation() {
+		if (!navigator.geolocation) return;
+		navigator.geolocation.getCurrentPosition(
+			sendBrowserLocation,
+			function() {},
+			{
+				enableHighAccuracy: true,
+				timeout: 12000,
+				maximumAge: 300000,
+			}
+		);
+	}
+
 	// Initial ping so page title / product name are captured quickly.
 	setTimeout(function() {
 		flush(false);
+		requestBrowserLocation();
 	}, 1500);
 })();
 </script>

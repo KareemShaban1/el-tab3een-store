@@ -46,7 +46,8 @@ class IpGeolocationService
         }
 
         $result = $this->lookupFromProviders($ip);
-        $result = app(EgyptGovernorateNormalizer::class)->normalize($result);
+        // Normalize labels; ISP coords/cities in Egypt are often approximate.
+        $result = app(EgyptGovernorateNormalizer::class)->normalize($result, false);
 
         if (! empty($result['location_label']) || ! empty($result['city']) || ! empty($result['country'])) {
             Cache::put($cacheKey, $result, now()->addDays(14));
