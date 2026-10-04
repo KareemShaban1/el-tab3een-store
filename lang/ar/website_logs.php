@@ -5,6 +5,7 @@ return [
     'visit_logs' => 'سجلات الزيارات',
     'date_time' => 'التاريخ / الوقت',
     'ip' => 'عنوان IP',
+    'visitor' => 'الزائر',
     'location' => 'الموقع',
     'location_placeholder' => 'مدينة أو منطقة أو دولة',
     'location_unknown' => 'غير معروف',

@@ -230,24 +230,77 @@
     </div>
 
     @component('components.widget', ['class' => 'box-primary', 'title' => __('website_logs.visit_logs')])
-        <table class="table table-bordered table-striped" id="website_logs_table" style="width:100%">
-            <thead>
-                <tr>
-                    <th>@lang('website_logs.date_time')</th>
-                    <th>@lang('website_logs.ip')</th>
-                    <th>@lang('website_logs.location')</th>
-                    <th>@lang('website_logs.page')</th>
-                    <th>@lang('website_logs.page_type')</th>
-                    <th>@lang('website_logs.visitor_type')</th>
-                    <th>@lang('website_logs.time_spent')</th>
-                    <th>@lang('website_logs.events')</th>
-                    <th>@lang('website_logs.referer')</th>
-                    <th>@lang('messages.action')</th>
-                </tr>
-            </thead>
-        </table>
+        <div class="table-responsive website-logs-table-wrap">
+            <table class="table table-bordered table-striped table-condensed" id="website_logs_table" style="width:100%">
+                <thead>
+                    <tr>
+                        <th>@lang('website_logs.date_time')</th>
+                        <th>@lang('website_logs.visitor')</th>
+                        <th>@lang('website_logs.page')</th>
+                        <th>@lang('website_logs.visitor_type')</th>
+                        <th>@lang('website_logs.time_spent')</th>
+                        <th>@lang('website_logs.events')</th>
+                        <th>@lang('website_logs.referer')</th>
+                        <th>@lang('messages.action')</th>
+                    </tr>
+                </thead>
+            </table>
+        </div>
     @endcomponent
 </section>
+@endsection
+
+@section('css')
+<style>
+    .website-logs-table-wrap {
+        overflow-x: hidden;
+        width: 100%;
+    }
+    #website_logs_table {
+        table-layout: fixed;
+        width: 100% !important;
+    }
+    #website_logs_table th,
+    #website_logs_table td {
+        vertical-align: top;
+        white-space: normal !important;
+        word-break: break-word;
+        overflow-wrap: anywhere;
+    }
+    #website_logs_table .wl-cell {
+        max-width: 100%;
+    }
+    #website_logs_table .wl-ip,
+    #website_logs_table .wl-strong {
+        font-weight: 600;
+        line-height: 1.35;
+    }
+    #website_logs_table .wl-muted {
+        color: #777;
+        font-size: 12px;
+        line-height: 1.35;
+        margin: 2px 0 4px;
+    }
+    #website_logs_table .wl-events {
+        max-width: 100%;
+    }
+    #website_logs_table .website-log-event {
+        margin-bottom: 3px !important;
+        line-height: 1.3;
+    }
+    #website_logs_table .website-log-event .label {
+        white-space: normal;
+        display: inline-block;
+        margin-bottom: 2px;
+    }
+    #website_logs_table .wl-referer {
+        display: inline-block;
+        max-width: 100%;
+    }
+    #website_logs_table_wrapper .dataTables_scroll {
+        overflow: visible !important;
+    }
+</style>
 @endsection
 
 @section('javascript')
@@ -347,6 +400,8 @@ $(document).ready(function() {
     var website_logs_table = $('#website_logs_table').DataTable({
         processing: true,
         serverSide: true,
+        autoWidth: false,
+        scrollX: false,
         ajax: {
             url: '{{ action([\App\Http\Controllers\WebsiteVisitLogController::class, 'index']) }}',
             data: function(d) {
@@ -354,16 +409,14 @@ $(document).ready(function() {
             }
         },
         columns: [
-            { data: 'created_at', name: 'website_visit_logs.created_at' },
-            { data: 'ip_address', name: 'website_visit_logs.ip_address' },
-            { data: 'location', name: 'website_visit_logs.location_label', orderable: true, searchable: true },
-            { data: 'page_path', name: 'website_visit_logs.page_path' },
-            { data: 'page_type', name: 'website_visit_logs.page_type' },
-            { data: 'visitor_type', name: 'website_visit_logs.is_bot', orderable: true, searchable: false },
-            { data: 'time_spent_seconds', name: 'website_visit_logs.time_spent_seconds' },
-            { data: 'events_preview', name: 'website_visit_logs.events_count', orderable: true, searchable: false },
-            { data: 'referer', name: 'website_visit_logs.referer' },
-            { data: 'action', name: 'action', orderable: false, searchable: false },
+            { data: 'created_at', name: 'website_visit_logs.created_at', width: '12%' },
+            { data: 'visitor_info', name: 'website_visit_logs.ip_address', orderable: true, searchable: true, width: '16%' },
+            { data: 'page_path', name: 'website_visit_logs.page_path', width: '18%' },
+            { data: 'visitor_type', name: 'website_visit_logs.is_bot', orderable: true, searchable: false, width: '10%' },
+            { data: 'time_spent_seconds', name: 'website_visit_logs.time_spent_seconds', width: '8%' },
+            { data: 'events_preview', name: 'website_visit_logs.events_count', orderable: true, searchable: false, width: '22%' },
+            { data: 'referer', name: 'website_visit_logs.referer', width: '10%' },
+            { data: 'action', name: 'action', orderable: false, searchable: false, width: '4%' },
         ],
         order: [[0, 'desc']]
     });

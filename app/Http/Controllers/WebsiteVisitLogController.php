@@ -60,38 +60,35 @@ class WebsiteVisitLogController extends Controller
                 ->editColumn('created_at', function ($row) {
                     return optional($row->created_at)->format('Y-m-d H:i:s');
                 })
-                ->editColumn('ip_address', function ($row) {
-                    return e($row->ip_address ?: '-');
-                })
-                ->addColumn('location', function ($row) {
-                    $label = $row->locationDisplay();
-                    if ($label === '') {
-                        return '<span class="text-muted">'.__('website_logs.location_unknown').'</span>';
+                ->addColumn('visitor_info', function ($row) {
+                    $ip = e($row->ip_address ?: '-');
+                    $location = $row->locationDisplay();
+                    if ($location === '') {
+                        $locationHtml = '<span class="text-muted">'.__('website_logs.location_unknown').'</span>';
+                    } else {
+                        $locationHtml = '<span title="'.e($location).'"><i class="fa fa-map-marker"></i> '.e(\Illuminate\Support\Str::limit($location, 40)).'</span>';
                     }
 
-                    $code = $row->country_code
-                        ? ' <small class="text-muted">('.e($row->country_code).')</small>'
-                        : '';
-
-                    return '<span title="'.e($label).'"><i class="fa fa-map-marker"></i> '.e($label).$code.'</span>';
+                    return '<div class="wl-cell"><div class="wl-ip">'.$ip.'</div><div class="wl-muted">'.$locationHtml.'</div></div>';
                 })
                 ->editColumn('page_path', function ($row) {
-                    $label = $row->page_title ?: $row->page_path ?: '-';
-                    $path = e($row->page_path ?: '-');
-
-                    return '<div><strong>'.e($label).'</strong><br><small class="text-muted">'.$path.'</small></div>';
-                })
-                ->editColumn('page_type', function ($row) {
                     $types = WebsiteVisitLog::pageTypes();
+                    $typeLabel = $types[$row->page_type] ?? ($row->page_type ?: '-');
+                    $path = $row->page_path ?: '-';
+                    $title = $row->page_title ?: $path;
 
-                    return e($types[$row->page_type] ?? ($row->page_type ?: '-'));
+                    return '<div class="wl-cell">'
+                        .'<div class="wl-strong" title="'.e($title).'">'.e(\Illuminate\Support\Str::limit($title, 42)).'</div>'
+                        .'<div class="wl-muted" title="'.e($path).'">'.e(\Illuminate\Support\Str::limit($path, 36)).'</div>'
+                        .'<span class="label label-default">'.e($typeLabel).'</span>'
+                        .'</div>';
                 })
                 ->editColumn('time_spent_seconds', function ($row) {
                     return $this->formatDuration((int) $row->time_spent_seconds);
                 })
                 ->addColumn('visitor_type', function ($row) {
                     if ($row->is_bot) {
-                        $name = $row->bot_name ? ' ('.e($row->bot_name).')' : '';
+                        $name = $row->bot_name ? ' '.e(\Illuminate\Support\Str::limit($row->bot_name, 18)) : '';
 
                         return '<span class="label label-warning">'.__('website_logs.bot').$name.'</span>';
                     }
@@ -105,30 +102,31 @@ class WebsiteVisitLogController extends Controller
                     }
 
                     $preview = collect($events)
-                        ->take(5)
+                        ->take(3)
                         ->map(fn ($event) => WebsiteVisitLog::formatEventHtml($event))
                         ->filter()
                         ->implode('');
 
-                    $more = count($events) > 5
-                        ? '<small class="text-muted">+'.(count($events) - 5).' '.__('website_logs.more_events').'</small>'
+                    $more = count($events) > 3
+                        ? '<small class="text-muted">+'.(count($events) - 3).' '.__('website_logs.more_events').'</small>'
                         : '';
 
-                    return $preview.$more;
+                    return '<div class="wl-events">'.$preview.$more.'</div>';
                 })
                 ->editColumn('referer', function ($row) {
                     if (empty($row->referer)) {
                         return '<span class="text-muted">-</span>';
                     }
 
-                    $short = \Illuminate\Support\Str::limit($row->referer, 60);
+                    $host = parse_url($row->referer, PHP_URL_HOST) ?: $row->referer;
+                    $short = \Illuminate\Support\Str::limit((string) $host, 28);
 
-                    return '<a href="'.e($row->referer).'" target="_blank" rel="noopener noreferrer" title="'.e($row->referer).'">'.e($short).'</a>';
+                    return '<a class="wl-referer" href="'.e($row->referer).'" target="_blank" rel="noopener noreferrer" title="'.e($row->referer).'">'.e($short).'</a>';
                 })
                 ->addColumn('action', function ($row) {
-                    return '<button type="button" data-href="'.action([self::class, 'destroy'], [$row->id]).'" class="btn btn-xs btn-danger delete_website_log_button"><i class="glyphicon glyphicon-trash"></i> '.__('messages.delete').'</button>';
+                    return '<button type="button" data-href="'.action([self::class, 'destroy'], [$row->id]).'" class="btn btn-xs btn-danger delete_website_log_button" title="'.__('messages.delete').'"><i class="glyphicon glyphicon-trash"></i></button>';
                 })
-                ->rawColumns(['page_path', 'location', 'visitor_type', 'events_preview', 'referer', 'action'])
+                ->rawColumns(['visitor_info', 'page_path', 'visitor_type', 'events_preview', 'referer', 'action'])
                 ->make(true);
         }
 

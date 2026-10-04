@@ -5,6 +5,7 @@ return [
     'visit_logs' => 'Visit logs',
     'date_time' => 'Date / time',
     'ip' => 'IP address',
+    'visitor' => 'Visitor',
     'location' => 'Location',
     'location_placeholder' => 'City, region or country',
     'location_unknown' => 'Unknown',
