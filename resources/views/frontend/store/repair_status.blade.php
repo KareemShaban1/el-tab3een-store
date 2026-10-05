@@ -125,15 +125,14 @@
 		<form id="check-repair-status-form" method="POST" action="{{ route('post-repair-status') }}">
 			@csrf
 			@php
-			$search_options = [
-			'job_sheet_no' => __('repair::lang.job_sheet_no'),
-			'invoice_no' => __('sale.invoice_no'),
-			];
+			$search_options = [];
 			$placeholder = __('repair::lang.job_sheet_or_invoice_no');
 			if (config('repair.enable_repair_check_using_mobile_num')) {
-			$search_options['mobile_num'] = __('lang_v1.mobile_number');
-			$placeholder .= ' / ' . __('lang_v1.mobile_number');
+				$search_options['mobile_num'] = __('lang_v1.mobile_number');
+				$placeholder = __('lang_v1.mobile_number') . ' / ' . $placeholder;
 			}
+			$search_options['job_sheet_no'] = __('repair::lang.job_sheet_no');
+			$search_options['invoice_no'] = __('sale.invoice_no');
 			@endphp
 
 			<div class="repair-field">
