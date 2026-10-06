@@ -15,6 +15,17 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Storefront timezone
+    |--------------------------------------------------------------------------
+    |
+    | Used when writing website visit log timestamps so admin display matches
+    | Egypt local time (avoids APP_TIMEZONE / UTC drift).
+    |
+    */
+    'timezone' => env('STOREFRONT_TIMEZONE', 'Africa/Cairo'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Tab3een catalog API
     |--------------------------------------------------------------------------
     |

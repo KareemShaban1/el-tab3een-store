@@ -72,6 +72,7 @@ class WebsiteVisitLog extends Model
             'checkout' => __('website_logs.page_type_checkout'),
             'account' => __('website_logs.page_type_account'),
             'auth' => __('website_logs.page_type_auth'),
+            'repair_status' => __('website_logs.page_type_repair_status'),
             'other' => __('website_logs.page_type_other'),
         ];
     }

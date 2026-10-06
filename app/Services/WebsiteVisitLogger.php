@@ -42,7 +42,11 @@ class WebsiteVisitLogger
             return false;
         }
 
-        return $path === '' || $request->is('/') || $request->is('store') || $request->is('store/*');
+        return $path === ''
+            || $request->is('/')
+            || $request->is('store')
+            || $request->is('store/*')
+            || $request->is('repair-status');
     }
 
     public function log(Request $request): ?WebsiteVisitLog
@@ -68,6 +72,10 @@ class WebsiteVisitLogger
 
         $geo = $this->resolveInitialGeo($request, $ip, $countryHint);
 
+        // Store wall-clock in storefront timezone (Egypt) to avoid APP_TIMEZONE/UTC drift.
+        $timezone = (string) config('storefront.timezone', 'Africa/Cairo');
+        $now = \Carbon\Carbon::now($timezone)->format('Y-m-d H:i:s');
+
         $log = WebsiteVisitLog::create(array_merge([
             'business_id' => $businessId,
             'visit_token' => (string) Str::uuid(),
@@ -86,7 +94,9 @@ class WebsiteVisitLogger
             'time_spent_seconds' => 0,
             'events' => [],
             'events_count' => 0,
-            'last_activity_at' => now(),
+            'last_activity_at' => $now,
+            'created_at' => $now,
+            'updated_at' => $now,
         ], $geo));
 
         // Enrich from IP only when we still have no useful location and it wasn't browser/CF city.
@@ -245,6 +255,12 @@ class WebsiteVisitLogger
 
         if ($path === '' || $path === '/') {
             $meta['page_type'] = 'home';
+
+            return $meta;
+        }
+
+        if (($segments[0] ?? null) === 'repair-status') {
+            $meta['page_type'] = 'repair_status';
 
             return $meta;
         }

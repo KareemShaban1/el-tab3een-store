@@ -56,6 +56,7 @@ return [
     'page_type_checkout' => 'الدفع',
     'page_type_account' => 'الحساب',
     'page_type_auth' => 'تسجيل الدخول',
+    'page_type_repair_status' => 'متابعة الصيانة',
     'page_type_other' => 'أخرى',
     'more_events' => 'المزيد',
     'event_add_to_cart' => 'أضيف إلى السلة',

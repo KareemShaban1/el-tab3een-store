@@ -56,6 +56,7 @@ return [
     'page_type_checkout' => 'Checkout',
     'page_type_account' => 'Account',
     'page_type_auth' => 'Auth',
+    'page_type_repair_status' => 'Repair status',
     'page_type_other' => 'Other',
     'more_events' => 'more',
     'event_add_to_cart' => 'Added to cart',
