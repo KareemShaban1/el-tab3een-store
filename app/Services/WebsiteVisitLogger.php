@@ -72,10 +72,7 @@ class WebsiteVisitLogger
 
         $geo = $this->resolveInitialGeo($request, $ip, $countryHint);
 
-        // Store wall-clock in storefront timezone (Egypt) to avoid APP_TIMEZONE/UTC drift.
-        $timezone = (string) config('storefront.timezone', 'Africa/Cairo');
-        $now = \Carbon\Carbon::now($timezone)->format('Y-m-d H:i:s');
-
+        // Store in APP_TIMEZONE like the rest of the app; convert to Egypt on display.
         $log = WebsiteVisitLog::create(array_merge([
             'business_id' => $businessId,
             'visit_token' => (string) Str::uuid(),
@@ -94,9 +91,7 @@ class WebsiteVisitLogger
             'time_spent_seconds' => 0,
             'events' => [],
             'events_count' => 0,
-            'last_activity_at' => $now,
-            'created_at' => $now,
-            'updated_at' => $now,
+            'last_activity_at' => now(),
         ], $geo));
 
         // Enrich from IP only when we still have no useful location and it wasn't browser/CF city.

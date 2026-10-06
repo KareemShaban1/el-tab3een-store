@@ -60,15 +60,7 @@ class WebsiteVisitLogController extends Controller
 
             return DataTables::of($logs)
                 ->editColumn('created_at', function ($row) {
-                    if (empty($row->created_at)) {
-                        return '-';
-                    }
-
-                    // Use raw DB wall-clock + business formatter (same as rest of admin)
-                    // to avoid UTC → Cairo double conversion (+2 hours).
-                    $raw = $row->getRawOriginal('created_at') ?? $row->created_at;
-
-                    return $this->util->format_date($raw, true) ?: '-';
+                    return $this->formatVisitDateTime($row->getRawOriginal('created_at') ?? $row->created_at);
                 })
                 ->addColumn('visitor_info', function ($row) {
                     $ip = e($row->ip_address ?: '-');
@@ -337,6 +329,36 @@ class WebsiteVisitLogController extends Controller
             'top_referers' => $topReferers,
             'by_type' => $byType,
         ];
+    }
+
+    /**
+     * DB stores APP_TIMEZONE wall-clock (Asia/Kolkata). Show Egypt local time.
+     */
+    private function formatVisitDateTime(mixed $value): string
+    {
+        if (empty($value)) {
+            return '-';
+        }
+
+        $format = session('business.date_format') ?: 'd-m-Y';
+        $timeFormat = session('business.time_format');
+        $format .= ((string) $timeFormat === '24') ? ' H:i' : ' h:i A';
+
+        $appTz = (string) config('app.timezone', 'UTC');
+        $displayTz = (string) config('storefront.timezone', 'Africa/Cairo');
+
+        try {
+            if ($value instanceof \DateTimeInterface) {
+                $dt = \Carbon\Carbon::instance($value)->timezone($appTz);
+            } else {
+                $raw = substr((string) $value, 0, 19);
+                $dt = \Carbon\Carbon::createFromFormat('Y-m-d H:i:s', $raw, $appTz);
+            }
+
+            return $dt->timezone($displayTz)->format($format);
+        } catch (\Throwable $e) {
+            return $this->util->format_date($value, true) ?: '-';
+        }
     }
 
     private function formatDuration(int $seconds): string

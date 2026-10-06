@@ -18,8 +18,8 @@ return [
     | Storefront timezone
     |--------------------------------------------------------------------------
     |
-    | Used when writing website visit log timestamps so admin display matches
-    | Egypt local time (avoids APP_TIMEZONE / UTC drift).
+    | Website visit logs are stored in APP_TIMEZONE; this timezone is used when
+    | showing them in the admin so times match Egypt local time.
     |
     */
     'timezone' => env('STOREFRONT_TIMEZONE', 'Africa/Cairo'),

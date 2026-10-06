@@ -129,7 +129,10 @@ class IpGeolocationService
             }
 
             $ip = trim((string) $log->ip_address);
-            $this->fillVisitLog((int) $log->id, $ip, null, false);
+            if ($forceRefresh && $ip !== '') {
+                \Illuminate\Support\Facades\Cache::forget(self::CACHE_PREFIX.md5($ip));
+            }
+            $this->fillVisitLog((int) $log->id, $ip, null, $forceRefresh);
             $count++;
             usleep(100000);
         }
