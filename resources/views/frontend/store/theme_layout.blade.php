@@ -1134,6 +1134,7 @@
 			const aggregatedSubs = Array.isArray(c.sub_categories) && c.sub_categories
 				.length > 0;
 			const existing = groups.get(key);
+			const sortOrder = Number(c.sort_order ?? c.order ?? 0);
 			if (!existing) {
 				groups.set(key, {
 					id: categoryId > 0 ? categoryId :
@@ -1142,6 +1143,7 @@
 							0),
 					name: servoCategoryDisplayName(c),
 					count,
+					order: sortOrder,
 					image_url: String(c.image_url || c
 						.image || ''),
 					source: 'servo',
@@ -1153,6 +1155,7 @@
 				Number(p.id))));
 			existing._productIds = [...seen];
 			existing.count = products.length ? seen.size : existing.count + count;
+			existing.order = Math.min(Number(existing.order || 0), sortOrder);
 			if (!existing.image_url) {
 				existing.image_url = String(c.image_url || c.image || '');
 			}
@@ -1600,6 +1603,9 @@
 			const ao = Number(a.order ?? a.sort_order ?? 0);
 			const bo = Number(b.order ?? b.sort_order ?? 0);
 			if (ao !== bo) return ao - bo;
+			const af = Number(a.featured || 0);
+			const bf = Number(b.featured || 0);
+			if (af !== bf) return bf - af;
 			return String(a.name || '').localeCompare(String(b.name || ''), 'ar');
 		}).map((c) => ({
 			...c,
@@ -1784,7 +1790,9 @@
 			fetchStoreCategoriesList(),
 			fetchServoCategoriesList(),
 		]);
-		const categories = mergeStoreAndServoCategories(localCategories, servoCategories);
+		const categories = sortCategoriesByOrder(
+			mergeStoreAndServoCategories(localCategories, servoCategories)
+		);
 		renderDynamicCategories(categories);
 		renderMegaMenuCategories(categories);
 		renderMobMenuCategories(categories);

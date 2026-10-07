@@ -561,18 +561,19 @@ class StorefrontController extends Controller
                     'id' => $category->id,
                     'name' => $category->name,
                     'order' => (int) ($category->order ?? 0),
+                    'featured' => (int) ($category->featured ?? 0),
                     'count' => $count,
                     'image_url' => $category->image_url,
                     'sub_categories' => $sub_categories,
                 ];
             })
             ->sortBy([
-                ['order', 'desc'],
+                ['order', 'asc'],
+                ['featured', 'desc'],
                 ['name', 'asc'],
                 ['id', 'asc'],
             ])
             ->values();
-
 
         return response()->json([
             'success' => true,
