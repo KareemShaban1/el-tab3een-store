@@ -357,21 +357,70 @@ window.__SSR_STORE_PRODUCTS__[{
 	align-items: end;
 }
 
-.qty-row input[type="number"] {
+.qty-stepper {
+	display: inline-flex;
+	align-items: stretch;
 	width: 100%;
-	max-width: 120px;
-	padding: 11px 12px;
-	border-radius: 10px;
+	max-width: 160px;
 	border: 1px solid #e5e7eb;
+	border-radius: 10px;
+	overflow: hidden;
+	background: #fff;
+}
+
+.qty-stepper:focus-within {
+	border-color: var(--accent, #ea541a);
+}
+
+.qty-stepper__btn {
+	width: 40px;
+	flex-shrink: 0;
+	border: none;
+	background: #f8f9fc;
+	color: var(--primary, #2d294e);
+	font-size: 1.15rem;
+	font-weight: 700;
+	line-height: 1;
+	cursor: pointer;
+	font-family: var(--font, inherit);
+	transition: background .15s ease, color .15s ease;
+}
+
+.qty-stepper__btn:hover:not(:disabled) {
+	background: var(--accent, #ea541a);
+	color: #fff;
+}
+
+.qty-stepper__btn:disabled {
+	opacity: .4;
+	cursor: not-allowed;
+}
+
+.qty-row input[type="number"] {
+	flex: 1;
+	min-width: 0;
+	width: 100%;
+	max-width: none;
+	padding: 10px !important;
+	margin: 0px !important;
+	border: none;
+	border-radius: 0;
 	font-family: var(--font, inherit);
 	font-size: 16px;
 	font-weight: 600;
 	text-align: center;
+	appearance: textfield;
+	-moz-appearance: textfield;
+}
+
+.qty-row input[type="number"]::-webkit-outer-spin-button,
+.qty-row input[type="number"]::-webkit-inner-spin-button {
+	-webkit-appearance: none;
+	margin: 0;
 }
 
 .qty-row input:focus {
 	outline: none;
-	border-color: var(--accent, #ea541a);
 }
 
 .cta-row {
@@ -600,8 +649,20 @@ window.__SSR_STORE_PRODUCTS__[{
 						<div style="grid-column: 1 / -1;">
 							<label class="field-label"
 								for="product-variant-qty">{{ __('lang_v1.quantity') }}</label>
-							<input type="number" id="product-variant-qty"
-								name="qty" value="1" min="1" step="1">
+							<div class="qty-stepper">
+								<button type="button"
+									class="qty-stepper__btn"
+									id="product-qty-dec"
+									aria-label="تقليل الكمية">−</button>
+								<input type="number"
+									id="product-variant-qty"
+									name="qty" value="1" min="1"
+									step="1" inputmode="numeric">
+								<button type="button"
+									class="qty-stepper__btn"
+									id="product-qty-inc"
+									aria-label="زيادة الكمية">+</button>
+							</div>
 						</div>
 					</div>
 				</div>
@@ -737,6 +798,8 @@ window.__SSR_STORE_PRODUCTS__[{
 
 	var select = document.getElementById('product-variant-select');
 	var qtyInput = document.getElementById('product-variant-qty');
+	var qtyDecBtn = document.getElementById('product-qty-dec');
+	var qtyIncBtn = document.getElementById('product-qty-inc');
 	var buyBtn = document.getElementById('product-buy-btn');
 	var skuEl = document.getElementById('variant-sku');
 	var qtyTextEl = document.getElementById('variant-qty-text');
@@ -760,9 +823,21 @@ window.__SSR_STORE_PRODUCTS__[{
 	var isCustomer = root.getAttribute('data-is-customer') === '1';
 	var isServoProduct = @json($isServoProduct);
 	var priceUnavailableText = @json(__('storefront.catalog.price_unavailable'));
+	var stockExceededTpl = @json(__('storefront.catalog.stock_exceeded'));
 
 	function getSelectedOption() {
 		return select.options[select.selectedIndex];
+	}
+
+	function notifyStockExceeded(requested, available) {
+		var msg = String(stockExceededTpl)
+			.replace(':requested', String(requested))
+			.replace(':available', String(available));
+		if (typeof window.toast === 'function') {
+			window.toast(msg, 'warn');
+		} else {
+			alert(msg);
+		}
 	}
 
 	function formatNum(n) {
@@ -823,7 +898,7 @@ window.__SSR_STORE_PRODUCTS__[{
 					locs.forEach(function(row) {
 						var li = document
 							.createElement(
-							'li');
+								'li');
 
 						var inner = document
 							.createElement(
@@ -843,21 +918,22 @@ window.__SSR_STORE_PRODUCTS__[{
 						title.textContent = row
 							.name || ('#' + row
 								.location_id
-								);
+							);
 						titleRow.appendChild(title);
 						if (row
-							.is_checkout_location) {
+							.is_checkout_location
+						) {
 							var badge = document
 								.createElement(
 									'span'
-									);
+								);
 							badge.className =
 								'loc-badge';
 							badge.textContent =
 								checkoutBranchLabel;
 							titleRow.appendChild(
 								badge
-								);
+							);
 						}
 						inner.appendChild(titleRow);
 
@@ -865,27 +941,29 @@ window.__SSR_STORE_PRODUCTS__[{
 							var addr = document
 								.createElement(
 									'div'
-									);
+								);
 							addr.className =
 								'loc-meta';
 							addr.textContent =
 								row
 								.address;
 							inner.appendChild(
-								addr);
+								addr
+							);
 						}
 						if (row.mobile) {
 							var phone = document
 								.createElement(
 									'div'
-									);
+								);
 							phone.className =
 								'loc-meta';
 							phone.textContent =
 								row
 								.mobile;
 							inner.appendChild(
-								phone);
+								phone
+							);
 						}
 
 						var q = document
@@ -896,7 +974,7 @@ window.__SSR_STORE_PRODUCTS__[{
 							parseFloat(
 								row
 								.qty_available
-								) ||
+							) ||
 							0);
 
 						li.appendChild(inner);
@@ -939,8 +1017,10 @@ window.__SSR_STORE_PRODUCTS__[{
 		qtyInput.max = maxQ;
 		var q = parseInt(qtyInput.value, 10) || 1;
 		if (q < 1) q = 1;
-		if (q > maxQ) qtyInput.value = maxQ;
-		else qtyInput.value = q;
+		if (q > maxQ) q = maxQ;
+		qtyInput.value = q;
+		if (qtyDecBtn) qtyDecBtn.disabled = q <= 1;
+		if (qtyIncBtn) qtyIncBtn.disabled = q >= maxQ;
 
 		if (isCustomer && buyBtn && checkoutBase) {
 			if (qtyAvail <= 0) {
@@ -959,16 +1039,58 @@ window.__SSR_STORE_PRODUCTS__[{
 		}
 	}
 
-	select.addEventListener('change', syncDetails);
-	qtyInput.addEventListener('input', function() {
+	function getMaxQty() {
 		var opt = getSelectedOption();
 		var max = opt ? parseFloat(opt.getAttribute('data-qty') || '0') : 0;
 		var maxQ = Math.max(1, Math.floor(max));
 		if (max > 0 && max < 1) maxQ = 1;
-		var q = parseInt(qtyInput.value, 10) || 1;
-		if (q < 1) qtyInput.value = 1;
-		else if (q > maxQ) qtyInput.value = maxQ;
+		return maxQ;
+	}
+
+	function clampQty(raw, notify) {
+		var maxQ = getMaxQty();
+		var requested = parseInt(raw, 10);
+		var q = requested;
+		if (isNaN(q) || q < 1) q = 1;
+		if (requested > maxQ) {
+			if (notify) {
+				notifyStockExceeded(requested, maxQ);
+			}
+			q = maxQ;
+		}
+		qtyInput.value = q;
 		syncDetails();
+		return q;
+	}
+
+	function stepQty(delta) {
+		var current = parseInt(qtyInput.value, 10) || 1;
+		var next = current + delta;
+		var maxQ = getMaxQty();
+		if (delta > 0 && next > maxQ) {
+			notifyStockExceeded(next, maxQ);
+			clampQty(maxQ, false);
+			return;
+		}
+		clampQty(next, false);
+	}
+
+	select.addEventListener('change', syncDetails);
+	qtyInput.addEventListener('input', function() {
+		if (qtyInput.value === '') return;
+		clampQty(qtyInput.value, true);
+	});
+	qtyInput.addEventListener('change', function() {
+		clampQty(qtyInput.value || 1, true);
+	});
+	qtyInput.addEventListener('blur', function() {
+		clampQty(qtyInput.value || 1, true);
+	});
+	qtyDecBtn?.addEventListener('click', function() {
+		stepQty(-1);
+	});
+	qtyIncBtn?.addEventListener('click', function() {
+		stepQty(1);
 	});
 
 	syncDetails();
@@ -985,8 +1107,9 @@ window.__SSR_STORE_PRODUCTS__[{
 					btn
 					.classList
 					.contains(
-						'is-disabled')
+						'is-disabled'
 					)
+				)
 					return;
 
 				var id = +btn
@@ -1004,7 +1127,7 @@ window.__SSR_STORE_PRODUCTS__[{
 					(btn.dataset
 						.variationId ||
 						id
-						);
+					);
 				var img = btn
 					.dataset
 					.img ||
@@ -1017,29 +1140,29 @@ window.__SSR_STORE_PRODUCTS__[{
 				var n = parseInt(qtyInput
 						.value,
 						10
-						) ||
+					) ||
 					1;
 				if (n < 1) n =
 					1;
 
 				if (source ===
 					'servo'
-					) {
+				) {
 					if (!price ||
 						price <=
 						0
-						) {
+					) {
 						if (typeof window
 							.toast ===
 							'function'
-							) {
+						) {
 							window.toast(typeof TAB3EEN_MSG !==
 								'undefined' ?
 								TAB3EEN_MSG
 								.price_unavailable :
 								priceUnavailableText,
 								'error'
-								);
+							);
 						}
 						return;
 					}
@@ -1047,7 +1170,7 @@ window.__SSR_STORE_PRODUCTS__[{
 					if (typeof window
 						.validateServoStock ===
 						'function'
-						) {
+					) {
 						btn.disabled =
 							true;
 						var existingQty =
@@ -1057,7 +1180,7 @@ window.__SSR_STORE_PRODUCTS__[{
 							window
 							.getCartProductQty(
 								id
-								) :
+							) :
 							0;
 						var requestedQty =
 							existingQty +
@@ -1068,18 +1191,19 @@ window.__SSR_STORE_PRODUCTS__[{
 								id,
 								variationId,
 								requestedQty
-								);
+							);
 						btn.disabled =
 							false;
 						if (!check
-							.ok) {
+							.ok
+						) {
 							if (typeof window
 								.toast ===
 								'function'
-								) {
+							) {
 								window.toast(check.message,
 									'error'
-									);
+								);
 							}
 							return;
 						}
@@ -1089,36 +1213,38 @@ window.__SSR_STORE_PRODUCTS__[{
 				var i;
 				for (i = 0; i <
 					n; i++
-					) {
+				) {
 					window.addToCart(id, name,
 						price,
 						img,
 						variationId,
 						source
-						);
+					);
 				}
 
 				if (typeof window
 					.toast ===
 					'function'
-					) {
+				) {
 					window.toast('تم إضافة "' +
 						name +
 						'" للسلة 🛒'
-						);
+					);
 				}
 				if (typeof window
 					.animBtn ===
 					'function'
-					) {
+				) {
 					window.animBtn(
-						btn);
+						btn
+					);
 				} else if (
 					typeof animBtn ===
 					'function'
-					) {
+				) {
 					animBtn(
-					btn);
+						btn
+					);
 				}
 			};
 		}, 0);

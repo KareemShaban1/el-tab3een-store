@@ -480,6 +480,120 @@
 	<!-- Toast Container -->
 	<div class="toast-container" id="toast-container"></div>
 
+	@if (! empty($whatsapp['url']))
+	<a href="{{ $whatsapp['url'] }}" class="store-whatsapp-fab" target="_blank" rel="noopener noreferrer"
+		aria-label="{{ $whatsapp['label'] }}" title="{{ $whatsapp['label'] }}">
+		<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" aria-hidden="true" focusable="false">
+			<path fill="currentColor"
+				d="M16.04 3C9.4 3 4 8.37 4 14.96c0 2.11.55 4.16 1.6 5.97L4 29l8.28-2.16a12.1 12.1 0 0 0 3.76.59h.01c6.64 0 12.04-5.37 12.04-11.96C28.09 8.37 22.68 3 16.04 3zm0 21.85h-.01a10.04 10.04 0 0 1-5.12-1.4l-.37-.22-4.91 1.28 1.31-4.78-.24-.39a9.88 9.88 0 0 1-1.52-5.28c0-5.47 4.49-9.92 10.02-9.92 5.53 0 10.02 4.45 10.02 9.92-.01 5.47-4.5 9.91-10.18 9.91zm5.5-7.43c-.3-.15-1.78-.88-2.06-.98-.28-.1-.48-.15-.68.15-.2.3-.78.98-.96 1.18-.18.2-.35.22-.65.07-.3-.15-1.27-.47-2.42-1.49-.9-.8-1.5-1.78-1.68-2.08-.18-.3-.02-.46.13-.61.14-.14.3-.35.45-.53.15-.18.2-.3.3-.5.1-.2.05-.38-.02-.53-.08-.15-.68-1.63-.93-2.23-.24-.58-.5-.5-.68-.51h-.58c-.2 0-.53.08-.8.38-.28.3-1.05 1.02-1.05 2.49s1.08 2.89 1.23 3.09c.15.2 2.12 3.23 5.14 4.53.72.31 1.28.5 1.72.64.72.23 1.38.2 1.9.12.58-.09 1.78-.73 2.03-1.43.25-.7.25-1.3.18-1.43-.07-.12-.27-.2-.57-.35z" />
+		</svg>
+	</a>
+	<style>
+	.store-whatsapp-fab {
+		position: fixed;
+		inset-inline-end: 22px;
+		bottom: 22px;
+		z-index: 9999;
+		display: inline-flex;
+		align-items: center;
+		gap: 10px;
+		min-height: 56px;
+		padding: 0 18px 0 14px;
+		border-radius: 999px;
+		background: #25D366;
+		color: #fff;
+		text-decoration: none;
+		box-shadow: 0 10px 28px rgba(37, 211, 102, .38);
+		transition: transform .2s ease, box-shadow .2s ease, background .2s ease;
+		animation: store-whatsapp-fab-pulse 2s ease-out infinite;
+	}
+
+	.store-whatsapp-fab::before,
+	.store-whatsapp-fab::after {
+		content: '';
+		position: absolute;
+		inset: 0;
+		border-radius: inherit;
+		background: #25D366;
+		z-index: -1;
+		pointer-events: none;
+		animation: store-whatsapp-fab-ring 2s ease-out infinite;
+	}
+
+	.store-whatsapp-fab::after {
+		animation-delay: 1s;
+	}
+
+	.store-whatsapp-fab:hover,
+	.store-whatsapp-fab:focus-visible {
+		background: #1ebe57;
+		color: #fff;
+		transform: translateY(-2px);
+		box-shadow: 0 14px 34px rgba(37, 211, 102, .45);
+		outline: none;
+		animation: none;
+	}
+
+	.store-whatsapp-fab:hover::before,
+	.store-whatsapp-fab:hover::after,
+	.store-whatsapp-fab:focus-visible::before,
+	.store-whatsapp-fab:focus-visible::after {
+		animation: none;
+		opacity: 0;
+	}
+
+	.store-whatsapp-fab svg {
+		width: 28px;
+		height: 28px;
+		flex-shrink: 0;
+	}
+
+	@keyframes store-whatsapp-fab-pulse {
+		0%,
+		100% {
+			transform: scale(1);
+			box-shadow: 0 10px 28px rgba(37, 211, 102, .38);
+		}
+
+		50% {
+			transform: scale(1.05);
+			box-shadow: 0 12px 32px rgba(37, 211, 102, .55);
+		}
+	}
+
+	@keyframes store-whatsapp-fab-ring {
+		0% {
+			transform: scale(1);
+			opacity: .55;
+		}
+
+		100% {
+			transform: scale(1.55);
+			opacity: 0;
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.store-whatsapp-fab,
+		.store-whatsapp-fab::before,
+		.store-whatsapp-fab::after {
+			animation: none;
+		}
+	}
+
+	@media (max-width: 640px) {
+		.store-whatsapp-fab {
+			inset-inline-end: 16px;
+			bottom: 75px;
+			width: 56px;
+			height: 56px;
+			padding: 0;
+			justify-content: center;
+		}
+	}
+	</style>
+	@endif
+
 	<!-- ===================== JAVASCRIPT ===================== -->
 	<script>
 	/* ── State ── */

@@ -1759,6 +1759,16 @@
 		justify-content: center
 	}
 
+	.prod-img-link {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 100%;
+		height: 100%;
+		text-decoration: none;
+		color: inherit
+	}
+
 	.prod-img {
 		width: 80%;
 		aspect-ratio: 1;
@@ -1768,6 +1778,12 @@
 
 	.prod-card:hover .prod-img {
 		transform: scale(1.07)
+	}
+
+	.prod-info .pa-cart {
+		width: 100%;
+		flex: none;
+		margin-bottom: 8px
 	}
 
 	/* Badges */

@@ -41,6 +41,7 @@ class StorefrontThemeLayoutComposer
 
         $storeAppearance = StorefrontSetting::defaultContent();
         $storeAppearanceModel = null;
+        $whatsapp = null;
 
         if (Schema::hasTable('storefront_settings')) {
             $storeAppearanceModel = StorefrontSetting::forBusiness($businessId);
@@ -49,6 +50,13 @@ class StorefrontThemeLayoutComposer
             $storeAppearance['support_phone'] = $storeAppearanceModel->supportPhone();
             $storeAppearance['support_email'] = $storeAppearanceModel->supportEmail();
             $storeAppearance['copyright_text'] = $storeAppearanceModel->copyrightText();
+
+            if ($storeAppearanceModel->shouldShowWhatsappButton()) {
+                $whatsapp = [
+                    'url' => $storeAppearanceModel->whatsappUrl(),
+                    'label' => __('lang_v1.storefront_whatsapp_chat'),
+                ];
+            }
         } else {
             $storeAppearance['announce_link_url'] = route('store.products.index');
             $storeAppearance['copyright_text'] = '© '.date('Y').' '
@@ -89,6 +97,7 @@ class StorefrontThemeLayoutComposer
             'storeAppearance' => $storeAppearance,
             'storeAppearanceSettings' => $storeAppearanceModel,
             'storefrontSeo' => $seo,
+            'whatsapp' => $whatsapp,
         ]);
     }
 }

@@ -406,6 +406,22 @@ if ($sPmax <= $sPmin) { $sPmax=$sPmin + 1; } $sliderRngLo=$sPmin; $sliderRngHi=$
 		color: var(--accent, #ea541a);
 	}
 
+	[data-store-products-main] .prod-img-link {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 100%;
+		height: 100%;
+		text-decoration: none;
+		color: inherit;
+	}
+
+	[data-store-products-main] .prod-info .pa-cart {
+		width: 100%;
+		flex: none;
+		margin-bottom: 8px;
+	}
+
 	[data-store-products-main] a.pa-icon {
 		text-decoration: none;
 	}
@@ -888,36 +904,16 @@ if ($sPmax <= $sPmin) { $sPmax=$sPmin + 1; } $sliderRngLo=$sPmin; $sliderRngHi=$
 					@endphp
 					<div class="prod-card">
 						<div class="prod-img-wrap">
-							<img class="prod-img"
-								src="{{ $item['image_url'] }}"
-								alt="{{ $item['name'] }}">
+							<a href="{{ $productShowUrl }}" class="prod-img-link"
+								title="عرض تفاصيل المنتج">
+								<img class="prod-img"
+									src="{{ $item['image_url'] }}"
+									alt="{{ $item['name'] }}">
+							</a>
 							<div class="prod-badges">
 								@if($idx < 2) <span class="badge-new">
 									جديد</span>
 									@endif
-							</div>
-							<div class="prod-actions">
-								<button type="button" class="pa-cart"
-									data-id="{{ (int) $item['id'] }}"
-									data-name="{{ $item['name'] }}"
-									data-price="{{ $defaultPrice }}"
-									data-variation-id="{{ $defVid }}"
-									@if($isServoItem)
-									data-source="servo" @endif>
-									<svg width="14" height="14"
-										fill="none"
-										stroke="currentColor"
-										stroke-width="2.5"
-										viewBox="0 0 24 24">
-										<path
-											d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
-										<line x1="3" y1="6"
-											x2="21"
-											y2="6" />
-									</svg>
-									أضف للسلة
-								</button>
-								<!-- <button type="button" class="pa-icon" data-quickview="{{ (int) $item['id'] }}" title="عرض سريع">👁</button> -->
 							</div>
 						</div>
 						<div class="prod-info">
@@ -943,6 +939,26 @@ if ($sPmax <= $sPmin) { $sPmax=$sPmin + 1; } $sliderRngLo=$sPmin; $sliderRngHi=$
 								</select>
 							</div>
 							@endif
+							<button type="button" class="pa-cart"
+								data-id="{{ (int) $item['id'] }}"
+								data-name="{{ $item['name'] }}"
+								data-price="{{ $defaultPrice }}"
+								data-variation-id="{{ $defVid }}"
+								@if($isServoItem)
+								data-source="servo" @endif>
+								<svg width="14" height="14"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2.5"
+									viewBox="0 0 24 24">
+									<path
+										d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
+									<line x1="3" y1="6"
+										x2="21"
+										y2="6" />
+								</svg>
+								أضف للسلة
+							</button>
 							<div class="price-row">
 								<span class="price-now"
 									id="prod-price-{{ (int) $item['id'] }}">{{ number_format($defaultPrice, 2) }}
@@ -1785,26 +1801,27 @@ if ($sPmax <= $sPmin) { $sPmax=$sPmin + 1; } $sliderRngLo=$sPmin; $sliderRngHi=$
 				const variantBlock = variations.length ?
 					`<div class="prod-variant-wrap"><select class="prod-variant" data-id="${pid}">${variantsOptions}</select></div>` :
 					'';
+				const showUrl = productUrl(pid, p.source || null);
 				return `
                 <div class="prod-card">
                     <div class="prod-img-wrap">
-                        <img class="prod-img" src="${src}" alt="${nm}">
+                        <a href="${showUrl}" class="prod-img-link" title="عرض تفاصيل المنتج">
+                            <img class="prod-img" src="${src}" alt="${nm}">
+                        </a>
                         <div class="prod-badges">${idx < 2 ? '<span class="badge-new">جديد</span>' : ''}</div>
-                        <div class="prod-actions">
-                            <button type="button" class="pa-cart" data-id="${pid}" data-name="${attrEsc(p.name || '')}" data-price="${defaultPrice}" data-variation-id="${defVid}"${servoAttr}>
-                                <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
-                                    <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
-                                    <line x1="3" y1="6" x2="21" y2="6" />
-                                </svg>
-                                أضف للسلة
-                            </button>
-                        </div>
                     </div>
                     <div class="prod-info">
                         <div class="prod-brand">${brand}</div>
-                        <div class="prod-name"><a href="${productUrl(pid, p.source || null)}" title="عرض تفاصيل المنتج">${nm}</a></div>
+                        <div class="prod-name"><a href="${showUrl}" title="عرض تفاصيل المنتج">${nm}</a></div>
 					    <!-- <div class="stars-row"><span class="stars">⭐⭐⭐⭐⭐</span><span class="rev-count">(متوفر)</span></div> -->
                         ${variantBlock}
+                        <button type="button" class="pa-cart" data-id="${pid}" data-name="${attrEsc(p.name || '')}" data-price="${defaultPrice}" data-variation-id="${defVid}"${servoAttr}>
+                            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                                <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
+                                <line x1="3" y1="6" x2="21" y2="6" />
+                            </svg>
+                            أضف للسلة
+                        </button>
                         <div class="price-row"><span class="price-now" id="prod-price-${pid}">${fmtStorePrice(defaultPrice)}</span></div>
                     </div>
                 </div>`;
