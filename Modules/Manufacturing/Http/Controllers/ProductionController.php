@@ -3,12 +3,15 @@
 namespace Modules\Manufacturing\Http\Controllers;
 
 use App\BusinessLocation;
+use App\PurchaseLine;
 use App\Transaction;
+use App\TransactionSellLinesPurchaseLines;
 use App\Utils\BusinessUtil;
 use App\Utils\ModuleUtil;
 use App\Utils\ProductUtil;
 use App\Utils\TransactionUtil;
 use App\Variation;
+use App\VariationLocationDetails;
 use DB;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -93,6 +96,8 @@ class ProductionController extends Controller
                         $html .= ' <a href="' .  action('\Modules\Manufacturing\Http\Controllers\ProductionController@edit', $row->id) . '" class="btn btn-primary btn-xs"><i class="fa fa-edit"></i> ' . __('messages.edit') . '</a>';
 
                         $html .= ' <button data-href="' . action('\Modules\Manufacturing\Http\Controllers\ProductionController@destroy', [$row->id]) . '" class="delete-production btn btn-xs btn-danger"><i class="fa fa-trash"></i> ' . __("messages.delete") . '</button>';
+                    } else {
+                        $html .= ' <button data-href="' . action('\Modules\Manufacturing\Http\Controllers\ProductionController@destroy', [$row->id]) . '" data-is-final="1" class="delete-production btn btn-xs btn-warning"><i class="fa fa-undo"></i> ' . __('manufacturing::lang.cancel_production') . '</button>';
                     }
 
                     return $html;
@@ -756,7 +761,9 @@ class ProductionController extends Controller
     }
 
     /**
-     * Remove the specified resource from storage.
+     * Remove / cancel production.
+     * Draft: delete records only.
+     * Finalized: reverse stock (return ingredients, remove finished product) then delete.
      *
      * @param  int  $id
      * @return \Illuminate\Http\Response
@@ -773,13 +780,113 @@ class ProductionController extends Controller
                 $transaction = Transaction::where('id', $id)
                             ->where('business_id', $business_id)
                             ->where('type', 'production_purchase')
-                            ->where('mfg_is_final', 0)
-                            ->delete();
+                            ->with(['purchase_lines'])
+                            ->first();
+
+                if (empty($transaction)) {
+                    return [
+                        'success' => false,
+                        'msg' => __('messages.something_went_wrong')
+                    ];
+                }
+
+                $production_sell = Transaction::where('business_id', $business_id)
+                            ->where('type', 'production_sell')
+                            ->where('mfg_parent_production_purchase_id', $transaction->id)
+                            ->with(['sell_lines', 'sell_lines.product'])
+                            ->first();
+
+                $was_final = (int) $transaction->mfg_is_final === 1;
+
+                DB::beginTransaction();
+
+                // Finalized production: reverse stock as if it never happened
+                if ($was_final) {
+                    foreach ($transaction->purchase_lines as $purchase_line) {
+                        if ($purchase_line->quantity_used > 0) {
+                            DB::rollBack();
+                            return [
+                                'success' => false,
+                                'msg' => __('manufacturing::lang.cannot_cancel_production_used')
+                            ];
+                        }
+
+                        $vld = VariationLocationDetails::where('variation_id', $purchase_line->variation_id)
+                            ->where('product_id', $purchase_line->product_id)
+                            ->where('location_id', $transaction->location_id)
+                            ->first();
+
+                        if (empty($vld) || $vld->qty_available < $purchase_line->quantity) {
+                            DB::rollBack();
+                            return [
+                                'success' => false,
+                                'msg' => __('manufacturing::lang.cannot_cancel_production_insufficient_stock')
+                            ];
+                        }
+                    }
+
+                    // Remove finished product from location stock
+                    foreach ($transaction->purchase_lines as $purchase_line) {
+                        $this->productUtil->decreaseProductQuantity(
+                            $purchase_line->product_id,
+                            $purchase_line->variation_id,
+                            $transaction->location_id,
+                            $purchase_line->quantity
+                        );
+                    }
+
+                    // Return ingredients to location stock + undo mfg purchase mapping
+                    if (!empty($production_sell) && $production_sell->status == 'final') {
+                        $sell_line_ids = [];
+                        foreach ($production_sell->sell_lines as $sell_line) {
+                            $sell_line_ids[] = $sell_line->id;
+                            if (!empty($sell_line->product) && (int) $sell_line->product->enable_stock === 1) {
+                                $this->productUtil->updateProductQuantity(
+                                    $production_sell->location_id,
+                                    $sell_line->product_id,
+                                    $sell_line->variation_id,
+                                    $sell_line->quantity,
+                                    0,
+                                    null,
+                                    false
+                                );
+                            }
+                        }
+
+                        if (!empty($sell_line_ids)) {
+                            $mappings = TransactionSellLinesPurchaseLines::whereIn('sell_line_id', $sell_line_ids)->get();
+                            foreach ($mappings as $map) {
+                                if (!empty($map->purchase_line_id)) {
+                                    $pl = PurchaseLine::find($map->purchase_line_id);
+                                    if (!empty($pl)) {
+                                        $pl->mfg_quantity_used = max(0, (float) $pl->mfg_quantity_used - (float) $map->quantity);
+                                        $pl->save();
+                                    }
+                                }
+                            }
+                            TransactionSellLinesPurchaseLines::whereIn('sell_line_id', $sell_line_ids)->delete();
+                        }
+                    }
+                }
+
+                if (!empty($production_sell)) {
+                    $production_sell->sell_lines()->delete();
+                    $production_sell->delete();
+                }
+
+                PurchaseLine::where('transaction_id', $transaction->id)->delete();
+                $transaction->delete();
+
+                DB::commit();
+
                 $output = [
                     'success' => true,
-                    'msg' => __('lang_v1.deleted_success')
+                    'msg' => $was_final
+                        ? __('manufacturing::lang.production_cancelled_success')
+                        : __('lang_v1.deleted_success')
                 ];
             } catch (\Exception $e) {
+                DB::rollBack();
                 \Log::emergency("File:" . $e->getFile(). "Line:" . $e->getLine(). "Message:" . $e->getMessage());
 
                 $output['success'] = false;

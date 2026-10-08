@@ -380,8 +380,12 @@ $(document).on('click', 'button.delete_recipe', function() {
 
 $(document).on('click', '.delete-production', function(e) {
 	e.preventDefault();
+    var is_final = $(this).data('is-final') == 1 || $(this).data('is-final') == '1';
+    var confirm_text = is_final
+        ? "@lang('manufacturing::lang.cancel_production_confirm')"
+        : LANG.sure;
     swal({
-        title: LANG.sure,
+        title: confirm_text,
         icon: 'warning',
         buttons: true,
         dangerMode: true,
