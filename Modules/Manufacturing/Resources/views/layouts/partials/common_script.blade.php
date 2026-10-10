@@ -54,7 +54,7 @@
 	        ajax: '{{action("\Modules\Manufacturing\Http\Controllers\RecipeController@index")}}',
 	        columnDefs: [
 	            {
-	                targets: [0, 5, 6, 7],
+	                targets: [0, 5, 6, 7, 8],
 	                orderable: false,
 	                searchable: false,
 	            },
@@ -66,6 +66,7 @@
 	            { data: 'category', name: 'c.name' },
 	            { data: 'sub_category', name: 'sc.name' },
 	            { data: 'total_quantity', name: 'total_quantity' },
+	            { data: 'ingredients_total_quantity', orderable: false, searchable: false },
 	            { data: 'recipe_total' },
 	            { data: 'unit_cost' },
 	            { data: 'action', name: 'action' },
@@ -85,7 +86,56 @@
 		__currency_convert_recursively($('.view_modal'));
 	});
 
+	$(document).on('focus', '.row_sub_unit_id', function() {
+		var raw = $(this).find(':selected').attr('data-multiplier');
+		if (raw === undefined || raw === null || raw === '') {
+			raw = $(this).find(':selected').data('multiplier');
+		}
+		var prev = parseFloat(raw);
+		$(this).data('prev-multiplier', (!isNaN(prev) && prev > 0) ? prev : 1);
+	});
+
 	$(document).on('change', '.quantity, .row_sub_unit_id, #total_quantity, #extra_cost, #sub_unit_id, #production_cost_type', function(){
+		if ($(this).hasClass('row_sub_unit_id')) {
+			var $row = $(this).closest('tr');
+			var $qty = $row.find('.quantity');
+			var $opt = $(this).find(':selected');
+			var allow_decimal = parseInt($opt.attr('data-allow_decimal'), 10);
+			if (isNaN(allow_decimal)) {
+				allow_decimal = parseInt($opt.data('allow_decimal'), 10);
+			}
+			if (isNaN(allow_decimal)) {
+				allow_decimal = 1;
+			}
+			$qty.attr('data-decimal', allow_decimal ? 1 : 0);
+
+			var raw = $opt.attr('data-multiplier');
+			if (raw === undefined || raw === null || raw === '') {
+				raw = $opt.data('multiplier');
+			}
+			var new_multiplier = parseFloat(raw);
+			if (isNaN(new_multiplier) || new_multiplier <= 0) {
+				new_multiplier = 1;
+			}
+			var prev_multiplier = parseFloat($(this).data('prev-multiplier'));
+			if (isNaN(prev_multiplier) || prev_multiplier <= 0) {
+				prev_multiplier = 1;
+			}
+			// Keep same base qty when switching e.g. kg ↔ gram
+			var current_qty = __read_number($qty);
+			if (!isNaN(current_qty)) {
+				var base_qty = current_qty * prev_multiplier;
+				__write_number($qty, base_qty / new_multiplier);
+			}
+			$(this).data('prev-multiplier', new_multiplier);
+
+			if (!allow_decimal) {
+				var qty_val = __read_number($qty);
+				if (qty_val % 1 !== 0) {
+					__write_number($qty, Math.round(qty_val));
+				}
+			}
+		}
 		calculateRecipeTotal();
 	});
 
@@ -114,11 +164,15 @@
     		var quantity = __read_number($(this).find('.quantity'));
     		var multiplier = 1;
     		if ($(this).find('.row_sub_unit_id').length) {
-    			multiplier = parseFloat(
-		            $(this).find('.row_sub_unit_id')
-		                .find(':selected')
-		                .data('multiplier')
-		        	);
+    			var $opt = $(this).find('.row_sub_unit_id').find(':selected');
+    			var raw = $opt.attr('data-multiplier');
+    			if (raw === undefined || raw === null || raw === '') {
+    				raw = $opt.data('multiplier');
+    			}
+    			multiplier = parseFloat(raw);
+    			if (isNaN(multiplier) || multiplier <= 0) {
+    				multiplier = 1;
+    			}
     		}
 
     		var line_total = line_unit_price * quantity * multiplier;
@@ -145,7 +199,7 @@
 	function initSelect2(element, dropdownParent = $('body')) {
 		element.select2({
 	        ajax: {
-	            url: '/getProducts',
+	            url: '/products/list',
 	            dataType: 'json',
 	            delay: 250,
 	            data: function(params) {
@@ -217,7 +271,7 @@
 		element.autocomplete({
             source: function(request, response) {
                 $.getJSON(
-                    '/getProducts',
+                    '/products/list',
                     {
                         term: request.term,
                         product_types: ['single', 'variable']
@@ -326,8 +380,12 @@ $(document).on('click', 'button.delete_recipe', function() {
 
 $(document).on('click', '.delete-production', function(e) {
 	e.preventDefault();
+    var is_final = $(this).data('is-final') == 1 || $(this).data('is-final') == '1';
+    var confirm_text = is_final
+        ? "@lang('manufacturing::lang.cancel_production_confirm')"
+        : LANG.sure;
     swal({
-        title: LANG.sure,
+        title: confirm_text,
         icon: 'warning',
         buttons: true,
         dangerMode: true,

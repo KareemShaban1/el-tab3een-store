@@ -4,6 +4,28 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Storefront business
+    |--------------------------------------------------------------------------
+    |
+    | Only this business sees storefront admin UI (active_in_app on products,
+    | locations fees, Tab3een/Servo orders, hero banners, store pages).
+    |
+    */
+    'business_id' => (int) env('STOREFRONT_BUSINESS_ID', 0),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Storefront timezone
+    |--------------------------------------------------------------------------
+    |
+    | Website visit logs are stored in APP_TIMEZONE; this timezone is used when
+    | showing them in the admin so times match Egypt local time.
+    |
+    */
+    'timezone' => env('STOREFRONT_TIMEZONE', 'Africa/Cairo'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Tab3een catalog API
     |--------------------------------------------------------------------------
     |

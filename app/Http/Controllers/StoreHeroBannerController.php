@@ -16,7 +16,7 @@ class StoreHeroBannerController extends Controller
         $business_id = (int) request()->session()->get('user.business_id');
         $is_admin = $this->util->is_admin(auth()->user(), $business_id);
 
-        if (! $is_admin && ! auth()->user()->can('business_settings.access')) {
+        if (! $is_admin && ! auth()->user()->can('hero_banners.access')) {
             abort(403, 'Unauthorized action.');
         }
     }

@@ -8,11 +8,12 @@ use Illuminate\Http\Request;
 class TrustProxies extends Middleware
 {
     /**
-     * The trusted proxies for this application.
+     * Trust proxies / CDN / load balancers so visitor IP is resolved correctly
+     * from X-Forwarded-For / Cloudflare headers.
      *
      * @var array<int, string>|string|null
      */
-    protected $proxies;
+    protected $proxies = '*';
 
     /**
      * The headers that should be used to detect proxies.

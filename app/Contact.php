@@ -402,6 +402,21 @@ class Contact extends Authenticatable
     }
 
     /**
+     * Address used to store the storefront password-reset token.
+     * Contacts without an email still get a stable key so the token table can find them.
+     */
+    public function getEmailForPasswordReset()
+    {
+        $email = trim((string) $this->email);
+
+        if ($email !== '') {
+            return $email;
+        }
+
+        return 'contact-'.$this->getKey().'@customers.invalid';
+    }
+
+    /**
      * All user who have access to this contact
      * Applied only when selected_contacts is true for a user in
      * users table

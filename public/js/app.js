@@ -693,6 +693,9 @@ lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, "All"]],
                 mobile_number: function() {
                     return $('#mobile').val();
                 },
+                contact_type: function() {
+                    return $(form).find('#contact_type, [name="type"]').first().val();
+                },
             },
             success: function(result) {
                 if (result.is_mobile_exists == true) {
@@ -2463,27 +2466,15 @@ $(document).on('click', 'a.load_notifications', function(e) {
         });
 });
 
+// Do NOT intercept notification link clicks.
+// Unread links are generated as /notifications/{id}/open?redirect=...
+// so the server marks them read, then redirects. Intercepting with AJAX
+// broke mark-as-read on production (cached JS / aborted requests).
 $(document).on('click', '#notifications_list a[data-notification-id]', function() {
-    var notification_id = $(this).data('notification-id');
     var $item = $(this).closest('li.notification-li');
-
-    if (!notification_id || !$item.hasClass('unread')) {
-        return;
+    if ($item.hasClass('unread')) {
+        $item.removeClass('unread');
     }
-
-    $.ajax({
-        method: 'POST',
-        url: '/notifications/' + notification_id + '/read',
-        dataType: 'json',
-        global: false,
-        data: {
-            _token: $('meta[name="csrf-token"]').attr('content'),
-        },
-        success: function(data) {
-            $item.removeClass('unread');
-            updateNotificationCounts(data);
-        },
-    });
 });
 
 $(document).on('click', 'a.delete_purchase_return', function(e) {
@@ -2732,6 +2723,60 @@ $(document).on('click', 'button.activate-deactivate-location', function(){
     });
 });
 
+var __notificationAudioUnlocked = false;
+var __lastUnreadNotificationId = null;
+var __lastUnreadNotificationCount = null;
+
+function unlockNotificationAudio() {
+    var audio = document.getElementById('notification-audio') || document.getElementById('warning-audio');
+    if (!audio || __notificationAudioUnlocked) {
+        return;
+    }
+
+    var previousMuted = audio.muted;
+    audio.muted = true;
+    var playPromise = audio.play();
+    if (playPromise && typeof playPromise.then === 'function') {
+        playPromise
+            .then(function() {
+                audio.pause();
+                audio.currentTime = 0;
+                audio.muted = previousMuted;
+                __notificationAudioUnlocked = true;
+            })
+            .catch(function() {
+                audio.muted = previousMuted;
+            });
+    } else {
+        audio.muted = previousMuted;
+        __notificationAudioUnlocked = true;
+    }
+}
+
+function playNotificationSound() {
+    var audio = document.getElementById('notification-audio') || document.getElementById('warning-audio');
+    if (!audio) {
+        return;
+    }
+
+    try {
+        audio.pause();
+        audio.currentTime = 0;
+        var playPromise = audio.play();
+        if (playPromise && typeof playPromise.catch === 'function') {
+            playPromise.catch(function() {
+                // Browsers block autoplay until a user gesture unlocks audio.
+            });
+        }
+    } catch (e) {
+        // ignore playback errors
+    }
+}
+
+$(document).on('click keydown touchstart', function() {
+    unlockNotificationAudio();
+});
+
 function updateNotificationCounts(data) {
     var $badge = $('span.notifications_count');
     if (!$badge.length || typeof data === 'undefined') {
@@ -2775,7 +2820,27 @@ function getTotalUnreadNotifications(){
             dataType: 'json',
             global: false,
             success: function(data) {
+                var total_unread = parseInt(data.total_unread, 10) || 0;
+                var latest_id = data.latest_unread_id || null;
+                var shouldPlaySound = false;
+
+                if (__lastUnreadNotificationCount !== null) {
+                    if (total_unread > __lastUnreadNotificationCount) {
+                        shouldPlaySound = true;
+                    } else if (latest_id && latest_id !== __lastUnreadNotificationId) {
+                        shouldPlaySound = true;
+                    }
+                }
+
+                __lastUnreadNotificationCount = total_unread;
+                __lastUnreadNotificationId = latest_id;
+
                 updateNotificationCounts(data);
+
+                if (shouldPlaySound) {
+                    playNotificationSound();
+                }
+
                 if (data.notification_html) {
                     $('.view_modal').html(data.notification_html);
                     $('.view_modal').modal('show');

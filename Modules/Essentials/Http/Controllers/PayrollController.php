@@ -18,7 +18,7 @@ use Modules\Essentials\Entities\EssentialsLeave;
 use App\Utils\TransactionUtil;
 use Illuminate\Support\Facades\View;
 use Modules\Essentials\Entities\PayrollGroup;
-use App\Models\TransactionPayment;
+use App\TransactionPayment;
 use App\Events\TransactionPaymentAdded;
 
 class PayrollController extends Controller
@@ -76,7 +76,9 @@ class PayrollController extends Controller
                     'dept.name as department',
                     'dsgn.name as designation',
                     'epgt.payroll_group_id'
-                ]);
+                ])
+                ->orderBy('transactions.transaction_date', 'desc')
+                ->orderBy('transactions.id', 'desc');
 
 
 
@@ -131,7 +133,7 @@ class PayrollController extends Controller
 
                         // $html .= '<li><a href="' . action('TransactionPaymentController@show', [$row->id]) . '" class="view_payment_modal"><i class="fa fa-money"></i> ' . __("purchase.view_payments") . '</a></li>';
         
-                        if (empty($row->payroll_group_id) && $row->payment_status != "paid" && $is_admin) {
+                        if (empty($row->payroll_group_id) && $row->payment_status != "paid" && ($is_admin || auth()->user()->can('essentials.add_payroll_payment') || auth()->user()->can('superadmin'))) {
                             $html .= '<li><a href="' . action([\App\Http\Controllers\TransactionPaymentController::class, 'addPayment'], [$row->id]) . '" class="add_payment_modal"><i class="fa fa-money"></i> ' . __("purchase.add_payment") . '</a></li>';
                         }
 
@@ -477,56 +479,46 @@ class PayrollController extends Controller
 
         $total_work_duration = $this->essentialsUtil->getTotalWorkDuration('hour', $payroll->transaction_for->id, $business_id, $start_of_month->format('Y-m-d'), $end_of_month->format('Y-m-d'));
 
-        // // Fetch expense transactions
-        // $expense_transactions = Transaction::where('business_id', $business_id)
-        //     ->where('expense_for', $payroll->transaction_for->id)
-        //     ->where('type', 'expense')
-        //     ->whereBetween('transaction_date', [$start_of_month->format('Y-m-d'), $end_of_month->format('Y-m-d')])
-        //     ->get();
-
-        // foreach ($expense_transactions as $expense) {
-        //     // Check if this expense is already in deductions
-        //     $exists = false;
-        //     if (isset($deductions['deduction_names'])) {
-        //         foreach ($deductions['deduction_names'] as $index => $name) {
-        //             if ($name === __('essentials::lang.expense') && $deductions['deduction_amounts'][$index] == $expense->final_total) {
-        //                 $exists = true;
-        //                 break;
-        //             }
-        //         }
-        //     }
-
-        //     if (!$exists) {
-        //         $deductions['deduction_names'][] = __('essentials::lang.expense');
-        //         $deductions['deduction_amounts'][] = $expense->final_total;
-        //         $deductions['deduction_types'][] = 'fixed';
-        //         $deductions['deduction_percents'][] = 0;
-        //     }
-        // }
-
         $expense_transactions = Transaction::
             leftJoin('expense_categories AS ec', 'transactions.expense_category_id', '=', 'ec.id')
-            ->where('transactions.business_id', $business_id) // ✅ Add table prefix
+            ->where('transactions.business_id', $business_id)
             ->where('transactions.expense_for', $payroll->transaction_for->id)
             ->where('transactions.type', 'expense')
-            ->whereBetween('transactions.transaction_date', [$start_date, $end_date->format('Y-m-d')])
+            ->whereBetween('transactions.transaction_date', [
+                $start_of_month->format('Y-m-d'),
+                $end_of_month->format('Y-m-d'),
+            ])
             ->select(
                 'transactions.id',
                 'transactions.final_total',
                 'transactions.transaction_date',
                 'ec.name as category'
             )
-            ->get(); // ✅ Execute the query
+            ->get();
 
-
-
-        // Loop through retrieved expense transactions
         foreach ($expense_transactions as $expense) {
-            // $payrolls[$employee->id]['deductions']['deduction_names'][] = __('essentials::lang.expense');
-            $payrolls[$payroll->transaction_for->id]['deductions']['deduction_names'][] = $expense->category;
-            $payrolls[$payroll->transaction_for->id]['deductions']['deduction_amounts'][] = $expense->final_total;
-            $payrolls[$payroll->transaction_for->id]['deductions']['deduction_types'][] = 'fixed';
-            $payrolls[$payroll->transaction_for->id]['deductions']['deduction_percents'][] = 0;
+            $expense_name = ! empty($expense->category) ? $expense->category : __('essentials::lang.expense');
+            $exists = false;
+
+            if (! empty($deductions['deduction_names'])) {
+                foreach ($deductions['deduction_names'] as $index => $name) {
+                    if (
+                        $name === $expense_name
+                        && isset($deductions['deduction_amounts'][$index])
+                        && (float) $deductions['deduction_amounts'][$index] == (float) $expense->final_total
+                    ) {
+                        $exists = true;
+                        break;
+                    }
+                }
+            }
+
+            if (! $exists) {
+                $deductions['deduction_names'][] = $expense_name;
+                $deductions['deduction_amounts'][] = $expense->final_total;
+                $deductions['deduction_types'][] = 'fixed';
+                $deductions['deduction_percents'][] = 0;
+            }
         }
 
         return view('essentials::payroll.show')

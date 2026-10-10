@@ -130,7 +130,14 @@
                     <div class="col-sm-6">
                         <div class="form-group">
                             {!! Form::label('serial_no', __('repair::lang.serial_no') . ':*') !!}
-                            {!! Form::text('serial_no', $job_sheet->serial_no, ['class' => 'form-control', 'placeholder' => __('repair::lang.serial_no'), 'required']); !!}
+                            <div class="input-group">
+                                {!! Form::text('serial_no', $job_sheet->serial_no, ['class' => 'form-control', 'id' => 'serial_no', 'placeholder' => __('repair::lang.serial_no'), 'required', 'readonly' => 'readonly']); !!}
+                                <span class="input-group-btn">
+                                    <button type="button" class="btn btn-info btn-flat generate_serial_no" title="@lang('repair::lang.generate_passcode')">
+                                        <i class="fas fa-random"></i> @lang('repair::lang.generate_passcode')
+                                    </button>
+                                </span>
+                            </div>
                         </div>
                     </div>
                     <div class="col-md-6">
@@ -390,6 +397,11 @@
             @if(!empty($job_sheet->security_pattern))
                 lock.setPattern("{{$job_sheet->security_pattern}}");
             @endif
+
+            $(document).on('click', '.generate_serial_no', function() {
+                var code = String(Math.floor(1000 + Math.random() * 9000));
+                $('input#serial_no').val(code).trigger('change').focus();
+            });
 
             //filter device model id based on brand & device
             $(document).on('change', '#brand_id', function() {

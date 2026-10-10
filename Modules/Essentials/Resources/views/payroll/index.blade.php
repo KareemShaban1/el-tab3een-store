@@ -206,7 +206,7 @@
                         searchable: false,
                     },
                 ],
-                aaSorting: [[4, 'desc']],
+                aaSorting: [[3, 'desc']],
                 columns: [
                     { data: 'user', name: 'user' },
                     { data: 'department', name: 'dept.name' },

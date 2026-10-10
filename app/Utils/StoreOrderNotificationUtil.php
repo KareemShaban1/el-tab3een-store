@@ -35,7 +35,8 @@ class StoreOrderNotificationUtil
      */
     public function getSidebarCounts(User $user, ?int $business_id = null): array
     {
-        $business_id = $business_id ?? (int) session('business.id', 0);
+        $business_id = $business_id
+            ?? (int) session('user.business_id', session('business.id', 0));
         $counts = [
             'tab3een' => 0,
             'servo' => 0,
@@ -74,7 +75,8 @@ class StoreOrderNotificationUtil
      */
     public function markUnreadAsReadForTypes(User $user, array $order_types, ?int $business_id = null): void
     {
-        $business_id = $business_id ?? (int) session('business.id', 0);
+        $business_id = $business_id
+            ?? (int) session('user.business_id', session('business.id', 0));
 
         foreach ($user->unreadNotifications as $notification) {
             if (! $this->isStoreOrderNotificationForBusiness($notification, $business_id)) {

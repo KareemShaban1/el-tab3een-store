@@ -69,6 +69,7 @@ class Kernel extends HttpKernel
         'EcomApi' => \App\Http\Middleware\EcomApi::class,
         'store.customer.auth' => \App\Http\Middleware\EnsureStoreCustomerAuthenticated::class,
         'storefront.locale' => \App\Http\Middleware\SetStorefrontLocale::class,
+        'website.visit.log' => \App\Http\Middleware\LogWebsiteVisit::class,
         'AdminSidebarMenu' => \App\Http\Middleware\AdminSidebarMenu::class,
         'superadmin' => \App\Http\Middleware\Superadmin::class,
         'CheckUserLogin' => \App\Http\Middleware\CheckUserLogin::class,

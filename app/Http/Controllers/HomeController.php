@@ -482,6 +482,7 @@ class HomeController extends Controller
     {
         $unread_notifications = auth()->user()->unreadNotifications;
         $total_unread = $unread_notifications->count();
+        $latest_unread = $unread_notifications->sortByDesc('created_at')->first();
         $store_order_counts = app(StoreOrderNotificationUtil::class)->getSidebarCounts(
             auth()->user(),
             (int) session('business.id', 0)
@@ -490,6 +491,7 @@ class HomeController extends Controller
         $notification_html = '';
         $modal_notifications = [];
         foreach ($unread_notifications as $unread_notification) {
+            $data = $unread_notification->data ?? [];
             if (isset($data['show_popup'])) {
                 $modal_notifications[] = $unread_notification;
                 $unread_notification->markAsRead();
@@ -501,6 +503,8 @@ class HomeController extends Controller
 
         return [
             'total_unread' => $total_unread,
+            'latest_unread_id' => $latest_unread?->id,
+            'latest_unread_at' => $latest_unread?->created_at?->toIso8601String(),
             'notification_html' => $notification_html,
             'store_order_counts' => $store_order_counts,
         ];
@@ -508,16 +512,100 @@ class HomeController extends Controller
 
     public function markNotificationRead($id)
     {
-        $notification = auth()->user()->notifications()->where('id', $id)->firstOrFail();
-        $notification->markAsRead();
+        $this->markUserNotificationAsRead((string) $id);
 
-        return [
-            'total_unread' => auth()->user()->unreadNotifications()->count(),
+        $user = auth()->user();
+
+        return response()->json([
+            'success' => true,
+            'total_unread' => $user->unreadNotifications()->count(),
             'store_order_counts' => app(StoreOrderNotificationUtil::class)->getSidebarCounts(
-                auth()->user(),
-                (int) session('business.id', 0)
+                $user,
+                (int) session('user.business_id', session('business.id', 0))
             ),
-        ];
+        ]);
+    }
+
+    /**
+     * Mark a notification as read, then redirect to its destination.
+     * Works without JS (reliable on production with cached assets).
+     */
+    public function openNotification(Request $request, $id)
+    {
+        $this->markUserNotificationAsRead((string) $id);
+
+        $redirect = (string) $request->query('redirect', '');
+        if ($redirect === '') {
+            $notification = auth()->user()->notifications()->where('id', $id)->first();
+            if ($notification) {
+                $parsed = $this->commonUtil->parseNotifications(collect([$notification]), false);
+                $redirect = (string) ($parsed[0]['destination_link'] ?? $parsed[0]['link'] ?? '');
+            }
+        }
+
+        if ($redirect === '' || $redirect === '#') {
+            return redirect()->to('/home');
+        }
+
+        if (str_starts_with($redirect, '/')) {
+            return redirect()->to($redirect);
+        }
+
+        if (! $this->isSafeInternalRedirect($redirect, $request)) {
+            return redirect()->to('/home');
+        }
+
+        $redirectPath = (string) (parse_url($redirect, PHP_URL_PATH) ?: '');
+        if (str_contains($redirectPath, '/notifications/') && str_ends_with($redirectPath, '/open')) {
+            return redirect()->to('/home');
+        }
+
+        return redirect()->away($redirect);
+    }
+
+    private function markUserNotificationAsRead(string $id): void
+    {
+        if ($id === '') {
+            return;
+        }
+
+        $user = auth()->user();
+        if (empty($user)) {
+            return;
+        }
+
+        // Direct DB update — avoids relation/cache edge cases on production.
+        DB::table('notifications')
+            ->where('id', $id)
+            ->where('notifiable_id', $user->id)
+            ->where('notifiable_type', $user->getMorphClass())
+            ->whereNull('read_at')
+            ->update(['read_at' => now()]);
+
+        // Keep in-memory relations consistent for the rest of the request.
+        $notification = $user->notifications()->where('id', $id)->first();
+        if ($notification && is_null($notification->read_at)) {
+            $notification->markAsRead();
+        }
+    }
+
+    private function isSafeInternalRedirect(string $redirect, Request $request): bool
+    {
+        $host = parse_url($redirect, PHP_URL_HOST);
+        if (empty($host)) {
+            return false;
+        }
+
+        $normalize = static function ($value) {
+            return strtolower((string) preg_replace('/^www\./i', '', (string) $value));
+        };
+
+        $allowed = array_filter([
+            $normalize($request->getHost()),
+            $normalize(parse_url((string) config('app.url'), PHP_URL_HOST)),
+        ]);
+
+        return in_array($normalize($host), $allowed, true);
     }
 
     private function __chartOptions($title)

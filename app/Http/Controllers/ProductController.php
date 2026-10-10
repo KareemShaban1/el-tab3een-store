@@ -71,6 +71,7 @@ class ProductController extends Controller
         $business_id = request()->session()->get('user.business_id');
         $selling_price_group_count = SellingPriceGroup::countSellingPriceGroups($business_id);
         $is_woocommerce = $this->moduleUtil->isModuleInstalled('Woocommerce');
+        $show_active_in_app = is_storefront_business($business_id);
 
         if (request()->ajax()) {
             //Filter by location
@@ -297,7 +298,11 @@ class ProductController extends Controller
                         ? '<span class="label bg-gray">'.__('lang_v1.inactive').'</span>'
                         : '<span class="label label-success">'.__('lang_v1.active').'</span>';
                 })
-                ->editColumn('active_in_app', function ($row) {
+                ->editColumn('active_in_app', function ($row) use ($show_active_in_app) {
+                    if (! $show_active_in_app) {
+                        return '';
+                    }
+
                     if (auth()->user()->can('product.update')) {
                         $on = (bool) ($row->active_in_app ?? false);
                         $checked = $on ? 'checked' : '';
@@ -335,6 +340,12 @@ class ProductController extends Controller
                     'selling_price',
                     '<div style="white-space: nowrap;">@format_currency($min_price) @if($max_price != $min_price && $type == "variable") -  @format_currency($max_price)@endif </div>'
                 )
+                ->filterColumn('product', function ($query, $keyword) {
+                    $query->where(function ($inner) use ($keyword) {
+                        $inner->where('products.name', 'like', "%{$keyword}%")
+                            ->orWhere('products.tags', 'like', "%{$keyword}%");
+                    });
+                })
                 ->filterColumn('products.sku', function ($query, $keyword) {
                     $query->whereHas('variations', function ($q) use ($keyword) {
                         $q->where('sub_sku', 'like', "%{$keyword}%");
@@ -416,7 +427,7 @@ class ProductController extends Controller
         $categories = Category::forDropdown($business_id, 'product');
 
         $brands = Brands::forDropdown($business_id);
-        $units = Unit::forDropdown($business_id, true);
+        $units = Unit::forDropdown($business_id);
 
         $tax_dropdown = TaxRate::forBusinessDropdown($business_id, true, true);
         $taxes = $tax_dropdown['tax_rates'];
@@ -489,7 +500,7 @@ class ProductController extends Controller
         }
         try {
             $business_id = $request->session()->get('user.business_id');
-            $form_fields = ['name', 'brand_id', 'unit_id', 'category_id', 'tax', 'type', 'barcode_type', 'sku', 'alert_quantity', 'tax_type', 'weight', 'product_description', 'warranties', 'sub_unit_ids', 'preparation_time_in_minutes', 'order', 'product_custom_field1', 'product_custom_field2', 'product_custom_field3', 'product_custom_field4', 'product_custom_field5', 'product_custom_field6', 'product_custom_field7', 'product_custom_field8', 'product_custom_field9', 'product_custom_field10', 'product_custom_field11', 'product_custom_field12', 'product_custom_field13', 'product_custom_field14', 'product_custom_field15', 'product_custom_field16', 'product_custom_field17', 'product_custom_field18', 'product_custom_field19', 'product_custom_field20',];
+            $form_fields = ['name', 'brand_id', 'unit_id', 'category_id', 'tax', 'type', 'barcode_type', 'sku', 'alert_quantity', 'tax_type', 'weight', 'product_description', 'meta_title', 'meta_description', 'meta_keywords', 'tags', 'warranties', 'sub_unit_ids', 'preparation_time_in_minutes', 'order', 'product_custom_field1', 'product_custom_field2', 'product_custom_field3', 'product_custom_field4', 'product_custom_field5', 'product_custom_field6', 'product_custom_field7', 'product_custom_field8', 'product_custom_field9', 'product_custom_field10', 'product_custom_field11', 'product_custom_field12', 'product_custom_field13', 'product_custom_field14', 'product_custom_field15', 'product_custom_field16', 'product_custom_field17', 'product_custom_field18', 'product_custom_field19', 'product_custom_field20',];
 
             $module_form_fields = $this->moduleUtil->getModuleFormField('product_form_fields');
             if (! empty($module_form_fields)) {
@@ -497,12 +508,15 @@ class ProductController extends Controller
             }
 
             $product_details = $request->only($form_fields);
+            $product_details['tags'] = Product::normalizeTags($request->input('tags'));
             $product_details['business_id'] = $business_id;
             $product_details['created_by'] = $request->session()->get('user.id');
 
             $product_details['enable_stock'] = (! empty($request->input('enable_stock')) && $request->input('enable_stock') == 1) ? 1 : 0;
             $product_details['not_for_selling'] = (! empty($request->input('not_for_selling')) && $request->input('not_for_selling') == 1) ? 1 : 0;
-            $product_details['active_in_app'] = (! empty($request->input('active_in_app')) && $request->input('active_in_app') == 1) ? 1 : 0;
+            if (is_storefront_business($business_id)) {
+                $product_details['active_in_app'] = (! empty($request->input('active_in_app')) && $request->input('active_in_app') == 1) ? 1 : 0;
+            }
             $product_details['featured'] = (! empty($request->input('featured')) && $request->input('featured') == 1) ? 1 : 0;
             $product_details['order'] = $request->input('order') !== null && $request->input('order') !== '' ? (int) $request->input('order') : 0;
 
@@ -684,8 +698,14 @@ class ProductController extends Controller
 
         $default_profit_percent = request()->session()->get('business.default_profit_percent');
 
-        //Get units.
-        $units = Unit::forDropdown($business_id, true);
+        //Get units (base units only). Include current product unit if it was saved as a sub-unit.
+        $units = Unit::forDropdown($business_id);
+        if (! empty($product->unit_id) && ! $units->has($product->unit_id)) {
+            $current_unit = Unit::withTrashed()->find($product->unit_id);
+            if (! empty($current_unit)) {
+                $units->put($current_unit->id, $current_unit->actual_name . ' (' . $current_unit->short_name . ')');
+            }
+        }
         $sub_units = $this->productUtil->getSubUnits($business_id, $product->unit_id, true);
 
         //Get all business locations
@@ -724,7 +744,7 @@ class ProductController extends Controller
 
         try {
             $business_id = $request->session()->get('user.business_id');
-            $product_details = $request->only(['name', 'brand_id', 'unit_id', 'category_id', 'tax', 'barcode_type', 'sku', 'alert_quantity', 'tax_type', 'weight', 'product_description', 'warranties', 'sub_unit_ids', 'preparation_time_in_minutes', 'order', 'product_custom_field1', 'product_custom_field2', 'product_custom_field3', 'product_custom_field4', 'product_custom_field5', 'product_custom_field6', 'product_custom_field7', 'product_custom_field8', 'product_custom_field9', 'product_custom_field10', 'product_custom_field11', 'product_custom_field12', 'product_custom_field13', 'product_custom_field14', 'product_custom_field15', 'product_custom_field16', 'product_custom_field17', 'product_custom_field18', 'product_custom_field19', 'product_custom_field20',]);
+            $product_details = $request->only(['name', 'brand_id', 'unit_id', 'category_id', 'tax', 'barcode_type', 'sku', 'alert_quantity', 'tax_type', 'weight', 'product_description', 'meta_title', 'meta_description', 'meta_keywords', 'tags', 'warranties', 'sub_unit_ids', 'preparation_time_in_minutes', 'order', 'product_custom_field1', 'product_custom_field2', 'product_custom_field3', 'product_custom_field4', 'product_custom_field5', 'product_custom_field6', 'product_custom_field7', 'product_custom_field8', 'product_custom_field9', 'product_custom_field10', 'product_custom_field11', 'product_custom_field12', 'product_custom_field13', 'product_custom_field14', 'product_custom_field15', 'product_custom_field16', 'product_custom_field17', 'product_custom_field18', 'product_custom_field19', 'product_custom_field20',]);
 
             DB::beginTransaction();
 
@@ -772,6 +792,10 @@ class ProductController extends Controller
             $product->product_custom_field20 = $product_details['product_custom_field20'] ?? '';
 
             $product->product_description = $product_details['product_description'];
+            $product->meta_title = ! empty($product_details['meta_title']) ? trim((string) $product_details['meta_title']) : null;
+            $product->meta_description = ! empty($product_details['meta_description']) ? trim((string) $product_details['meta_description']) : null;
+            $product->meta_keywords = ! empty($product_details['meta_keywords']) ? trim((string) $product_details['meta_keywords']) : null;
+            $product->tags = Product::normalizeTags($request->input('tags'));
             $product->warranties = $product_details['warranties'];
             $product->sub_unit_ids = ! empty($product_details['sub_unit_ids']) ? $product_details['sub_unit_ids'] : null;
             $product->preparation_time_in_minutes = $product_details['preparation_time_in_minutes'];
@@ -785,7 +809,9 @@ class ProductController extends Controller
             }
 
             $product->not_for_selling = (! empty($request->input('not_for_selling')) && $request->input('not_for_selling') == 1) ? 1 : 0;
-            $product->active_in_app = (! empty($request->input('active_in_app')) && $request->input('active_in_app') == 1) ? 1 : 0;
+            if (is_storefront_business($business_id)) {
+                $product->active_in_app = (! empty($request->input('active_in_app')) && $request->input('active_in_app') == 1) ? 1 : 0;
+            }
             $product->featured = (! empty($request->input('featured')) && $request->input('featured') == 1) ? 1 : 0;
             $product->order = $request->input('order') !== null && $request->input('order') !== '' ? (int) $request->input('order') : 0;
 
@@ -1557,7 +1583,7 @@ class ProductController extends Controller
         $business_id = request()->session()->get('user.business_id');
         $categories = Category::forDropdown($business_id, 'product');
         $brands = Brands::forDropdown($business_id);
-        $units = Unit::forDropdown($business_id, true);
+        $units = Unit::forDropdown($business_id);
 
         $tax_dropdown = TaxRate::forBusinessDropdown($business_id, true, true);
         $taxes = $tax_dropdown['tax_rates'];
@@ -1607,7 +1633,7 @@ class ProductController extends Controller
 
         try {
             $form_fields = ['name', 'brand_id', 'unit_id', 'category_id', 'tax', 'barcode_type', 'tax_type', 'sku',
-                'alert_quantity', 'type', 'sub_unit_ids', 'sub_category_id', 'weight', 'product_description', 'warranties', 'order', 'product_custom_field1', 'product_custom_field2', 'product_custom_field3', 'product_custom_field4', 'product_custom_field5', 'product_custom_field6', 'product_custom_field7', 'product_custom_field8', 'product_custom_field9', 'product_custom_field10', 'product_custom_field11', 'product_custom_field12', 'product_custom_field13', 'product_custom_field14', 'product_custom_field15', 'product_custom_field16', 'product_custom_field17', 'product_custom_field18', 'product_custom_field19', 'product_custom_field20'];
+                'alert_quantity', 'type', 'sub_unit_ids', 'sub_category_id', 'weight', 'product_description', 'meta_title', 'meta_description', 'meta_keywords', 'tags', 'warranties', 'order', 'product_custom_field1', 'product_custom_field2', 'product_custom_field3', 'product_custom_field4', 'product_custom_field5', 'product_custom_field6', 'product_custom_field7', 'product_custom_field8', 'product_custom_field9', 'product_custom_field10', 'product_custom_field11', 'product_custom_field12', 'product_custom_field13', 'product_custom_field14', 'product_custom_field15', 'product_custom_field16', 'product_custom_field17', 'product_custom_field18', 'product_custom_field19', 'product_custom_field20'];
 
             $module_form_fields = $this->moduleUtil->getModuleData('product_form_fields');
             if (! empty($module_form_fields)) {
@@ -1618,6 +1644,7 @@ class ProductController extends Controller
                 }
             }
             $product_details = $request->only($form_fields);
+            $product_details['tags'] = Product::normalizeTags($request->input('tags'));
 
             $product_details['type'] = empty($product_details['type']) ? 'single' : $product_details['type'];
             $product_details['business_id'] = $business_id;
@@ -1630,7 +1657,9 @@ class ProductController extends Controller
             if (! empty($request->input('not_for_selling')) && $request->input('not_for_selling') == 1) {
                 $product_details['not_for_selling'] = 1;
             }
-            $product_details['active_in_app'] = (! empty($request->input('active_in_app')) && $request->input('active_in_app') == 1) ? 1 : 0;
+            if (is_storefront_business($business_id)) {
+                $product_details['active_in_app'] = (! empty($request->input('active_in_app')) && $request->input('active_in_app') == 1) ? 1 : 0;
+            }
             $product_details['featured'] = (! empty($request->input('featured')) && $request->input('featured') == 1) ? 1 : 0;
             $product_details['order'] = $request->input('order') !== null && $request->input('order') !== '' ? (int) $request->input('order') : 0;
             if (empty($product_details['sku'])) {
@@ -2073,6 +2102,10 @@ class ProductController extends Controller
         $value = request()->input('value');
 
         if (! in_array($field, ['is_inactive', 'active_in_app'], true)) {
+            return ['success' => false, 'msg' => __('messages.something_went_wrong')];
+        }
+
+        if ($field === 'active_in_app' && ! is_storefront_business()) {
             return ['success' => false, 'msg' => __('messages.something_went_wrong')];
         }
 

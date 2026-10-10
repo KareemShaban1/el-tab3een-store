@@ -3,9 +3,9 @@ namespace Modules\Manufacturing\Utils;
 
 use App\Business;
 use App\Transaction;
-use App\Models\TransactionSellLinesPurchaseLines;
+use App\TransactionSellLinesPurchaseLines;
 use App\Utils\Util;
-use App\Models\Variation;
+use App\Variation;
 use DB;
 use Modules\Manufacturing\Entities\MfgRecipeIngredient;
 
@@ -18,11 +18,11 @@ class ManufacturingUtil extends Util
     public function getIngredientDetails($recipe, $business_id, $location_id = null)
     {
         $ingredients_array = [];
-        $with = ['variation', 'variation.product', 'variation.product_variation', 'variation.product.unit'];
+        $with = ['variation', 'variation.product', 'variation.product_variation', 'variation.product.unit', 'sub_unit'];
 
         //If location given retrieve variation location details
         if (!empty($location_id)) {
-            $with = ['variation', 'variation.product', 'variation.product_variation', 'ingredient_group', 'variation.product.unit',
+            $with = ['variation', 'variation.product', 'variation.product_variation', 'ingredient_group', 'variation.product.unit', 'sub_unit',
             'variation.variation_location_details' => function ($q) use ($location_id) {
                 $q->where('location_id', $location_id);
             }];
@@ -36,30 +36,63 @@ class ManufacturingUtil extends Util
         //Format variation data
         foreach ($ingredient_variations as $ingredient_variation) {
             $variation = $ingredient_variation->variation;
-            //If base unit has sub_units get details
-            $sub_units = $this->getSubUnits($business_id, $variation->product->unit->id);
+            // All sub-units of the product unit (do not filter by product.related_sub_units —
+            // that can hide gram/etc. and make qty look like base-unit/kg).
+            $sub_units = $this->getSubUnits($business_id, $variation->product->unit->id, true);
             $unit_name = $variation->product->unit->short_name;
             $is_sub_unit = false;
             $sub_unit_id = null;
             $multiplier = 1;
+
+            // Keep recipe sub-unit available even if missing from dropdown source
+            if (!empty($ingredient_variation->sub_unit_id) && empty($sub_units[$ingredient_variation->sub_unit_id]) && !empty($ingredient_variation->sub_unit)) {
+                $sub_units[$ingredient_variation->sub_unit->id] = [
+                    'name' => $ingredient_variation->sub_unit->actual_name,
+                    'multiplier' => !empty($ingredient_variation->sub_unit->base_unit_multiplier)
+                        ? (float) $ingredient_variation->sub_unit->base_unit_multiplier
+                        : 1,
+                    'allow_decimal' => $ingredient_variation->sub_unit->allow_decimal,
+                ];
+            }
+
             if (!empty($sub_units)) {
                 foreach ($sub_units as $key => $value) {
-                    if (!empty($ingredient_variation->sub_unit_id) && $ingredient_variation->sub_unit_id == $key) {
+                    if (!empty($ingredient_variation->sub_unit_id) && (int) $ingredient_variation->sub_unit_id === (int) $key) {
                         $unit_name = $value['name'];
                         $sub_unit_id = $ingredient_variation->sub_unit_id;
-                        $multiplier = $value['multiplier'];
+                        $multiplier = (float) $value['multiplier'];
+                        if ($multiplier <= 0) {
+                            $multiplier = 1;
+                        }
                     }
                 }
                 $is_sub_unit = true;
+            }
+
+            // Fallback from relation if id set but not matched above
+            if ($multiplier == 1 && !empty($ingredient_variation->sub_unit) && !empty($ingredient_variation->sub_unit->base_unit_multiplier)) {
+                $multiplier = (float) $ingredient_variation->sub_unit->base_unit_multiplier;
+                if ($multiplier <= 0) {
+                    $multiplier = 1;
+                }
+                $sub_unit_id = $ingredient_variation->sub_unit_id;
+                $unit_name = $ingredient_variation->sub_unit->actual_name;
             }
 
             $line_total_quantity = $ingredient_variation->quantity;
             $unit_qty = $line_total_quantity * $multiplier;
 
             if (!empty($recipe)) {
-                $recipe_base_unit_multiplier = !empty($recipe->sub_unit) ? $recipe->sub_unit->base_unit_multiplier : 1;
-                $total_recipe_qty = !empty($recipe_base_unit_multiplier) ? $recipe->total_quantity * $recipe_base_unit_multiplier : $recipe->total_quantity;
-                $unit_qty = $unit_qty / $total_recipe_qty;
+                $recipe_base_unit_multiplier = !empty($recipe->sub_unit) && !empty($recipe->sub_unit->base_unit_multiplier)
+                    ? $recipe->sub_unit->base_unit_multiplier
+                    : 1;
+                $total_recipe_qty = ((float) $recipe->total_quantity) * ((float) $recipe_base_unit_multiplier);
+                // Avoid zero unit_quantity (breaks production qty scaling in JS)
+                if ($total_recipe_qty > 0) {
+                    $unit_qty = $unit_qty / $total_recipe_qty;
+                } else {
+                    $unit_qty = $line_total_quantity * $multiplier;
+                }
             }
             $total_price = $variation->dpp_inc_tax * $line_total_quantity * $multiplier;
             $waste_percent = !empty($ingredient_variation->waste_percent) ? $ingredient_variation->waste_percent : 0;
@@ -212,12 +245,14 @@ class ManufacturingUtil extends Util
         $price = 0;
         foreach ($row->ingredients as $ingredient) {
             if (!empty($ingredient->variation)) {
-                $ingredient_total = $ingredient->variation->dpp_inc_tax * $ingredient->quantity;
-                if (!empty($ingredient->sub_unit)) {
-                    $multiplier = !empty($ingredient->sub_unit->base_unit_multiplier) ? $ingredient->sub_unit->base_unit_multiplier : 1;
-                    $ingredient_total = $ingredient_total * $multiplier;
+                $multiplier = 1;
+                if (!empty($ingredient->sub_unit) && !empty($ingredient->sub_unit->base_unit_multiplier)) {
+                    $multiplier = (float) $ingredient->sub_unit->base_unit_multiplier;
+                    if ($multiplier <= 0) {
+                        $multiplier = 1;
+                    }
                 }
-                $price += $ingredient_total;
+                $price += $ingredient->variation->dpp_inc_tax * $ingredient->quantity * $multiplier;
             }
         }
 

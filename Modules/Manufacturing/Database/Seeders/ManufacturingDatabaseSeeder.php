@@ -17,5 +17,7 @@ class ManufacturingDatabaseSeeder extends Seeder
         Model::unguard();
 
         // $this->call("OthersTableSeeder");
+        // Demo products for packaging workflow (docs/Feature_In_Arabic.md step 1):
+        // $this->call(PackagingDemoProductsSeeder::class);
     }
 }

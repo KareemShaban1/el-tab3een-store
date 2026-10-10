@@ -5,7 +5,7 @@ namespace Modules\Manufacturing\Http\Controllers;
 use App\Utils\BusinessUtil;
 use App\Utils\ModuleUtil;
 use App\Utils\TransactionUtil;
-use App\Models\Variation;
+use App\Variation;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Routing\Controller;
@@ -107,11 +107,32 @@ class RecipeController extends Controller
 
                     return $html;
                 })
+                ->addColumn('ingredients_total_quantity', function ($row) {
+                    $total_qty = 0;
+                    if (! empty($row->ingredients)) {
+                        foreach ($row->ingredients as $ingredient) {
+                            $mult = 1;
+                            if (! empty($ingredient->sub_unit) && ! empty($ingredient->sub_unit->base_unit_multiplier)) {
+                                $mult = (float) $ingredient->sub_unit->base_unit_multiplier;
+                                if ($mult <= 0) {
+                                    $mult = 1;
+                                }
+                            }
+                            $total_qty += (float) ($ingredient->quantity ?? 0) * $mult;
+                        }
+                    }
+
+                    return '<span class="display_currency" data-currency_symbol="false">' . $total_qty . '</span>';
+                })
                 ->addColumn('unit_cost', function ($row) {
                     //Recipe price is dynamically calculated from each ingredients
                     $price = $this->mfgUtil->getRecipeTotal($row);
 
-                    $unit_cost = $price / $row->total_quantity;
+                    $qty = (float) ($row->total_quantity ?? 0);
+                    if (! empty($row->sub_unit) && ! empty($row->sub_unit->base_unit_multiplier)) {
+                        $qty *= (float) $row->sub_unit->base_unit_multiplier;
+                    }
+                    $unit_cost = $qty > 0 ? ($price / $qty) : 0;
 
                     return '<span class="display_currency unit_cost" data-unit_cost="' . $unit_cost . '" data-currency_symbol="true">' . $unit_cost . '</span>';
                 })
@@ -121,7 +142,7 @@ class RecipeController extends Controller
                 ->addColumn('row_select', function ($row) {
                     return  '<input type="checkbox" class="row-select" value="' . $row->id .'">' ;
                 })
-                ->rawColumns(['action', 'recipe_total', 'total_quantity', 'unit_cost', 'row_select'])
+                ->rawColumns(['action', 'recipe_total', 'total_quantity', 'ingredients_total_quantity', 'unit_cost', 'row_select'])
                 ->make(true);
         }
 
@@ -295,10 +316,17 @@ class RecipeController extends Controller
         $ingredient = Variation::with('product', 'product_variation', 'product.unit')
                             ->findOrFail($variation_id);
 
-        $sub_units = $this->moduleUtil->getSubUnits($business_id, $ingredient->product->unit->id);
+        // Include base + all sub-units (e.g. Kg + Gram) without product-related filter
+        $sub_units = $this->moduleUtil->getSubUnits(
+            $business_id,
+            $ingredient->product->unit->id,
+            true
+        );
 
         $ingredient->unit = $ingredient->product->unit->short_name;
         $ingredient->sub_units = $sub_units;
+        $ingredient->allow_decimal = $ingredient->product->unit->allow_decimal;
+        $ingredient->multiplier = 1;
 
         $row_index = request()->input('row_index');
 
@@ -365,18 +393,47 @@ class RecipeController extends Controller
                     continue;
                 }
                 
-                $ingredient_sub_units = $this->transactionUtil->getSubUnits($business_id, $ingredient->variation->product->unit->id);
-                $multiplier = !empty($ingredient->sub_unit_id) ? $ingredient->sub_unit->base_unit_multiplier : 1;
-                if (empty($multiplier)) {
+                $ingredient_sub_units = $this->transactionUtil->getSubUnits(
+                    $business_id,
+                    $ingredient->variation->product->unit->id,
+                    true
+                );
+
+                // Keep saved sub-unit in the list (e.g. Gram) so totals use its multiplier
+                if (!empty($ingredient->sub_unit_id) && empty($ingredient_sub_units[$ingredient->sub_unit_id]) && !empty($ingredient->sub_unit)) {
+                    $ingredient_sub_units[$ingredient->sub_unit->id] = [
+                        'name' => $ingredient->sub_unit->actual_name,
+                        'multiplier' => !empty($ingredient->sub_unit->base_unit_multiplier)
+                            ? (float) $ingredient->sub_unit->base_unit_multiplier
+                            : 1,
+                        'allow_decimal' => $ingredient->sub_unit->allow_decimal,
+                    ];
+                }
+
+                $multiplier = 1;
+                if (!empty($ingredient->sub_unit_id) && !empty($ingredient_sub_units[$ingredient->sub_unit_id]['multiplier'])) {
+                    $multiplier = (float) $ingredient_sub_units[$ingredient->sub_unit_id]['multiplier'];
+                } elseif (!empty($ingredient->sub_unit) && !empty($ingredient->sub_unit->base_unit_multiplier)) {
+                    $multiplier = (float) $ingredient->sub_unit->base_unit_multiplier;
+                }
+                if ($multiplier <= 0) {
                     $multiplier = 1;
                 }
+                $allow_decimal = $ingredient->variation->product->unit->allow_decimal;
+                if (!empty($ingredient->sub_unit_id) && !empty($ingredient_sub_units[$ingredient->sub_unit_id])) {
+                    $allow_decimal = $ingredient_sub_units[$ingredient->sub_unit_id]['allow_decimal'];
+                }
+                $sub_unit_id = (!empty($ingredient->sub_unit_id) && !empty($ingredient_sub_units[$ingredient->sub_unit_id]))
+                    ? $ingredient->sub_unit_id
+                    : null;
                 $temp = [
                     'id' => $ingredient->variation->id,
                     'dpp_inc_tax' => $ingredient->variation->dpp_inc_tax,
                     'quantity' => $ingredient->quantity,
                     'multiplier' => $multiplier,
                     'sub_units' => $ingredient_sub_units,
-                    'sub_unit_id' => $ingredient->sub_unit_id,
+                    'sub_unit_id' => $sub_unit_id,
+                    'allow_decimal' => $allow_decimal,
                     'unit' => $ingredient->variation->product->unit->short_name,
                     'full_name' => $ingredient->variation->full_name,
                     'waste_percent' => !empty($ingredient->waste_percent) ? $ingredient->waste_percent : 0,
@@ -391,7 +448,7 @@ class RecipeController extends Controller
             }
         }
 
-        $sub_units = $this->moduleUtil->getSubUnits($business_id, $variation->unit_id);
+        $sub_units = $this->moduleUtil->getSubUnits($business_id, $variation->unit_id, true);
 
         $unit_html = !empty($sub_units) ? $sub_units : $variation->unit_name;
 
@@ -507,7 +564,7 @@ class RecipeController extends Controller
                     $unit_price = $unit_prices[$recipe->id];
 
                     //Calculate unit price in base unit
-                    if (!empty($recipe->sub_unit->base_unit_multiplier)) {
+                    if (!empty($recipe->sub_unit) && !empty($recipe->sub_unit->base_unit_multiplier)) {
                         $unit_price = $unit_price / $recipe->sub_unit->base_unit_multiplier;
                     }
 

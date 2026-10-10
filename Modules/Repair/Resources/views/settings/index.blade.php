@@ -154,9 +154,69 @@
                     $("select#repair_status_id").val({{$repair_settings['default_status']}}).change();
                 @endif
 
-                if ($('#repair_tc_condition').length) {
+                if ($('#repair_tc_condition').length && ! tinymce.get('repair_tc_condition')) {
+                    var repairTermsUploadUrl = @json(url('repair/repair-settings/upload-image'));
+
+                    function uploadRepairTermsImage(file, filename, done, fail) {
+                        var formData = new FormData();
+                        formData.append('file', file, filename || file.name || 'image.png');
+                        $.ajax({
+                            url: repairTermsUploadUrl,
+                            method: 'POST',
+                            data: formData,
+                            processData: false,
+                            contentType: false,
+                            success: function (json) {
+                                if (json && json.location) {
+                                    done(json.location);
+                                } else {
+                                    fail('Upload failed');
+                                }
+                            },
+                            error: function (xhr) {
+                                var msg = (xhr.responseJSON && xhr.responseJSON.error) ? xhr.responseJSON.error : 'Upload failed';
+                                fail(msg);
+                            }
+                        });
+                    }
+
                     tinymce.init({
                         selector: 'textarea#repair_tc_condition',
+                        plugins: 'image paste',
+                        automatic_uploads: true,
+                        paste_data_images: true,
+                        file_picker_types: 'image',
+                        relative_urls: false,
+                        remove_script_host: false,
+                        convert_urls: false,
+                        images_upload_handler: function (blobInfo, success, failure) {
+                            uploadRepairTermsImage(blobInfo.blob(), blobInfo.filename(), success, failure);
+                        },
+                        file_picker_callback: function (callback, value, meta) {
+                            if (meta.filetype !== 'image') {
+                                return;
+                            }
+
+                            var input = document.createElement('input');
+                            input.type = 'file';
+                            input.accept = 'image/*';
+                            input.onchange = function () {
+                                var file = input.files && input.files[0];
+                                if (! file) {
+                                    return;
+                                }
+
+                                uploadRepairTermsImage(file, file.name, function (location) {
+                                    callback(location, { alt: file.name });
+                                }, function (msg) {
+                                    tinymce.activeEditor.notificationManager.open({
+                                        text: msg,
+                                        type: 'error'
+                                    });
+                                });
+                            };
+                            input.click();
+                        }
                     });
                 }
             }

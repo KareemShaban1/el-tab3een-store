@@ -50,9 +50,9 @@
 			</div>
 			<div class="col-sm-3">
 				<div class="form-group">
-					{!! Form::label('recipe_quantity', __('lang_v1.quantity').':*') !!}
+					{!! Form::label('recipe_quantity', __('manufacturing::lang.production_quantity').':*') !!}
 					<div class="@if(!empty($sub_units)) input_inline @else input-group @endif" id="recipe_quantity_input">
-						{!! Form::text('quantity', @num_format($quantity), ['class' => 'form-control input_number', 'id' => 'recipe_quantity', 'required', 'data-rule-notEmpty' => 'true', 'data-rule-notEqualToWastedQuantity' => 'true']); !!}
+						{!! Form::text('quantity', @num_format($quantity), ['class' => 'form-control input_number input_quantity', 'id' => 'recipe_quantity', 'required', 'data-rule-notEmpty' => 'true', 'data-rule-notEqualToWastedQuantity' => 'true']); !!}
 						<span class="@if(empty($sub_units)) input-group-addon @endif" id="unit_html">
 							@if(!empty($sub_units))
 								<select name="sub_unit_id" class="form-control" id="sub_unit_id">
@@ -74,6 +74,19 @@
 								{{ $unit_name }}
 							@endif
 						</span>
+					</div>
+				</div>
+			</div>
+			@php
+				$edit_final_quantity = max(0, (float) $quantity - (float) $quantity_wasted);
+			@endphp
+			<div class="col-sm-3">
+				<div class="form-group">
+					{!! Form::label('final_quantity', __('manufacturing::lang.final_quantity').':') !!}
+					@show_tooltip(__('manufacturing::lang.final_quantity_stock_tooltip'))
+					<div class="@if(!empty($sub_units)) input_inline @else input-group @endif">
+						{!! Form::text('final_quantity', @num_format($edit_final_quantity), ['class' => 'form-control input_number input_quantity', 'id' => 'final_quantity', 'readonly']); !!}
+						<span class="@if(empty($sub_units)) input-group-addon @endif" id="final_quantity_unit_html">{{ $unit_name }}</span>
 					</div>
 				</div>
 			</div>

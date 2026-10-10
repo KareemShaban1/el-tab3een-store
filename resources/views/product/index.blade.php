@@ -446,11 +446,13 @@ $(document).ready(function() {
 				name: 'products.is_inactive',
 				searchable: false
 			},
+			@if(is_storefront_business())
 			{
 				data: 'active_in_app',
 				name: 'products.active_in_app',
 				searchable: false
 			},
+			@endif
 			{
 				data: 'product_custom_field1',
 				name: 'products.product_custom_field1',

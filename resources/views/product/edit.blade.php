@@ -155,6 +155,27 @@
                 {!! Form::label('product_description', __('lang_v1.product_description') . ':') !!}
                   {!! Form::textarea('product_description', $product->product_description, ['class' => 'form-control']); !!}
               </div>
+              @if(is_storefront_business())
+              <div class="form-group tw-mt-3">
+                {!! Form::label('meta_title', __('lang_v1.product_meta_title') . ':') !!}
+                {!! Form::text('meta_title', $product->meta_title, ['class' => 'form-control', 'maxlength' => 191, 'placeholder' => __('lang_v1.product_meta_title_placeholder')]); !!}
+                <p class="help-block">@lang('lang_v1.product_meta_title_help')</p>
+              </div>
+              <div class="form-group tw-mt-3">
+                {!! Form::label('meta_description', __('lang_v1.product_meta_description') . ':') !!}
+                {!! Form::textarea('meta_description', $product->meta_description, ['class' => 'form-control', 'rows' => 2, 'maxlength' => 500]); !!}
+                <p class="help-block">@lang('lang_v1.product_meta_description_help')</p>
+              </div>
+              <div class="form-group tw-mt-3">
+                {!! Form::label('meta_keywords', __('lang_v1.product_meta_keywords') . ':') !!}
+                {!! Form::text('meta_keywords', $product->meta_keywords, ['class' => 'form-control', 'maxlength' => 255]); !!}
+              </div>
+              @endif
+              <div class="form-group tw-mt-3">
+                {!! Form::label('tags', __('lang_v1.product_tags') . ':') !!}
+                {!! Form::text('tags', $product->tags, ['class' => 'form-control', 'placeholder' => __('lang_v1.product_tags_help')]); !!}
+                <p class="help-block">@lang('lang_v1.product_tags_help')</p>
+              </div>
               <div class="form-group tw-mt-3">
                 {!! Form::label('warranties', __('lang_v1.warranties') . ':') !!}
                   {!! Form::textarea('warranties', $product->warranties, ['class' => 'form-control']); !!}
@@ -237,6 +258,7 @@
           </div>
         </div>
 
+        @if(is_storefront_business())
         <div class="col-sm-4">
             <div class="form-group">
                 <br>
@@ -245,6 +267,7 @@
                 </label> @show_tooltip(__('lang_v1.tooltip_active_in_app'))
             </div>
         </div>
+        @endif
 
         <div class="col-sm-4">
             <div class="form-group">

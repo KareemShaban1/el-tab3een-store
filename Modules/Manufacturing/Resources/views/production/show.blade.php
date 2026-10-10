@@ -66,10 +66,13 @@
                     @endif
                 </div>
                 <div class="col-md-6">
-                    <strong>@lang('lang_v1.quantity'):</strong>
+                    <strong>@lang('manufacturing::lang.production_quantity'):</strong>
                     {{@format_quantity($quantity)}} {{$unit_name}}<br>
                     <strong>@lang('manufacturing::lang.waste_units'):</strong>
-                    {{@format_quantity($quantity_wasted)}} {{$unit_name}}
+                    {{@format_quantity($quantity_wasted)}} {{$unit_name}}<br>
+                    <strong>@lang('manufacturing::lang.final_quantity'):</strong>
+                    {{@format_quantity(max(0, $quantity - $quantity_wasted))}} {{$unit_name}}
+                    <br><small class="text-muted">@lang('manufacturing::lang.final_quantity_stock_tooltip')</small>
                 </div>
             </div>
             <div class="row">
@@ -89,8 +92,9 @@
                         </thead>
                         <tbody>
                             @php
-                                $total_ingredient_unit_price = 0;
                                 $total_ingredient_price = 0;
+                                $total_input_quantity = 0;
+                                $total_final_quantity = 0;
                             @endphp
                             @foreach($ingredients as $ingredient)
                                 <tr>
@@ -100,8 +104,9 @@
                                     <td>{{@format_quantity($ingredient['final_quantity'])}} {{$ingredient['unit']}}</td>
                                     @php
                                         $price = $ingredient['total_price'];
-
                                         $total_ingredient_price += $price;
+                                        $total_input_quantity += $ingredient['quantity'];
+                                        $total_final_quantity += $ingredient['final_quantity'];
                                     @endphp
                                     <td>
                                          <span class="display_currency" data-currency_symbol="true">{{$price}}</span>
@@ -110,6 +115,17 @@
                             @endforeach
                         </tbody>
                         <tfoot>
+                            <tr class="bg-gray">
+                                <td class="text-right"><strong>@lang('sale.total')</strong></td>
+                                <td><strong>{{@format_quantity($total_input_quantity)}}</strong></td>
+                                <td></td>
+                                <td><strong>{{@format_quantity($total_final_quantity)}}</strong></td>
+                                <td>
+                                    <strong>
+                                        <span class="display_currency" data-currency_symbol="true">{{$total_ingredient_price}}</span>
+                                    </strong>
+                                </td>
+                            </tr>
                             <tr>
                                 <td colspan="4" class="text-right"><strong>@lang('manufacturing::lang.ingredients_cost')</strong></td>
                                 <td><span class="display_currency" data-currency_symbol="true">{{$total_ingredient_price}}</span></td>

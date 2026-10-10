@@ -22,12 +22,7 @@ class ServoOrderController extends Controller
 
     public function index()
     {
-        if (! auth()->user()->can('sell.view') &&
-            ! auth()->user()->can('direct_sell.view') &&
-            ! auth()->user()->can('view_own_sell_only') &&
-            ! auth()->user()->can('view_commission_agent_sell')) {
-            abort(403, 'Unauthorized action.');
-        }
+        $this->authorizeServoOrders();
 
         if (request()->ajax()) {
             $business_id = request()->session()->get('user.business_id');
@@ -130,12 +125,7 @@ class ServoOrderController extends Controller
 
     public function show($id)
     {
-        if (! auth()->user()->can('sell.view') &&
-            ! auth()->user()->can('direct_sell.view') &&
-            ! auth()->user()->can('view_own_sell_only') &&
-            ! auth()->user()->can('view_commission_agent_sell')) {
-            abort(403, 'Unauthorized action.');
-        }
+        $this->authorizeServoOrders();
 
         $business_id = request()->session()->get('user.business_id');
 
@@ -171,12 +161,7 @@ class ServoOrderController extends Controller
 
     public function clientDetails($contact_id)
     {
-        if (! auth()->user()->can('sell.view') &&
-            ! auth()->user()->can('direct_sell.view') &&
-            ! auth()->user()->can('view_own_sell_only') &&
-            ! auth()->user()->can('view_commission_agent_sell')) {
-            abort(403, 'Unauthorized action.');
-        }
+        $this->authorizeServoOrders();
 
         if (! auth()->user()->can('customer.view') &&
             ! auth()->user()->can('customer.view_own') &&
@@ -206,5 +191,14 @@ class ServoOrderController extends Controller
         }
 
         return '<a href="#" class="btn-modal" data-href="'.action([self::class, 'clientDetails'], [$contact_id]).'" data-container=".view_modal">'.e($name).'</a>';
+    }
+
+    private function authorizeServoOrders(): void
+    {
+        $is_admin = auth()->user()->hasRole('Admin#'.session('business.id'));
+
+        if (! $is_admin && ! auth()->user()->can('servo_orders.view')) {
+            abort(403, 'Unauthorized action.');
+        }
     }
 }

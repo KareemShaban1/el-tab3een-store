@@ -1653,6 +1653,7 @@ class ProductUtil extends Util
                 $query->where(function ($query) use ($search_term, $search_fields) {
                     if (in_array('name', $search_fields)) {
                         $query->where('products.name', 'like', '%'.$search_term.'%');
+                        $query->orWhere('products.tags', 'like', '%'.$search_term.'%');
                     }
 
                     if (in_array('sku', $search_fields)) {
@@ -1687,6 +1688,7 @@ class ProductUtil extends Util
                 $query->where(function ($query) use ($search_term, $search_fields) {
                     if (in_array('name', $search_fields)) {
                         $query->where('products.name', $search_term);
+                        $query->orWhere('products.tags', 'like', '%'.$search_term.'%');
                     }
 
                     if (in_array('sku', $search_fields)) {
@@ -1733,6 +1735,13 @@ class ProductUtil extends Util
         if (in_array('lot', $search_fields)) {
             $query->addSelect('pl.id as purchase_line_id', 'pl.lot_number');
         }
+
+        $module_util = new \App\Utils\ModuleUtil();
+        $module_util->getModuleData('modify_product_search_query', [
+            'query' => $query,
+            'business_id' => $business_id,
+            'location_id' => $location_id,
+        ]);
 
         $data = $query->groupBy('variations.id')
              ->orderBy('VLD.qty_available', 'desc')

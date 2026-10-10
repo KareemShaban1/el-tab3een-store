@@ -1543,6 +1543,7 @@
 
         </div>
         </div>
+        @include('role.partials.storefront_permissions')
         <hr>
         <div class="row check_group">
         <div class="col-md-1">

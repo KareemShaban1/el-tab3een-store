@@ -36,6 +36,41 @@ class Product extends Model
     }
 
     /**
+     * Match a storefront or catalog search term against the product name or its tags.
+     */
+    public function scopeWhereNameOrTags($query, string $term)
+    {
+        $like = '%'.addcslashes($term, '%_\\').'%';
+
+        return $query->where(function ($inner) use ($like) {
+            $inner->where('products.name', 'like', $like)
+                ->orWhere('products.tags', 'like', $like);
+        });
+    }
+
+    public static function normalizeTags(?string $raw): ?string
+    {
+        $parts = preg_split('/[,،;\n]+/u', (string) $raw) ?: [];
+        $tags = [];
+
+        foreach ($parts as $part) {
+            $tag = trim((string) (preg_replace('/\s+/u', ' ', (string) $part) ?? ''));
+            if ($tag === '') {
+                continue;
+            }
+
+            $tag = mb_substr($tag, 0, 80);
+            $tags[mb_strtolower($tag)] = $tag;
+        }
+
+        if ($tags === []) {
+            return null;
+        }
+
+        return mb_substr(implode(', ', $tags), 0, 2000);
+    }
+
+    /**
      * Featured first, then manual order, then newest (for storefront / home lists).
      */
     public function scopeStorefrontSortOrder($query)

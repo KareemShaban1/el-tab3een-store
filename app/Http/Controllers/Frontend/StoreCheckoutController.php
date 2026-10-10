@@ -23,6 +23,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 use App\Http\Controllers\Controller;
+use App\StorefrontSetting;
+use Illuminate\Support\Facades\Schema;
 
 class StoreCheckoutController extends Controller
 {
@@ -721,9 +723,19 @@ class StoreCheckoutController extends Controller
      */
     private function customerSupportContactDetails(): array
     {
+        $phone = (string) config('storefront.support_phone', '19900');
+        $email = (string) config('storefront.support_email', 'info@eltab3een.com');
+
+        if (Schema::hasTable('storefront_settings')) {
+            $businessId = StorefrontController::resolveBusinessId(request());
+            $settings = StorefrontSetting::forBusiness($businessId);
+            $phone = $settings->supportPhone();
+            $email = $settings->supportEmail();
+        }
+
         return [
-            'phone' => (string) config('storefront.support_phone', '19900'),
-            'email' => (string) config('storefront.support_email', 'info@eltab3een.com'),
+            'phone' => $phone,
+            'email' => $email,
         ];
     }
 

@@ -1319,7 +1319,7 @@ class Util
         ];
     }
 
-    public function parseNotifications($notifications)
+    public function parseNotifications($notifications, bool $wrap_open_links = true)
     {
         $notifications_data = [];
         $storeOrderNotificationUtil = app(StoreOrderNotificationUtil::class);
@@ -1358,10 +1358,14 @@ class Util
                     );
                 }
 
-                if ($order_type === 'servo' && ! empty($data['servo_order_log_id'])) {
+                if (! empty($data['transaction_id'])) {
+                    $orderLinkParams = ['highlight' => $data['transaction_id']];
+                    if (! empty($data['invoice_no'])) {
+                        $orderLinkParams['invoice_no'] = $data['invoice_no'];
+                    }
+                    $link = route('sells.ecommerce.orders', $orderLinkParams);
+                } elseif ($order_type === 'servo' && ! empty($data['servo_order_log_id'])) {
                     $link = route('servo-orders.show', $data['servo_order_log_id']);
-                } elseif (! empty($data['transaction_id'])) {
-                    $link = action([\App\Http\Controllers\SellController::class, 'show'], [$data['transaction_id']]);
                 } else {
                     $link = route('sells.ecommerce.orders');
                 }
@@ -1419,12 +1423,59 @@ class Util
                 if (! empty($module_notification_data)) {
                     foreach ($module_notification_data as $module_data) {
                         if (! empty($module_data)) {
+                            // Module parsers often omit these; required to mark-as-read on click.
+                            if (empty($module_data['notification_id'])) {
+                                $module_data['notification_id'] = $notification->id;
+                            }
+                            if (! array_key_exists('read_at', $module_data)) {
+                                $module_data['read_at'] = $notification->read_at;
+                            }
                             $notifications_data[] = $module_data;
                         }
                     }
                 }
             }
         }
+
+        if ($wrap_open_links) {
+            $notifications_data = $this->wrapUnreadNotificationsWithOpenLinks($notifications_data);
+        }
+
+        return $notifications_data;
+    }
+
+    /**
+     * Force unread notification links through /notifications/{id}/open
+     * so mark-as-read works even with old blade/JS on the server.
+     *
+     * @param  array<int, array<string, mixed>>  $notifications_data
+     * @return array<int, array<string, mixed>>
+     */
+    private function wrapUnreadNotificationsWithOpenLinks(array $notifications_data): array
+    {
+        foreach ($notifications_data as &$item) {
+            $id = $item['notification_id'] ?? null;
+            $link = trim((string) ($item['link'] ?? ''));
+            $readAt = $item['read_at'] ?? null;
+            $isPopup = isset($item['show_popup']);
+
+            if ($isPopup || empty($id) || ! empty($readAt) || $link === '' || $link === '#') {
+                continue;
+            }
+
+            if (str_contains($link, '/notifications/') && str_contains($link, '/open')) {
+                continue;
+            }
+
+            // Popup helper route already marks as read.
+            if (str_contains($link, '/show-notification/')) {
+                continue;
+            }
+
+            $item['destination_link'] = $link;
+            $item['link'] = route('notifications.open', ['id' => $id]).'?redirect='.rawurlencode($link);
+        }
+        unset($item);
 
         return $notifications_data;
     }

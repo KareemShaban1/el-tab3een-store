@@ -100,6 +100,11 @@
 						{{$tax_type[$product->tax_type]  }}<br>
 						<b>@lang('product.product_type'): </b>
 						@lang('lang_v1.' . $product->type)
+						@if(!empty($product->tags))
+							<br>
+							<b>@lang('lang_v1.product_tags'): </b>
+							{{ $product->tags }}
+						@endif
 						
 	      			</div>
 	      			<div class="clearfix"></div>

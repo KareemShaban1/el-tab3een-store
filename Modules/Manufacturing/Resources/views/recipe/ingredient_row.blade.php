@@ -33,16 +33,37 @@
 		</div>
 	</td>
 	<td>
-		<div class="@if(empty($ingredient->sub_units)) input-group @else input_inline @endif">
-			{!! Form::text('ingredients[' . $row_index . '][quantity]', !empty($ingredient->quantity) ? @num_format($ingredient->quantity) : 1, ['class' => 'form-control input_number quantity input-sm', 'placeholder' => __('lang_v1.quantity'), 'required']); !!}
-			<span class="@if(empty($ingredient->sub_units)) input-group-addon @endif">
-				@if(!empty($ingredient->sub_units))
+		@php
+			// Copy off Eloquent dynamic props — offset/reset on $model->sub_units causes ViewException
+			$sub_units = !empty($ingredient->sub_units) ? (array) $ingredient->sub_units : [];
+			$has_sub_units = count($sub_units) > 0;
+			$allow_decimal = isset($ingredient->allow_decimal) ? (int) $ingredient->allow_decimal : 1;
+			if ($has_sub_units && !empty($ingredient->sub_unit_id) && isset($sub_units[$ingredient->sub_unit_id])) {
+				$allow_decimal = (int) ($sub_units[$ingredient->sub_unit_id]['allow_decimal'] ?? 1);
+			} elseif ($has_sub_units) {
+				$first_unit = reset($sub_units);
+				$allow_decimal = (int) ($first_unit['allow_decimal'] ?? 1);
+			}
+		@endphp
+		<div class="@if(!$has_sub_units) input-group @else input_inline @endif">
+			{!! Form::text('ingredients[' . $row_index . '][quantity]', !empty($ingredient->quantity) ? @num_format($ingredient->quantity) : 1, [
+				'class' => 'form-control input_number quantity input-sm',
+				'placeholder' => __('lang_v1.quantity'),
+				'required',
+				'data-decimal' => $allow_decimal ? 1 : 0,
+			]); !!}
+			<span class="@if(!$has_sub_units) input-group-addon @endif">
+				@if($has_sub_units)
 					<select name="ingredients[{{$row_index}}][sub_unit_id]" class="form-control input-sm row_sub_unit_id">
-						@foreach($ingredient->sub_units as $key => $value)
+						@foreach($sub_units as $key => $value)
 							<option 
 								value="{{$key}}"
-								data-multiplier="{{$value['multiplier']}}"
-								@if(!empty($ingredient->sub_unit_id) && $key == $ingredient->sub_unit_id)
+								data-multiplier="{{ (float) $value['multiplier'] }}"
+								data-allow_decimal="{{$value['allow_decimal']}}"
+								@if(
+									(!empty($ingredient->sub_unit_id) && (int) $key === (int) $ingredient->sub_unit_id)
+									|| (empty($ingredient->sub_unit_id) && (float) $value['multiplier'] == 1)
+								)
 									selected
 								@endif
 								>{{$value['name']}}
@@ -56,8 +77,9 @@
 		</div>
 	</td>
 	@php
+		$multiplier = !empty($ingredient->multiplier) ? $ingredient->multiplier : 1;
 		$price = !empty($ingredient->quantity) ? $ingredient->quantity * $ingredient->dpp_inc_tax : $ingredient->dpp_inc_tax;
-		$price = $price * $ingredient->multiplier;
+		$price = $price * $multiplier;
 	@endphp
 	<td><span class="ingredient_price">{{@num_format($price)}}</span></td>
 	<td><button type="button" class="btn btn-danger btn-xs remove_ingredient"><i class="fas fa-times"></i></button></td>

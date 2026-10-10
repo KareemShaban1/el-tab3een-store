@@ -114,4 +114,40 @@ class RepairSettingsController extends Controller
 
         return redirect()->back()->with(['status' => $output]);
     }
+
+    public function uploadImage(Request $request)
+    {
+        $business_id = request()->session()->get('user.business_id');
+
+        if (! (auth()->user()->can('superadmin') || ($this->moduleUtil->hasThePermissionInSubscription($business_id, 'repair_module') && auth()->user()->can('repair.create')))) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        if (config('app.env') == 'demo') {
+            return response()->json(['error' => 'File upload is disabled in demo.'], 422);
+        }
+
+        $file = $request->file('file');
+        if (empty($file) || ! $file->isValid() || ! str_starts_with((string) $file->getMimeType(), 'image/')) {
+            return response()->json(['error' => 'Invalid image file.'], 422);
+        }
+
+        if ($file->getSize() > (int) config('constants.document_size_limit')) {
+            return response()->json(['error' => 'Image is too large.'], 422);
+        }
+
+        try {
+            $file_name = $this->moduleUtil->uploadFile($request, 'file', 'repair_terms', 'image');
+        } catch (\Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 422);
+        }
+
+        if (empty($file_name)) {
+            return response()->json(['error' => 'Unable to upload image.'], 422);
+        }
+
+        return response()->json([
+            'location' => asset('uploads/repair_terms/'.$file_name),
+        ]);
+    }
 }

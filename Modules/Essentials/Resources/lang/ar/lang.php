@@ -310,6 +310,9 @@ return[
 "total_leaves_days"=>":total_leaves يوم",
 "show_all_payroll"=>"عرض كل كشوفات الرواتب",
 "show_all_payroll_groups"=>"عرض جميع مجموعات كشوفات المرتبات",
+"add_payroll_payment"=>"إضافة دفعة راتب",
+"edit_payroll_payment"=>"تعديل دفعة راتب",
+"delete_payroll_payment"=>"حذف دفعة راتب",
 "delete_leave"=>"حذف الأجازة",
 
 "new_client_notification" => ":client_name تم تسجيل عميل جديد بأسم <br> البرد الألكترونى - :client_email",

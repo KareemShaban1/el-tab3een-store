@@ -35,7 +35,7 @@
         <div class="col-sm-4">
           <div class="form-group">
             {!! Form::label('unit_id', __('product.unit') . ':*') !!}
-              {!! Form::select('unit_id', $units, null, ['class' => 'form-control select2', 'required']); !!}
+              {!! Form::select('unit_id', $units, null, ['class' => 'form-control select2', 'required', 'placeholder' => __('messages.please_select')]); !!}
           </div>
         </div>
 
@@ -140,6 +140,10 @@
             {!! Form::label('product_description', __('lang_v1.product_description') . ':') !!}
               {!! Form::textarea('product_description', null, ['class' => 'form-control']); !!}
           </div>
+          <div class="form-group">
+            {!! Form::label('tags', __('lang_v1.product_tags') . ':') !!}
+            {!! Form::text('tags', null, ['class' => 'form-control', 'placeholder' => __('lang_v1.product_tags_help')]); !!}
+          </div>
         </div>
         <div class="clearfix"></div>
         <div class="col-sm-4">
@@ -179,6 +183,7 @@
             </label> @show_tooltip(__('lang_v1.tooltip_not_for_selling'))
           </div>
         </div>
+        @if(is_storefront_business())
         <div class="col-sm-4">
           <div class="form-group">
             <br>
@@ -187,6 +192,7 @@
             </label> @show_tooltip(__('lang_v1.tooltip_active_in_app'))
           </div>
         </div>
+        @endif
         <div class="col-sm-4">
           <div class="form-group">
             <br>

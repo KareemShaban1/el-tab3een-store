@@ -9,10 +9,34 @@
 	</script>
 	@endif
 	<!-- ===================== ANNOUNCEMENT BAR ===================== -->
+	@php
+	$appearance = $storeAppearance ?? \App\StorefrontSetting::defaultContent();
+	$supportPhone = $appearance['support_phone'] ?? config('storefront.support_phone', '19900');
+	$supportEmail = $appearance['support_email'] ?? config('storefront.support_email', 'info@eltab3een.com');
+	$announceEnabled = (bool) ($appearance['announce_enabled'] ?? true);
+	$announceText = trim((string) ($appearance['announce_text'] ?? ''));
+	$announceLinkText = trim((string) ($appearance['announce_link_text'] ?? ''));
+	$announceLinkUrl = $appearance['announce_link_url'] ?? route('store.products.index');
+	$socialLinks = [
+	'facebook' => ['label' => 'f', 'url' => data_get($appearance, 'social.facebook')],
+	'linkedin' => ['label' => 'in', 'url' => data_get($appearance, 'social.linkedin')],
+	'x' => ['label' => 'X', 'url' => data_get($appearance, 'social.x')],
+	'youtube' => ['label' => '▶', 'url' => data_get($appearance, 'social.youtube')],
+	'whatsapp' => ['label' => 'w', 'url' => data_get($appearance, 'social.whatsapp')],
+	];
+	@endphp
 	<div class="announce">
 		<div class="container">
-			<span>🎉 خصم يصل لـ 50% على أحدث الهواتف الذكية! <a
-					href="{{ route('store.products.index') }}">تسوق الآن ←</a></span>
+			@if ($announceEnabled && $announceText !== '')
+			<span>
+				{{ $announceText }}
+				@if ($announceLinkText !== '')
+				<a href="{{ $announceLinkUrl }}">{{ $announceLinkText }}</a>
+				@endif
+			</span>
+			@else
+			<span></span>
+			@endif
 			<div class="announce-links">
 				@foreach ($storeHeaderPages ?? [] as $headerPage)
 				<a href="{{ $headerPage->url }}">{{ $headerPage->title }}</a>
@@ -22,8 +46,11 @@
 				<a
 					href="{{ route('repair-status') }}">{{ __('storefront.repair_status.track_repair') }}</a>
 				@endif
-				<!-- <a href="#">مراكز الصيانة</a> -->
-				<span style="color:var(--accent);font-weight:700;">📞 19900</span>
+				@if ($supportPhone !== '')
+				<a href="tel:{{ preg_replace('/\s+/', '', $supportPhone) }}"
+					style="color:var(--accent);font-weight:700;">📞
+					{{ $supportPhone }}</a>
+				@endif
 			</div>
 		</div>
 	</div>
@@ -46,9 +73,16 @@
 				<a href="{{ route('welcome') }}" class="logo">
 					<div class="logo-icon">⚡</div>
 					<div>
-						<div class="logo-name">التابعين <span>للإلكترونيات</span>
+						<div class="logo-name">
+							{{ $appearance['brand_name'] ?? 'التابعين' }}
+							@if (! empty($appearance['brand_name_highlight']))
+							<span>{{ $appearance['brand_name_highlight'] }}</span>
+							@endif
 						</div>
-						<div class="logo-sub">El Tab3een Electronics</div>
+						@if (! empty($appearance['brand_name_en']))
+						<div class="logo-sub">{{ $appearance['brand_name_en'] }}
+						</div>
+						@endif
 					</div>
 				</a>
 
@@ -92,16 +126,16 @@
 				<div class="header-actions">
 					@auth('customer')
 					<div class="account-dropdown">
-						<button type="button" class="h-action account-toggle">
+						<button type="button" class="h-action account-toggle" aria-haspopup="true" aria-expanded="false">
 							<svg fill="none" stroke="currentColor"
 								stroke-width="1.9" viewBox="0 0 24 24">
 								<path
 									d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
 								<circle cx="12" cy="7" r="4" />
 							</svg>
-							<span>حسابي</span>
+							<span>{{ auth('customer')->user()->name }}</span>
 						</button>
-						<div class="account-menu">
+						<div class="account-menu" role="menu">
 							<a href="{{ route('store.account.profile') }}">الملف
 								الشخصي</a>
 							<a
@@ -115,7 +149,7 @@
 						</div>
 					</div>
 					@else
-					<a href="{{ route('store.auth.login.form') }}" class="h-action">
+					<a href="{{ route('store.auth.login.form', ['redirect' => url()->full()]) }}" class="h-action">
 						<svg fill="none" stroke="currentColor" stroke-width="1.9"
 							viewBox="0 0 24 24">
 							<path
@@ -242,19 +276,34 @@
 						</div>
 						<div>
 							<div class="logo-name" style="color:#fff;">
-								التابعين <span>للإلكترونيات</span></div>
-							<div class="logo-sub">El Tab3een Electronics</div>
+								{{ $appearance['brand_name'] ?? 'التابعين' }}
+								@if (!
+								empty($appearance['brand_name_highlight']))
+								<span>{{ $appearance['brand_name_highlight'] }}</span>
+								@endif
+							</div>
+							@if (! empty($appearance['brand_name_en']))
+							<div class="logo-sub">
+								{{ $appearance['brand_name_en'] }}</div>
+							@endif
 						</div>
 					</div>
-					<p class="f-desc">وجهتك الأولى للإلكترونيات في مصر. نوفر أحدث الأجهزة
-						بأفضل الأسعار مع ضمان رسمي وخدمة متميزة ما بعد البيع.</p>
+					@if (! empty($appearance['footer_desc']))
+					<p class="f-desc">{{ $appearance['footer_desc'] }}</p>
+					@endif
+					@php
+					$visibleSocial = collect($socialLinks)->filter(fn ($item) =>
+					filled($item['url'] ?? null));
+					@endphp
+					@if ($visibleSocial->isNotEmpty())
 					<div class="f-social">
-						<div class="soc-btn">f</div>
-						<div class="soc-btn">in</div>
-						<div class="soc-btn">X</div>
-						<div class="soc-btn">▶</div>
-						<div class="soc-btn">w</div>
+						@foreach ($visibleSocial as $social)
+						<a href="{{ $social['url'] }}" class="soc-btn"
+							target="_blank"
+							rel="noopener noreferrer">{{ $social['label'] }}</a>
+						@endforeach
 					</div>
+					@endif
 				</div>
 				<div>
 					<div class="f-col-title">روابط سريعة</div>
@@ -263,7 +312,8 @@
 							الرئيسية</a>
 						<a href="{{ route('store.products.index') }}"
 							class="f-link">المتجر</a>
-						@foreach(($storeFooterPages[\App\StorePage::FOOTER_GROUP_QUICK_LINKS] ?? collect()) as $footerPage)
+						@foreach(($storeFooterPages[\App\StorePage::FOOTER_GROUP_QUICK_LINKS]
+						?? collect()) as $footerPage)
 						<a href="{{ $footerPage->url }}"
 							class="f-link">{{ $footerPage->title }}</a>
 						@endforeach
@@ -278,10 +328,11 @@
 						<a href="{{ route('store.account.orders') }}"
 							class="f-link">تتبع طلبي</a>
 						@else
-						<a href="{{ route('store.auth.login.form') }}"
+						<a href="{{ route('store.auth.login.form', ['redirect' => url()->full()]) }}"
 							class="f-link">حسابي</a>
 						@endauth
-						@foreach(($storeFooterPages[\App\StorePage::FOOTER_GROUP_CUSTOMER_SERVICE] ?? collect()) as $footerPage)
+						@foreach(($storeFooterPages[\App\StorePage::FOOTER_GROUP_CUSTOMER_SERVICE]
+						?? collect()) as $footerPage)
 						<a href="{{ $footerPage->url }}"
 							class="f-link">{{ $footerPage->title }}</a>
 						@endforeach
@@ -290,22 +341,37 @@
 				<div>
 					<div class="f-col-title">تواصل معنا</div>
 					<div class="f-links">
-						<a href="tel:19900" class="f-link">📞 19900</a>
-						<a href="mailto:info@eltab3een.com" class="f-link">✉
-							info@eltab3een.com</a>
-						<span class="f-link">📍 القاهرة، مصر</span>
-						<span class="f-link">🕐 السبت–الخميس: 9ص–10م</span>
-						<span class="f-link">🛡 ضمان أصالة المنتجات</span>
+						@if ($supportPhone !== '')
+						<a href="tel:{{ preg_replace('/\s+/', '', $supportPhone) }}"
+							class="f-link">📞 {{ $supportPhone }}</a>
+						@endif
+						@if ($supportEmail !== '')
+						<a href="mailto:{{ $supportEmail }}" class="f-link">✉
+							{{ $supportEmail }}</a>
+						@endif
+						@if (! empty($appearance['support_address']))
+						<span class="f-link">📍
+							{{ $appearance['support_address'] }}</span>
+						@endif
+						@if (! empty($appearance['support_hours']))
+						<span class="f-link">🕐
+							{{ $appearance['support_hours'] }}</span>
+						@endif
+						@if (! empty($appearance['support_badge']))
+						<span class="f-link">🛡
+							{{ $appearance['support_badge'] }}</span>
+						@endif
 					</div>
 				</div>
 			</div>
 			<div class="footer-bottom">
-				<div class="f-copy">© {{ date('Y') }} التابعين للإلكترونيات. جميع الحقوق محفوظة.
+				<div class="f-copy">{{ $appearance['copyright_text'] ?? '' }}
 				</div>
 				@if (($storeFooterPages[\App\StorePage::FOOTER_GROUP_LEGAL] ??
 				collect())->isNotEmpty())
 				<div class="f-legal-links">
-					@foreach (($storeFooterPages[\App\StorePage::FOOTER_GROUP_LEGAL] ?? collect()) as $footerPage)
+					@foreach (($storeFooterPages[\App\StorePage::FOOTER_GROUP_LEGAL] ??
+					collect()) as $footerPage)
 					<a href="{{ $footerPage->url }}"
 						class="f-legal-link">{{ $footerPage->title }}</a>
 					@endforeach
@@ -400,7 +466,7 @@
 				حسابي
 			</a>
 			@else
-			<a class="mob-nav-item" href="{{ route('store.auth.login.form') }}">
+			<a class="mob-nav-item" href="{{ route('store.auth.login.form', ['redirect' => url()->full()]) }}">
 				<svg fill="none" stroke="currentColor" stroke-width="1.9" viewBox="0 0 24 24">
 					<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
 					<circle cx="12" cy="7" r="4" />
@@ -414,6 +480,120 @@
 	<!-- Toast Container -->
 	<div class="toast-container" id="toast-container"></div>
 
+	@if (! empty($whatsapp['url']))
+	<a href="{{ $whatsapp['url'] }}" class="store-whatsapp-fab" target="_blank" rel="noopener noreferrer"
+		aria-label="{{ $whatsapp['label'] }}" title="{{ $whatsapp['label'] }}">
+		<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" aria-hidden="true" focusable="false">
+			<path fill="currentColor"
+				d="M16.04 3C9.4 3 4 8.37 4 14.96c0 2.11.55 4.16 1.6 5.97L4 29l8.28-2.16a12.1 12.1 0 0 0 3.76.59h.01c6.64 0 12.04-5.37 12.04-11.96C28.09 8.37 22.68 3 16.04 3zm0 21.85h-.01a10.04 10.04 0 0 1-5.12-1.4l-.37-.22-4.91 1.28 1.31-4.78-.24-.39a9.88 9.88 0 0 1-1.52-5.28c0-5.47 4.49-9.92 10.02-9.92 5.53 0 10.02 4.45 10.02 9.92-.01 5.47-4.5 9.91-10.18 9.91zm5.5-7.43c-.3-.15-1.78-.88-2.06-.98-.28-.1-.48-.15-.68.15-.2.3-.78.98-.96 1.18-.18.2-.35.22-.65.07-.3-.15-1.27-.47-2.42-1.49-.9-.8-1.5-1.78-1.68-2.08-.18-.3-.02-.46.13-.61.14-.14.3-.35.45-.53.15-.18.2-.3.3-.5.1-.2.05-.38-.02-.53-.08-.15-.68-1.63-.93-2.23-.24-.58-.5-.5-.68-.51h-.58c-.2 0-.53.08-.8.38-.28.3-1.05 1.02-1.05 2.49s1.08 2.89 1.23 3.09c.15.2 2.12 3.23 5.14 4.53.72.31 1.28.5 1.72.64.72.23 1.38.2 1.9.12.58-.09 1.78-.73 2.03-1.43.25-.7.25-1.3.18-1.43-.07-.12-.27-.2-.57-.35z" />
+		</svg>
+	</a>
+	<style>
+	.store-whatsapp-fab {
+		position: fixed;
+		inset-inline-end: 22px;
+		bottom: 22px;
+		z-index: 9999;
+		display: inline-flex;
+		align-items: center;
+		gap: 10px;
+		min-height: 56px;
+		padding: 0 18px 0 14px;
+		border-radius: 999px;
+		background: #25D366;
+		color: #fff;
+		text-decoration: none;
+		box-shadow: 0 10px 28px rgba(37, 211, 102, .38);
+		transition: transform .2s ease, box-shadow .2s ease, background .2s ease;
+		animation: store-whatsapp-fab-pulse 2s ease-out infinite;
+	}
+
+	.store-whatsapp-fab::before,
+	.store-whatsapp-fab::after {
+		content: '';
+		position: absolute;
+		inset: 0;
+		border-radius: inherit;
+		background: #25D366;
+		z-index: -1;
+		pointer-events: none;
+		animation: store-whatsapp-fab-ring 2s ease-out infinite;
+	}
+
+	.store-whatsapp-fab::after {
+		animation-delay: 1s;
+	}
+
+	.store-whatsapp-fab:hover,
+	.store-whatsapp-fab:focus-visible {
+		background: #1ebe57;
+		color: #fff;
+		transform: translateY(-2px);
+		box-shadow: 0 14px 34px rgba(37, 211, 102, .45);
+		outline: none;
+		animation: none;
+	}
+
+	.store-whatsapp-fab:hover::before,
+	.store-whatsapp-fab:hover::after,
+	.store-whatsapp-fab:focus-visible::before,
+	.store-whatsapp-fab:focus-visible::after {
+		animation: none;
+		opacity: 0;
+	}
+
+	.store-whatsapp-fab svg {
+		width: 28px;
+		height: 28px;
+		flex-shrink: 0;
+	}
+
+	@keyframes store-whatsapp-fab-pulse {
+		0%,
+		100% {
+			transform: scale(1);
+			box-shadow: 0 10px 28px rgba(37, 211, 102, .38);
+		}
+
+		50% {
+			transform: scale(1.05);
+			box-shadow: 0 12px 32px rgba(37, 211, 102, .55);
+		}
+	}
+
+	@keyframes store-whatsapp-fab-ring {
+		0% {
+			transform: scale(1);
+			opacity: .55;
+		}
+
+		100% {
+			transform: scale(1.55);
+			opacity: 0;
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.store-whatsapp-fab,
+		.store-whatsapp-fab::before,
+		.store-whatsapp-fab::after {
+			animation: none;
+		}
+	}
+
+	@media (max-width: 640px) {
+		.store-whatsapp-fab {
+			inset-inline-end: 16px;
+			bottom: 75px;
+			width: 56px;
+			height: 56px;
+			padding: 0;
+			justify-content: center;
+		}
+	}
+	</style>
+	@endif
+
 	<!-- ===================== JAVASCRIPT ===================== -->
 	<script>
 	/* ── State ── */
@@ -426,6 +606,14 @@
 	}
 	const IS_CUSTOMER_AUTHED = "{{ auth('customer')->check() ? '1' : '0' }}" === "1";
 	const STORE_LOGIN_URL = "{{ route('store.auth.login.form') }}";
+	function storeLoginUrl(returnUrl) {
+		const target = returnUrl || (window.location.pathname + window.location.search + window.location.hash);
+		try {
+			return STORE_LOGIN_URL + '?redirect=' + encodeURIComponent(target);
+		} catch (e) {
+			return STORE_LOGIN_URL;
+		}
+	}
 	const STORE_CHECKOUT_URL = "{{ route('store.checkout') }}";
 	const STORE_CHECKOUT_FORM_URL = "{{ route('store.checkout.form') }}";
 	const STORE_CATEGORIES_URL = "{{ route('store.categories.index') }}";
@@ -441,12 +629,18 @@
 		price_unavailable: @json(__('storefront.catalog.price_unavailable')),
 	};
 	const STORE_PRODUCTS_INDEX_BASE = @json(rtrim(route('store.products.index'), '/'));
+	const STORE_TAB3EEN_PRODUCTS_BASE = @json(rtrim(url('/store/tab3een/products'), '/'));
+	const CATEGORY_PLACEHOLDER_URL = @json(asset('/img/default.png'));
 	let megaMenuCategories = [];
 	let tab3eenCatalogCache = null;
 	let tab3eenCatalogFetchedAt = 0;
 
 	function storeProductShowUrl(id) {
 		return STORE_PRODUCTS_INDEX_BASE + '/' + encodeURIComponent(String(id));
+	}
+
+	function storeTab3eenProductShowUrl(id) {
+		return STORE_TAB3EEN_PRODUCTS_BASE + '/' + encodeURIComponent(String(id));
 	}
 
 	function saveCartToStorage() {
@@ -660,7 +854,7 @@
 			return;
 		}
 		if (!IS_CUSTOMER_AUTHED) {
-			window.location.href = STORE_LOGIN_URL;
+			window.location.href = storeLoginUrl(STORE_CHECKOUT_FORM_URL);
 			return;
 		}
 		window.location.href = STORE_CHECKOUT_FORM_URL;
@@ -711,8 +905,7 @@
 							</svg>
 							أضف للسلة
 						</button>
-						<button class="pa-icon pa-wish" data-wish="${p.id}">🤍</button>
-						<button class="pa-icon" data-quickview="${p.id}">👁</button>
+							
 					</div>
 				</div>
 				<div class="prod-info">
@@ -730,7 +923,9 @@
 
 	async function loadDynamicProducts() {
 		try {
-			const res = await fetch(STORE_PRODUCTS_URL, {
+			const url = new URL(STORE_PRODUCTS_URL, window.location.origin);
+			url.searchParams.set('featured', '1');
+			const res = await fetch(url.toString(), {
 				headers: {
 					Accept: 'application/json',
 				},
@@ -877,16 +1072,102 @@
 		}
 	}
 
+	function servoCategoryDisplayName(c) {
+		const categoryName = String(c.category_name || (c.category && c.category.name) || '').trim();
+		const subName = String(c.sub_category_name || (c.sub_category && c.sub_category.name) || '').trim();
+		if (categoryName) return categoryName;
+		if (subName) return subName;
+		return String(c.name || '').trim();
+	}
+
+	function subsFromServoRow(c) {
+		if (Array.isArray(c.sub_categories) && c.sub_categories.length) {
+			return c.sub_categories.map((sub) => ({
+				id: Number(sub.id || 0),
+				name: String(sub.name || '').trim(),
+				count: Number(sub.count || 0),
+				image_url: String(sub.image_url || sub.image || '').trim(),
+			})).filter((sub) => sub.id > 0 && sub.name);
+		}
+		const name = String(c.sub_category_name || '').trim();
+		const id = Number(c.sub_category_id || 0);
+		if (id <= 0 || !name) return [];
+		const products = Array.isArray(c.products) ? c.products : [];
+		return [{
+			id,
+			name,
+			count: products.length || Number(c.count || 0),
+			image_url: String(c.image_url || c.image || '').trim(),
+		}];
+	}
+
+	function mergeServoSubCategories(current, incoming, sumCounts) {
+		const map = new Map((current || []).map((sub) => [sub.id, {
+			...sub
+		}]));
+		(incoming || []).forEach((sub) => {
+			const prev = map.get(sub.id);
+			if (!prev) {
+				map.set(sub.id, {
+					...sub
+				});
+				return;
+			}
+			prev.count = sumCounts ? prev.count + Number(sub.count || 0) : Math.max(prev
+				.count, Number(sub.count || 0));
+			if (!prev.name) prev.name = sub.name;
+			if (!prev.image_url) prev.image_url = sub.image_url || '';
+		});
+		return [...map.values()];
+	}
+
 	function normalizeServoCategoriesForGrid(catalog) {
-		return (catalog || [])
-			.map((c) => ({
-				id: Number(c.id),
-				name: String(c.name || ''),
-				count: Array.isArray(c.products) ? c.products.length : Number(c
-					.count || 0),
-				image_url: String(c.image_url || c.image || ''),
-				source: 'servo',
-			}))
+		const groups = new Map();
+		(catalog || []).forEach((c) => {
+			const products = Array.isArray(c.products) ? c.products : [];
+			const count = products.length || Number(c.count || 0);
+			if (count <= 0) return;
+			const categoryId = Number(c.category_id || 0);
+			const key = categoryId > 0 ? 'category-' + categoryId : 'row-' + Number(c.id ||
+				c.sub_category_id || 0);
+			const incomingSubs = subsFromServoRow(c);
+			const aggregatedSubs = Array.isArray(c.sub_categories) && c.sub_categories
+				.length > 0;
+			const existing = groups.get(key);
+			const sortOrder = Number(c.sort_order ?? c.order ?? 0);
+			if (!existing) {
+				groups.set(key, {
+					id: categoryId > 0 ? categoryId :
+						Number(c.id || c
+							.sub_category_id ||
+							0),
+					name: servoCategoryDisplayName(c),
+					count,
+					order: sortOrder,
+					image_url: String(c.image_url || c
+						.image || ''),
+					source: 'servo',
+					sub_categories: incomingSubs,
+				});
+				return;
+			}
+			const seen = new Set((existing._productIds || []).concat(products.map((p) =>
+				Number(p.id))));
+			existing._productIds = [...seen];
+			existing.count = products.length ? seen.size : existing.count + count;
+			existing.order = Math.min(Number(existing.order || 0), sortOrder);
+			if (!existing.image_url) {
+				existing.image_url = String(c.image_url || c.image || '');
+			}
+			existing.sub_categories = mergeServoSubCategories(existing.sub_categories,
+				incomingSubs, !aggregatedSubs);
+		});
+
+		return [...groups.values()]
+			.map(({
+				_productIds,
+				...category
+			}) => category)
 			.filter((c) => c.id > 0 && c.name && c.count > 0);
 	}
 
@@ -919,28 +1200,199 @@
 		return u.pathname + '?' + u.searchParams.toString();
 	}
 
+	function subCategoryCardHref(parent, sub) {
+		const u = new URL(STORE_PRODUCTS_URL, window.location.origin);
+		u.searchParams.set('category_id', String(parent.id));
+		u.searchParams.set('sub_category_id', String(sub.id));
+		if (parent.source === 'servo') {
+			u.searchParams.set('source', 'servo');
+		}
+		return u.pathname + '?' + u.searchParams.toString();
+	}
+
+	function categoryGridKey(c) {
+		return String(c.source || 'local') + '-' + Number(c.id || 0);
+	}
+
+	function categoryGridColumns() {
+		if (window.matchMedia('(max-width: 1024px)').matches) return 3;
+		return 6;
+	}
+
+	function closeHomeCategorySubs(grid, options = {}) {
+		if (!grid) return;
+		const animate = options.animate !== false;
+		grid.querySelectorAll('.cat-card.is-open').forEach((card) => {
+			card.classList.remove('is-open');
+			card.setAttribute('aria-expanded', 'false');
+		});
+		grid.querySelectorAll('.cat-subs.is-mounted, .cat-subs.is-open').forEach((panel) => {
+			if (panel._catsCloseTimer) {
+				clearTimeout(panel._catsCloseTimer);
+				panel._catsCloseTimer = null;
+			}
+			panel.classList.remove('is-open', 'is-animating');
+			if (!animate) {
+				panel.classList.remove('is-mounted');
+				return;
+			}
+			panel._catsCloseTimer = setTimeout(() => {
+				panel.classList.remove('is-mounted');
+				panel._catsCloseTimer = null;
+			}, 980);
+		});
+	}
+
+	function placeCategorySubsAfterRow(grid, card, panel) {
+		const cards = [...grid.querySelectorAll(':scope > .cat-card')];
+		const index = cards.indexOf(card);
+		if (index < 0) return;
+		const cols = categoryGridColumns();
+		const endIndex = Math.min(cards.length - 1, Math.floor(index / cols) * cols + (cols - 1));
+		cards[endIndex].after(panel);
+	}
+
+	function prepareCategorySubsAnimation(panel) {
+		const head = panel.querySelector('.cat-subs-head');
+		const rows = [...panel.querySelectorAll('.cat-sub-row')];
+		if (head) head.style.setProperty('--cat-stagger', '0');
+		rows.forEach((row, index) => {
+			row.style.setProperty('--cat-stagger', String(index + 1));
+		});
+		panel.classList.remove('is-animating');
+		void panel.offsetWidth;
+	}
+
+	function openHomeCategorySubs(grid, card, panel) {
+		placeCategorySubsAfterRow(grid, card, panel);
+		prepareCategorySubsAnimation(panel);
+		panel.classList.add('is-mounted');
+		card.classList.add('is-open');
+		card.setAttribute('aria-expanded', 'true');
+		requestAnimationFrame(() => {
+			requestAnimationFrame(() => {
+				panel.classList.add('is-open', 'is-animating');
+				const rows = panel.querySelectorAll(
+					'.cat-sub-row').length;
+				const settleMs = 220 + ((rows + 1) * 130) + 1000;
+				if (panel._catsAnimTimer) clearTimeout(panel
+					._catsAnimTimer);
+				panel._catsAnimTimer = setTimeout(() => {
+					panel.classList
+						.remove(
+							'is-animating'
+							);
+					panel._catsAnimTimer =
+						null;
+				}, settleMs);
+			});
+		});
+	}
+
+	function bindHomeCategoryAccordion(grid) {
+		if (!grid || grid.dataset.accordionBound === '1') return;
+		grid.dataset.accordionBound = '1';
+
+		grid.addEventListener('click', (e) => {
+			if (e.target.closest('.cat-sub-row, .cat-subs-head-all')) return;
+			const card = e.target.closest('.cat-card');
+			if (!card || !grid.contains(card)) return;
+			const key = card.dataset.catKey || '';
+			const panel = key ? grid.querySelector('.cat-subs[data-cat-key="' + key +
+				'"]') : null;
+			if (!panel) return;
+
+			e.preventDefault();
+			const wasOpen = card.classList.contains('is-open');
+			closeHomeCategorySubs(grid, {
+				animate: wasOpen
+			});
+			if (wasOpen) return;
+
+			openHomeCategorySubs(grid, card, panel);
+		});
+
+		const onViewportChange = () => closeHomeCategorySubs(grid, {
+			animate: false
+		});
+		const mqTablet = window.matchMedia('(max-width: 1024px)');
+		if (mqTablet.addEventListener) mqTablet.addEventListener('change', onViewportChange);
+		else mqTablet.addListener(onViewportChange);
+	}
+
+	function categoryMediaUrl(value) {
+		const url = String(value || '').trim();
+		return url !== '' ? url : CATEGORY_PLACEHOLDER_URL;
+	}
+
+	function categoryImageHtml(name, imageUrl, className) {
+		const src = megaEsc(categoryMediaUrl(imageUrl));
+		return `<img src="${src}" alt="${megaEsc(name || '')}" class="${className}" data-category-img="1">`;
+	}
+
+	function bindCategoryImageFallback(root) {
+		if (!root) return;
+		root.querySelectorAll('img[data-category-img]').forEach((img) => {
+			if (img.dataset.fallbackBound === '1') return;
+			img.dataset.fallbackBound = '1';
+			img.addEventListener('error', () => {
+				if (img.dataset.fallbackApplied === '1') return;
+				img.dataset.fallbackApplied = '1';
+				img.src = CATEGORY_PLACEHOLDER_URL;
+			});
+		});
+	}
+
 	function renderDynamicCategories(categories) {
 		const grid = $('dynamic-categories-grid');
 		if (!grid) return;
+		categories = sortCategoriesByOrder(categories);
 		if (!categories.length) {
 			grid.innerHTML = `<div class="cat-card"><div class="cat-name">لا توجد فئات متاحة</div></div>`;
 			resetCategoriesAutoScroll(grid);
 			return;
 		}
 
-		grid.innerHTML = categories.map((c, idx) => {
+		grid.innerHTML = categories.map((c) => {
 			const href = categoryCardHref(c);
-			const iconHtml = c.image_url ?
-				`<img src="${megaEsc(c.image_url)}" alt="${megaEsc(c.name || '')}" class="cat-icon-img">` :
-				categoryIconByIndex(idx);
-			return `
-			<a href="${href}" class="cat-card">
-				<div class="cat-icon${c.image_url ? ' cat-icon--image' : ''}" style="background:#f8f9fc;">${iconHtml}</div>
+			const subs = (Array.isArray(c.sub_categories) ? c.sub_categories : [])
+				.filter((sub) => sub && Number(sub.id) > 0 && String(sub.name || '')
+					.trim() !== '');
+			const categoryImage = c.image_url || c.image || '';
+			const iconHtml = categoryImageHtml(c.name || '', categoryImage,
+				'cat-icon-img');
+			const key = categoryGridKey(c);
+			const card = `
+			<a href="${href}" class="cat-card${subs.length ? ' cat-card--has-subs' : ''}" data-cat-key="${key}"${subs.length ? ' aria-expanded="false"' : ''}>
+				<div class="cat-icon cat-icon--image" style="background:#f8f9fc;">${iconHtml}</div>
 				<div class="cat-name">${megaEsc(c.name || '')}</div>
 				<div class="cat-count">+${Number(c.count || 0).toLocaleString('ar-EG')} منتج</div>
 			</a>`;
+			if (!subs.length) return card;
+
+			const parentThumb = categoryImageHtml(c.name || '', categoryImage,
+				'cat-subs-head-img');
+			const head = `
+				<div class="cat-subs-head">
+					<div class="cat-subs-head-icon">${parentThumb}</div>
+					<div class="cat-subs-head-meta">
+						<div class="cat-subs-head-name">${megaEsc(c.name || '')}</div>
+						<div class="cat-subs-head-count">+${Number(c.count || 0).toLocaleString('ar-EG')} منتج</div>
+					</div>
+					<a class="cat-subs-head-all" href="${href}">عرض الكل</a>
+				</div>`;
+			const rows = subs.map((sub) => `
+				<a class="cat-sub-row" href="${subCategoryCardHref(c, sub)}">
+					<span class="cat-sub-thumb">${categoryImageHtml(sub.name || '', sub.image_url || sub.image || '', 'cat-sub-img')}</span>
+					<span class="cat-sub-name">${megaEsc(sub.name || '')}</span>
+					<span class="cat-sub-count">${Number(sub.count || 0).toLocaleString('ar-EG')}</span>
+				</a>`).join('');
+
+			return card +
+				`<div class="cat-subs" data-cat-key="${key}"><div class="cat-subs-inner">${head}<div class="cat-subs-list">${rows}</div></div></div>`;
 		}).join('');
-		// initCategoriesAutoScroll();
+		bindCategoryImageFallback(grid);
+		bindHomeCategoryAccordion(grid);
 	}
 
 	function resetCategoriesAutoScroll(grid) {
@@ -1008,7 +1460,13 @@
 			btn.setAttribute('aria-expanded', 'false');
 			btn.classList.remove('mega-cat-toggle--open', 'active');
 			const list = btn.closest('.mega-cat-group')?.querySelector('.mega-sub-list');
-			if (list) list.hidden = true;
+			if (list) {
+				if (list._megaAnimTimer) {
+					clearTimeout(list._megaAnimTimer);
+					list._megaAnimTimer = null;
+				}
+				list.classList.remove('is-open', 'is-animating');
+			}
 		});
 	}
 
@@ -1017,21 +1475,36 @@
 		btn.setAttribute('aria-expanded', 'true');
 		btn.classList.add('mega-cat-toggle--open', 'active');
 		const list = btn.closest('.mega-cat-group')?.querySelector('.mega-sub-list');
-		if (list) list.hidden = false;
+		if (!list) return;
+
+		const items = [...list.querySelectorAll('.mega-sub-item')];
+		items.forEach((item, index) => {
+			item.style.setProperty('--mega-stagger', String(index));
+		});
+		list.classList.remove('is-animating');
+		void list.offsetWidth;
+		list.classList.add('is-open', 'is-animating');
+		if (list._megaAnimTimer) clearTimeout(list._megaAnimTimer);
+		list._megaAnimTimer = setTimeout(() => {
+			list.classList.remove('is-animating');
+			list._megaAnimTimer = null;
+		}, 120 + (items.length * 90) + 750);
 	}
 
 	function clearMegaSidebarActive(side) {
 		if (!side) return;
-		side.querySelectorAll('.mega-sitem.active, .mega-sub-item.active').forEach((el) => el.classList.remove('active'));
+		side.querySelectorAll('.mega-sitem.active, .mega-sub-item.active').forEach((el) => el.classList.remove(
+			'active'));
 	}
 
 	function renderMegaMenuCategories(categories) {
 		const side = $('mega-sidebar');
 		if (!side) return;
+		categories = sortCategoriesByOrder(categories);
 		megaMenuCategories = categories;
 
 		const allRow =
-			`<div class="mega-sitem mega-sitem--all active" data-category-id="" role="button" tabindex="0"><span class="mega-sitem-ico" aria-hidden="true">📦</span><span>كل المنتجات</span></div>`;
+			`<div class="mega-sitem mega-sitem--all active" data-category-id="" data-source="" role="button" tabindex="0"><span class="mega-sitem-ico mega-sitem-ico--emoji" aria-hidden="true">📦</span><span>كل المنتجات</span></div>`;
 		if (!categories.length) {
 			side.innerHTML = allRow;
 			loadMegaCategoryProducts('', 'كل المنتجات');
@@ -1039,35 +1512,49 @@
 		}
 
 		const rows = [allRow].concat(
-			categories.map((c, idx) => {
+			categories.map((c) => {
 				const subs = Array.isArray(c.sub_categories) ? c.sub_categories : [];
-				const icon = categoryIconByIndex(idx);
 				const name = megaEsc(c.name || '');
+				const source = String(c.source || 'local');
+				const categoryImage = c.image_url || c.image || '';
+				const parentThumb = categoryImageHtml(c.name || '', categoryImage, 'mega-cat-img');
 
 				if (!subs.length) {
-					return `<div class="mega-sitem" data-category-id="${Number(c.id)}" role="button" tabindex="0"><span class="mega-sitem-ico" aria-hidden="true">${icon}</span><span>${name}</span></div>`;
+					return `<div class="mega-sitem" data-category-id="${Number(c.id)}" data-source="${megaEsc(source)}" role="button" tabindex="0"><span class="mega-sitem-ico">${parentThumb}</span><span class="mega-cat-name">${name}</span></div>`;
 				}
 
 				const parentLabel = `كل منتجات ${name}`;
-				const subRows = subs.map((sub) =>
-					`<button type="button" class="mega-sub-item" data-category-id="${Number(sub.id)}" data-category-label="${megaEsc(sub.name || '')}">${megaEsc(sub.name || '')}</button>`
-				).join('');
+				const subRows = subs.map((sub) => {
+					const subImage = sub.image_url || sub.image || categoryImage;
+					return `<button type="button" class="mega-sub-item" data-category-id="${Number(c.id)}" data-sub-category-id="${Number(sub.id)}" data-source="${megaEsc(source)}" data-category-label="${megaEsc(sub.name || '')}">
+						<span class="mega-sub-thumb">${categoryImageHtml(sub.name || '', subImage, 'mega-sub-img')}</span>
+						<span class="mega-sub-name">${megaEsc(sub.name || '')}</span>
+					</button>`;
+				}).join('');
 
 				return `
 				<div class="mega-cat-group">
 					<button type="button" class="mega-sitem mega-cat-toggle" aria-expanded="false">
-						<span class="mega-sitem-ico" aria-hidden="true">${icon}</span>
-						<span class="mega-cat-label">${name}</span>
+						<span class="mega-cat-label">
+							<span class="mega-sitem-ico">${parentThumb}</span>
+							<span class="mega-cat-name">${name}</span>
+						</span>
 						<span class="mega-chevron" aria-hidden="true">›</span>
 					</button>
-					<div class="mega-sub-list" hidden>
-						<button type="button" class="mega-sub-item mega-sub-item--parent" data-category-id="${Number(c.id)}" data-category-label="${parentLabel}">${parentLabel}</button>
-						${subRows}
+					<div class="mega-sub-list">
+						<div class="mega-sub-list-inner">
+							<button type="button" class="mega-sub-item mega-sub-item--parent" data-category-id="${Number(c.id)}" data-source="${megaEsc(source)}" data-category-label="${parentLabel}">
+								<span class="mega-sub-thumb">${categoryImageHtml(c.name || '', categoryImage, 'mega-sub-img')}</span>
+								<span class="mega-sub-name">${parentLabel}</span>
+							</button>
+							${subRows}
+						</div>
 					</div>
 				</div>`;
 			})
 		);
 		side.innerHTML = rows.join('');
+		bindCategoryImageFallback(side);
 		clearMegaSidebarActive(side);
 		const allEl = side.querySelector('.mega-sitem--all');
 		if (allEl) allEl.classList.add('active');
@@ -1080,7 +1567,13 @@
 			btn.setAttribute('aria-expanded', 'false');
 			btn.classList.remove('mm-cat-toggle--open');
 			const list = btn.closest('.mm-cat-group')?.querySelector('.mm-sub-list');
-			if (list) list.hidden = true;
+			if (list) {
+				if (list._mmAnimTimer) {
+					clearTimeout(list._mmAnimTimer);
+					list._mmAnimTimer = null;
+				}
+				list.classList.remove('is-open', 'is-animating');
+			}
 		});
 	}
 
@@ -1089,50 +1582,93 @@
 		btn.setAttribute('aria-expanded', 'true');
 		btn.classList.add('mm-cat-toggle--open');
 		const list = btn.closest('.mm-cat-group')?.querySelector('.mm-sub-list');
-		if (list) list.hidden = false;
+		if (!list) return;
+
+		const items = [...list.querySelectorAll('.mm-sub-item')];
+		items.forEach((item, index) => {
+			item.style.setProperty('--mm-stagger', String(index));
+		});
+		list.classList.remove('is-animating');
+		void list.offsetWidth;
+		list.classList.add('is-open', 'is-animating');
+		if (list._mmAnimTimer) clearTimeout(list._mmAnimTimer);
+		list._mmAnimTimer = setTimeout(() => {
+			list.classList.remove('is-animating');
+			list._mmAnimTimer = null;
+		}, 120 + (items.length * 90) + 750);
+	}
+
+	function sortCategoriesByOrder(categories) {
+		return [...(categories || [])].sort((a, b) => {
+			const ao = Number(a.order ?? a.sort_order ?? 0);
+			const bo = Number(b.order ?? b.sort_order ?? 0);
+			if (ao !== bo) return ao - bo;
+			const af = Number(a.featured || 0);
+			const bf = Number(b.featured || 0);
+			if (af !== bf) return bf - af;
+			return String(a.name || '').localeCompare(String(b.name || ''), 'ar');
+		}).map((c) => ({
+			...c,
+			sub_categories: sortCategoriesByOrder(c.sub_categories || []),
+		}));
 	}
 
 	function renderMobMenuCategories(categories) {
 		const wrap = $('mob-menu-categories');
 		if (!wrap) return;
 
-		const base = new URL(STORE_PRODUCTS_URL, window.location.origin);
+		categories = sortCategoriesByOrder(categories);
 		if (!categories.length) {
 			wrap.innerHTML =
 				`<div class="mm-item" style="pointer-events:none;color:var(--muted);">لا توجد أقسام متاحة</div>`;
 			return;
 		}
 
-		wrap.innerHTML = categories.map((c, idx) => {
+		wrap.innerHTML = categories.map((c) => {
 			const subs = Array.isArray(c.sub_categories) ? c.sub_categories : [];
-			const icon = categoryIconByIndex(idx);
-			const parentHref = categoryCardHref({
-				...c,
-				source: 'local',
-			});
+			const parentHref = categoryCardHref(c);
+			const categoryImage = c.image_url || c.image || '';
+			const parentThumb = categoryImageHtml(c.name || '', categoryImage,
+				'mm-cat-img');
 
 			if (!subs.length) {
-				return `<a href="${parentHref}" class="mm-item mm-item--link">${icon} ${megaEsc(c.name || '')}</a>`;
+				return `<a href="${parentHref}" class="mm-item mm-item--link">
+					<span class="mm-cat-thumb">${parentThumb}</span>
+					<span class="mm-cat-name">${megaEsc(c.name || '')}</span>
+				</a>`;
 			}
 
 			const subLinks = subs.map((sub) => {
-				const u = new URL(base.href);
-				u.searchParams.set('category_id', String(sub.id));
-				return `<a href="${u.pathname + '?' + u.searchParams.toString()}" class="mm-sub-item">${megaEsc(sub.name || '')}</a>`;
+				const subImage = sub.image_url || sub.image ||
+					categoryImage;
+				return `<a href="${subCategoryCardHref(c, sub)}" class="mm-sub-item">
+					<span class="mm-sub-thumb">${categoryImageHtml(sub.name || '', subImage, 'mm-sub-img')}</span>
+					<span class="mm-sub-name">${megaEsc(sub.name || '')}</span>
+				</a>`;
 			}).join('');
 
 			return `
 			<div class="mm-cat-group">
 				<button type="button" class="mm-item mm-cat-toggle" aria-expanded="false">
-					<span class="mm-cat-label">${icon} ${megaEsc(c.name || '')}</span>
+					<span class="mm-cat-label">
+						<span class="mm-cat-thumb">${parentThumb}</span>
+						<span class="mm-cat-name">${megaEsc(c.name || '')}</span>
+					</span>
 					<span class="mm-chevron" aria-hidden="true">›</span>
 				</button>
-				<div class="mm-sub-list" hidden>
-					<a href="${parentHref}" class="mm-sub-item mm-sub-item--all">كل منتجات ${megaEsc(c.name || '')}</a>
-					${subLinks}
+				<div class="mm-sub-list">
+					<div class="mm-sub-list-inner">
+						<a href="${parentHref}" class="mm-sub-item mm-sub-item--all">
+							<span class="mm-sub-thumb">${categoryImageHtml(c.name || '', categoryImage, 'mm-sub-img')}</span>
+							<span class="mm-sub-name">كل منتجات ${megaEsc(c.name || '')}</span>
+						</a>
+						${subLinks}
+					</div>
 				</div>
 			</div>`;
 		}).join('');
+
+		bindCategoryImageFallback(wrap);
 	}
 
 	function initMobMenuCategoryAccordion() {
@@ -1177,11 +1713,13 @@
 		});
 	}
 
-	async function loadMegaCategoryProducts(categoryId, titleText) {
+	async function loadMegaCategoryProducts(categoryId, titleText, options = {}) {
 		const grid = $('mega-products-grid');
 		const title = $('mega-content-title');
 		const viewAll = $('mega-view-all');
 		if (!grid || !title) return;
+		const source = String(options.source || '').trim();
+		const subCategoryId = options.subCategoryId;
 		title.textContent = titleText || 'المنتجات';
 		grid.innerHTML =
 			'<div class="mega-loading" style="grid-column:1/-1;text-align:center;padding:24px;color:var(--muted);font-weight:700;">جاري التحميل…</div>';
@@ -1190,6 +1728,12 @@
 		const url = new URL(STORE_PRODUCTS_URL, window.location.origin);
 		if (categoryId !== '' && categoryId !== null && !Number.isNaN(Number(categoryId))) {
 			url.searchParams.set('category_id', String(categoryId));
+		}
+		if (subCategoryId !== '' && subCategoryId !== null && subCategoryId !== undefined && !Number.isNaN(Number(subCategoryId)) && Number(subCategoryId) > 0) {
+			url.searchParams.set('sub_category_id', String(subCategoryId));
+		}
+		if (source === 'servo') {
+			url.searchParams.set('source', 'servo');
 		}
 		const fetchUrl = url.pathname + (url.search ? '?' + url.searchParams.toString() : '');
 		try {
@@ -1219,7 +1763,9 @@
 							/"/g, '');
 						const name = megaEsc(p.name || '');
 						const pid = Number(p.id);
-						return `<a href="${storeProductShowUrl(pid)}" class="mega-item mega-item--product">
+						const productSource = String(p.source || source || '');
+						const href = productSource === 'servo' ? storeTab3eenProductShowUrl(pid) : storeProductShowUrl(pid);
+						return `<a href="${href}" class="mega-item mega-item--product">
 						<div class="mega-pthumb"><img src="${img}" alt=""></div>
 						<div class="mega-pmeta">
 							<span class="mega-pname">${name}</span>
@@ -1244,10 +1790,12 @@
 			fetchStoreCategoriesList(),
 			fetchServoCategoriesList(),
 		]);
-		const categories = mergeStoreAndServoCategories(localCategories, servoCategories);
+		const categories = sortCategoriesByOrder(
+			mergeStoreAndServoCategories(localCategories, servoCategories)
+		);
 		renderDynamicCategories(categories);
-		renderMegaMenuCategories(localCategories);
-		renderMobMenuCategories(localCategories);
+		renderMegaMenuCategories(categories);
+		renderMobMenuCategories(categories);
 	}
 
 	function renderDynamicFlashDeals(deals) {
@@ -1456,6 +2004,8 @@
 						name: d.name,
 						brand: d.brand || prev.brand || '',
 						category: d.category || prev.category || '',
+						sub_category: d.sub_category || prev
+							.sub_category || '',
 						unit: d.unit || prev.unit || '',
 						price: defPrice,
 						old: prev.old != null ? prev.old : null,
@@ -1518,7 +2068,8 @@
 			})
 			.join('');
 
-		const crumb = [p.brand, p.category].filter((x) => String(x).trim()).join(' · ');
+		const crumb = [p.brand, p.category, p.sub_category].filter((x) => String(x || '').trim()).join(
+			' · ');
 		const imgSrc = String(p.img || '').replace(/"/g, '');
 		const unitLine = p.unit ?
 			`<div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;">الوحدة: ${modalEsc(p.unit)}</div>` :
@@ -1634,13 +2185,20 @@
 			if (subItem && sidebar.contains(subItem)) {
 				e.preventDefault();
 				const id = subItem.dataset.categoryId;
-				const label = subItem.dataset.categoryLabel || subItem.textContent.trim();
+				const subId = subItem.dataset.subCategoryId;
+				const source = subItem.dataset.source || '';
+				const label = subItem.dataset.categoryLabel || subItem.textContent
+					.trim();
 				clearMegaSidebarActive(sidebar);
 				subItem.classList.add('active');
-				const toggle = subItem.closest('.mega-cat-group')?.querySelector('.mega-cat-toggle');
+				const toggle = subItem.closest('.mega-cat-group')?.querySelector(
+					'.mega-cat-toggle');
 				closeAllMegaCategoryGroups(sidebar);
 				if (toggle) openMegaCategoryGroup(toggle);
-				loadMegaCategoryProducts(id, label);
+				loadMegaCategoryProducts(id, label, {
+					source,
+					subCategoryId: subId,
+				});
 				return;
 			}
 
@@ -1656,7 +2214,8 @@
 			}
 
 			const item = e.target.closest('.mega-sitem');
-			if (!item || item.classList.contains('mega-sitem--loading') || item.classList.contains('mega-cat-toggle')) {
+			if (!item || item.classList.contains('mega-sitem--loading') || item.classList
+				.contains('mega-cat-toggle')) {
 				return;
 			}
 
@@ -1665,13 +2224,16 @@
 			closeAllMegaCategoryGroups(sidebar);
 			item.classList.add('active');
 			const raw = item.dataset.categoryId;
+			const source = item.dataset.source || '';
 			const id = raw === undefined || raw === '' ? '' : Number(raw);
 			let label = 'كل المنتجات';
 			if (id !== '' && !Number.isNaN(id)) {
-				const cat = megaMenuCategories.find((c) => Number(c.id) === id);
+				const cat = megaMenuCategories.find((c) => Number(c.id) === id && String(c.source || 'local') === String(source || 'local'));
 				label = cat ? String(cat.name || '') : 'المنتجات';
 			}
-			loadMegaCategoryProducts(id === '' || Number.isNaN(id) ? '' : id, label);
+			loadMegaCategoryProducts(id === '' || Number.isNaN(id) ? '' : id, label, {
+				source,
+			});
 		});
 		sidebar?.addEventListener('keydown', (e) => {
 			if (e.key !== 'Enter' && e.key !== ' ') return;
@@ -1746,6 +2308,37 @@
 		initMobMenuCategoryAccordion();
 	}
 
+	/* ── Account dropdown (works on touch / mobile) ── */
+	function initAccountDropdown() {
+		const dropdown = document.querySelector('.account-dropdown');
+		const toggle = dropdown?.querySelector('.account-toggle');
+		if (!dropdown || !toggle) return;
+
+		toggle.setAttribute('aria-haspopup', 'true');
+		toggle.setAttribute('aria-expanded', 'false');
+
+		toggle.addEventListener('click', (e) => {
+			e.preventDefault();
+			e.stopPropagation();
+			const isOpen = dropdown.classList.toggle('is-open');
+			toggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+		});
+
+		document.addEventListener('click', (e) => {
+			if (!dropdown.contains(e.target)) {
+				dropdown.classList.remove('is-open');
+				toggle.setAttribute('aria-expanded', 'false');
+			}
+		});
+
+		document.addEventListener('keydown', (e) => {
+			if (e.key === 'Escape') {
+				dropdown.classList.remove('is-open');
+				toggle.setAttribute('aria-expanded', 'false');
+			}
+		});
+	}
+
 	/* ── Header search: autocomplete (categories + products) ── */
 	function initStoreHeaderSearch() {
 		const input = document.getElementById('store-search-q');
@@ -1778,15 +2371,16 @@
 				return;
 			}
 			box.innerHTML = items.map((r) => {
-				const meta = r.type === 'category' ? 'قسم' : 'منتج';
+				let meta = 'منتج';
+				if (r.type === 'category') meta = 'قسم';
+				else if (r.source === 'servo') meta = 'منتج تابعين';
 				const href = String(r.url || '').replace(/"/g, '&quot;');
 				return (
 					'<a class="store-search-item" role="option" href="' +
 					href + '">' +
 					'<span class="store-search-item-name">' + esc(r
 						.name) + '</span>' +
-					'<span class="store-search-item-meta">' + meta +
-					'</span>' +
+
 					'</a>'
 				);
 			}).join('');
@@ -1859,12 +2453,14 @@
 		}
 
 		function renderItem(r) {
-			const meta = r.type === 'category' ? 'قسم' : 'منتج';
+			let meta = 'منتج';
+			if (r.type === 'category') meta = 'قسم';
+			else if (r.source === 'servo') meta = 'منتج تابعين';
 			const href = String(r.url || '').replace(/"/g, '&quot;');
 			return (
 				'<a class="store-search-item" href="' + href + '">' +
 				'<span class="store-search-item-name">' + esc(r.name) + '</span>' +
-				'<span class="store-search-item-meta">' + meta + '</span>' +
+
 				'</a>'
 			);
 		}
@@ -1903,8 +2499,12 @@
 
 			const allUrl = @json(route('store.products.index')) +
 				'?q=' + encodeURIComponent(q);
+			const servoAllUrl = allUrl + '&source=servo';
 			html +=
-				'<a class="search-page-all-link" href="' + allUrl + '">عرض كل المنتجات المطابقة ←</a>';
+				'<a class="search-page-all-link" href="' + allUrl +
+				'">عرض كل منتجات المتجر المطابقة ←</a>' +
+				'<a class="search-page-all-link" href="' + servoAllUrl +
+				'">عرض كل منتجات التابعين المطابقة ←</a>';
 
 			box.innerHTML = html;
 			setHint('', false);
@@ -2028,6 +2628,7 @@
 				initCategoriesAutoScroll, 150);
 		});
 		initMobMenu();
+		initAccountDropdown();
 		initStoreHeaderSearch();
 		initStorePageSearch();
 		initNewsletter();
@@ -2051,6 +2652,8 @@
 	window.openModal = openModal;
 	window.toast = toast;
 	</script>
+
+	@include('frontend.store.partials.visit_tracker')
 </body>
 
 </html>

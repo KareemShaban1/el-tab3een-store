@@ -162,6 +162,25 @@ if (! function_exists('isMobile')) {
     }
 }
 
+/**
+ * Whether the given (or current session) business is the configured storefront business.
+ */
+if (! function_exists('is_storefront_business')) {
+    function is_storefront_business($business_id = null): bool
+    {
+        $configured = (int) config('storefront.business_id', 0);
+        if ($configured <= 0) {
+            return false;
+        }
+
+        if ($business_id === null) {
+            $business_id = session('user.business_id') ?? session('business.id');
+        }
+
+        return (int) $business_id === $configured;
+    }
+}
+
 if (! function_exists('str_ordinal')) {
     /**
      * Append an ordinal indicator to a numeric value.

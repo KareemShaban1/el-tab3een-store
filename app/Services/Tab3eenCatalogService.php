@@ -19,7 +19,7 @@ class Tab3eenCatalogService
         }
 
         try {
-            $rawData = $this->fetchCatalogPayload($url, $categoryId);
+            $rawData = $this->fetchCatalogPayload($url, null);
 
             if ($rawData === null) {
                 return [];
@@ -29,7 +29,13 @@ class Tab3eenCatalogService
 
             if ($categoryId !== null && $categoryId > 0) {
                 $categories = collect($categories)
-                    ->filter(fn ($category) => (int) ($category['id'] ?? 0) === $categoryId)
+                    ->filter(function ($category) use ($categoryId) {
+                        $aliasIds = array_map('intval', $category['alias_ids'] ?? []);
+
+                        return (int) ($category['id'] ?? 0) === $categoryId
+                            || (int) ($category['category_id'] ?? 0) === $categoryId
+                            || in_array($categoryId, $aliasIds, true);
+                    })
                     ->values()
                     ->all();
             }
@@ -229,12 +235,18 @@ class Tab3eenCatalogService
                             ->all();
 
                         $defaultVariation = $variations[0] ?? null;
+                        $tags = collect($product['tags'] ?? [])
+                            ->map(fn ($tag) => trim((string) $tag))
+                            ->filter(fn ($tag) => $tag !== '')
+                            ->values()
+                            ->all();
 
                         return [
                             'id' => (int) ($product['id'] ?? 0),
                             'name' => (string) ($product['name'] ?? ''),
                             'description' => (string) ($product['description'] ?? ''),
                             'image_url' => (string) ($product['image_url'] ?? ''),
+                            'tags' => $tags,
                             'default_variation_id' => (int) ($defaultVariation['variation_id'] ?? 0),
                             'default_price' => $defaultVariation['price'] ?? null,
                             'has_price' => $defaultVariation !== null && $defaultVariation['price'] !== null,
@@ -247,20 +259,146 @@ class Tab3eenCatalogService
                     ->values()
                     ->all();
 
+                [$categoryName, $subCategoryName] = $this->categoryLabelParts($category, true);
+                $displayName = $categoryName !== '' ? $categoryName : $subCategoryName;
+
                 return [
-                    'id' => (int) ($category['id'] ?? 0),
-                    'name' => (string) ($category['name'] ?? ''),
+                    'id' => (int) ($category['id'] ?? $category['category_id'] ?? $category['sub_category_id'] ?? 0),
+                    'category_id' => ! empty($category['category_id']) ? (int) $category['category_id'] : null,
+                    'sub_category_id' => ! empty($category['sub_category_id']) ? (int) $category['sub_category_id'] : null,
+                    'category_name' => $categoryName,
+                    'sub_category_name' => $subCategoryName,
+                    'name' => $displayName,
                     'image' => (string) ($category['image'] ?? ''),
                     'sort_order' => (int) ($category['sort_order'] ?? 0),
                     'products' => $products,
                 ];
             })
             ->filter(fn ($category) => ! empty($category['products']))
+            ->values();
+
+        return $this->groupCategoriesByParent($normalized);
+    }
+
+    /**
+     * Rows that share a Servo category are one category. Subcategory ids stay as aliases
+     * so older links still open that category.
+     *
+     * @param  \Illuminate\Support\Collection<int, array<string, mixed>>  $categories
+     * @return array<int, array<string, mixed>>
+     */
+    private function groupCategoriesByParent($categories): array
+    {
+        return $categories
+            ->groupBy(function ($category) {
+                $categoryId = (int) ($category['category_id'] ?? 0);
+
+                return $categoryId > 0 ? 'category-'.$categoryId : 'row-'.(int) ($category['id'] ?? 0);
+            })
+            ->map(function ($group) {
+                $first = $group->first();
+                $categoryId = (int) ($first['category_id'] ?? 0);
+                $products = $group
+                    ->flatMap(fn ($category) => $category['products'] ?? [])
+                    ->unique('id')
+                    ->values()
+                    ->all();
+                $aliasIds = $group
+                    ->flatMap(function ($category) {
+                        return [
+                            (int) ($category['id'] ?? 0),
+                            (int) ($category['category_id'] ?? 0),
+                            (int) ($category['sub_category_id'] ?? 0),
+                        ];
+                    })
+                    ->filter(fn ($id) => $id > 0)
+                    ->unique()
+                    ->values()
+                    ->all();
+                $withImage = $group->first(fn ($category) => trim((string) ($category['image'] ?? '')) !== '');
+                $image = (string) ($withImage['image'] ?? '');
+                $subCategories = $group
+                    ->filter(function ($category) {
+                        return trim((string) ($category['sub_category_name'] ?? '')) !== ''
+                            && (int) ($category['sub_category_id'] ?? 0) > 0;
+                    })
+                    ->groupBy(fn ($category) => (int) $category['sub_category_id'])
+                    ->map(function ($rows) {
+                        $firstRow = $rows->first();
+                        $productIds = $rows
+                            ->flatMap(fn ($row) => collect($row['products'] ?? [])->pluck('id'))
+                            ->map(fn ($id) => (int) $id)
+                            ->filter(fn ($id) => $id > 0)
+                            ->unique()
+                            ->values()
+                            ->all();
+                        $withSubImage = $rows->first(fn ($row) => trim((string) ($row['image'] ?? '')) !== '');
+
+                        return [
+                            'id' => (int) ($firstRow['sub_category_id'] ?? 0),
+                            'name' => trim((string) ($firstRow['sub_category_name'] ?? '')),
+                            'count' => count($productIds),
+                            'image' => (string) ($withSubImage['image'] ?? ''),
+                            'product_ids' => $productIds,
+                        ];
+                    })
+                    ->filter(fn ($sub) => $sub['id'] > 0 && $sub['name'] !== '')
+                    ->values()
+                    ->all();
+
+                return [
+                    'id' => $categoryId > 0 ? $categoryId : (int) ($first['id'] ?? 0),
+                    'category_id' => $categoryId > 0 ? $categoryId : null,
+                    'sub_category_id' => null,
+                    'alias_ids' => $aliasIds,
+                    'category_name' => (string) ($first['category_name'] ?? ''),
+                    'sub_category_name' => '',
+                    'sub_categories' => $subCategories,
+                    'name' => (string) ($first['name'] ?? ''),
+                    'image' => $image,
+                    'sort_order' => (int) $group->min('sort_order'),
+                    'products' => $products,
+                ];
+            })
             ->sortBy('sort_order')
             ->values()
             ->all();
+    }
 
-        return $normalized;
+    /**
+     * Search catalog products by name or tags (case-insensitive substring).
+     *
+     * @return array<int, array{id: int, name: string, tags: array<int, string>}>
+     */
+    public function searchProducts(string $term, int $limit = 10): array
+    {
+        $needle = mb_strtolower(trim($term));
+        if ($needle === '' || $limit <= 0) {
+            return [];
+        }
+
+        return collect($this->getCatalog(null))
+            ->flatMap(fn ($category) => $category['products'] ?? [])
+            ->unique('id')
+            ->filter(function ($product) use ($needle) {
+                $name = mb_strtolower((string) ($product['name'] ?? ''));
+                if (str_contains($name, $needle)) {
+                    return true;
+                }
+
+                $tagsHaystack = mb_strtolower(implode(' ', $product['tags'] ?? []));
+
+                return $tagsHaystack !== '' && str_contains($tagsHaystack, $needle);
+            })
+            ->take($limit)
+            ->map(fn ($product) => [
+                'id' => (int) ($product['id'] ?? 0),
+                'name' => (string) ($product['name'] ?? ''),
+                'tags' => array_values($product['tags'] ?? []),
+            ])
+            ->filter(fn ($product) => $product['id'] > 0 && $product['name'] !== '')
+            ->values()
+            ->all();
     }
 
     /**
@@ -350,7 +488,7 @@ class Tab3eenCatalogService
         }
 
         $brand = $product['brand'] ?? null;
-        $category = $product['category'] ?? null;
+        [$categoryName, $subCategoryName] = $this->categoryLabelParts($product);
 
         return [
             'id' => (int) ($product['id'] ?? 0),
@@ -360,11 +498,40 @@ class Tab3eenCatalogService
             'warranty' => null,
             'image_url' => (string) ($product['image_url'] ?? ''),
             'brand' => is_array($brand) ? (string) ($brand['name'] ?? '') : (string) ($brand ?? ''),
-            'category' => is_array($category) ? (string) ($category['name'] ?? '') : (string) ($category ?? ''),
+            'category' => $categoryName,
+            'sub_category' => $subCategoryName,
             'unit' => null,
             'source' => 'servo',
             'has_price' => collect($variations)->contains(fn ($variation) => $variation['price_inc_tax'] !== null),
             'variations' => $variations,
         ];
+    }
+
+    /**
+     * @return array{0: string, 1: string}
+     */
+    private function categoryLabelParts(array $row, bool $fallbackToName = false): array
+    {
+        $categoryName = '';
+        if (is_array($row['category'] ?? null)) {
+            $categoryName = trim((string) ($row['category']['name'] ?? ''));
+        }
+        if ($categoryName === '') {
+            $categoryName = trim((string) ($row['category_name'] ?? ''));
+        }
+
+        $subCategoryName = '';
+        if (is_array($row['sub_category'] ?? null)) {
+            $subCategoryName = trim((string) ($row['sub_category']['name'] ?? ''));
+        }
+        if ($subCategoryName === '') {
+            $subCategoryName = trim((string) ($row['sub_category_name'] ?? ''));
+        }
+
+        if ($categoryName === '' && $subCategoryName === '' && $fallbackToName) {
+            $categoryName = trim((string) ($row['name'] ?? ''));
+        }
+
+        return [$categoryName, $subCategoryName];
     }
 }

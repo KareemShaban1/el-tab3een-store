@@ -133,7 +133,14 @@
                     <div class="col-sm-6">
                         <div class="form-group">
                             {!! Form::label('serial_no', __('repair::lang.serial_no') . ':*') !!}
-                            {!! Form::text('serial_no', null, ['class' => 'form-control', 'placeholder' => __('repair::lang.serial_no'), 'required']); !!}
+                            <div class="input-group">
+                                {!! Form::text('serial_no', null, ['class' => 'form-control', 'id' => 'serial_no', 'placeholder' => __('repair::lang.serial_no'), 'required', 'readonly' => 'readonly']); !!}
+                                <span class="input-group-btn">
+                                    <button type="button" class="btn btn-info btn-flat generate_serial_no" title="@lang('repair::lang.generate_passcode')">
+                                        <i class="fas fa-random"></i> @lang('repair::lang.generate_passcode')
+                                    </button>
+                                </span>
+                            </div>
                         </div>
                     </div>
                     <div class="col-md-6">
@@ -385,6 +392,11 @@
                     $('input#security_pattern').val(pattern);
                 },
                 enableSetPattern: true
+            });
+
+            $(document).on('click', '.generate_serial_no', function() {
+                var code = String(Math.floor(1000 + Math.random() * 9000));
+                $('input#serial_no').val(code).trigger('change').focus();
             });
 
             //filter device model id based on brand & device

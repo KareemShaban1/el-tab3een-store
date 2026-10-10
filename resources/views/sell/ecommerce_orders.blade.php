@@ -44,7 +44,8 @@
         @endcomponent
 
         @component('components.widget', ['class' => 'box-primary', 'title' => $page_title])
-            @if (auth()->user()->can('direct_sell.view') ||
+            @if (auth()->user()->can('tab3een_orders.view') ||
+                    auth()->user()->can('direct_sell.view') ||
                     auth()->user()->can('view_own_sell_only') ||
                     auth()->user()->can('view_commission_agent_sell'))
                 <table class="table table-bordered table-striped ajax_view" id="sell_table">
@@ -73,11 +74,29 @@
     <section class="invoice print_section" id="receipt_section"></section>
 @stop
 
+@section('css')
+    <style>
+        tr.highlight-ecommerce-order > td {
+            background: #fff3cd !important;
+            box-shadow: inset 3px 0 0 #f0ad4e;
+            animation: ecommerce-order-pulse 1.4s ease-in-out 3;
+        }
+        @keyframes ecommerce-order-pulse {
+            0%, 100% { background: #fff3cd; }
+            50% { background: #ffe08a; }
+        }
+    </style>
+@endsection
+
 @section('javascript')
     <script type="text/javascript">
         $(document).ready(function() {
             var startLast30 = moment().subtract(29, 'days');
             var endLast = moment();
+            var urlParams = new URLSearchParams(window.location.search || '');
+            var highlightOrderId = String(urlParams.get('highlight') || '').trim();
+            var highlightInvoiceNo = String(urlParams.get('invoice_no') || '').trim();
+            var highlightedOnce = false;
 
             function updateDateRangeHeading(start, end) {
                 if (start && end) {
@@ -88,6 +107,33 @@
                     var defaultStart = moment().subtract(29, 'days').format(moment_date_format);
                     var defaultEnd = moment().format(moment_date_format);
                     $('#sell_list_selected_range').text(defaultStart + ' ~ ' + defaultEnd);
+                }
+            }
+
+            function rowMatchesHighlight(data, row) {
+                if (highlightOrderId) {
+                    var rowId = data && (data.id || data.DT_RowId || $(row).data('transaction-id'));
+                    if (String(rowId) === highlightOrderId) {
+                        return true;
+                    }
+                }
+                if (highlightInvoiceNo && data && data.invoice_no) {
+                    var invoiceText = $('<div>').html(data.invoice_no).text().trim();
+                    if (invoiceText.indexOf(highlightInvoiceNo) !== -1) {
+                        return true;
+                    }
+                }
+                return false;
+            }
+
+            function scrollToHighlightedOrder() {
+                var $row = $('#sell_table tbody tr.highlight-ecommerce-order').first();
+                if (!$row.length) {
+                    return;
+                }
+                var el = $row.get(0);
+                if (el && typeof el.scrollIntoView === 'function') {
+                    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 }
             }
 
@@ -189,9 +235,25 @@
                 ],
                 fnDrawCallback: function() {
                     __currency_convert_recursively($('#sell_table'));
+                    if (!highlightedOnce && (highlightOrderId || highlightInvoiceNo)) {
+                        var $row = $('#sell_table tbody tr.highlight-ecommerce-order').first();
+                        if ($row.length) {
+                            highlightedOnce = true;
+                            setTimeout(scrollToHighlightedOrder, 120);
+                        } else if (highlightInvoiceNo && !sell_table.search()) {
+                            // Fallback: search by invoice when the row is not on the first page.
+                            sell_table.search(highlightInvoiceNo).draw();
+                        }
+                    }
                 },
-                createdRow: function(row) {
+                createdRow: function(row, data) {
                     $(row).find('td:eq(6)').attr('class', 'clickable_td');
+                    if (data && data.id) {
+                        $(row).attr('data-transaction-id', data.id);
+                    }
+                    if (rowMatchesHighlight(data, row)) {
+                        $(row).addClass('highlight-ecommerce-order');
+                    }
                 }
             });
 

@@ -128,8 +128,8 @@
 										@foreach($unit_html as $key => $value)
 											<option 
 												value="{{$key}}" 
-												data-multiplier="{{$value['multiplier']}}"
-												@if(!empty($recipe->sub_unit_id) && $recipe->sub_unit_id == $key)
+												data-multiplier="{{ (float) $value['multiplier'] }}"
+												@if(!empty($recipe->sub_unit_id) && (int) $recipe->sub_unit_id === (int) $key)
 													selected
 												@endif
 											>{{$value['name']}}</option>

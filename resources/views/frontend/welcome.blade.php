@@ -1,64 +1,105 @@
 @extends('frontend.store.theme_layout')
 
 @section('content')
+@auth('customer')
+<style>
+.home-welcome-banner {
+	padding: 14px 0 0;
+}
+
+.home-welcome-banner__inner {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	padding: 12px 16px;
+	border-radius: 14px;
+	background: linear-gradient(135deg, rgba(234, 84, 26, 0.1), rgba(61, 56, 104, 0.08));
+	border: 1px solid rgba(234, 84, 26, 0.18);
+	color: #1f2937;
+	font-weight: 700;
+}
+
+.home-welcome-banner__name {
+	color: #ea541a;
+}
+</style>
+<!-- <div class="home-welcome-banner">
+	<div class="container">
+		<div class="home-welcome-banner__inner">
+			{!! __('storefront.auth.hello_name', [
+				'name' => '<span class="home-welcome-banner__name">'.e(auth('customer')->user()->name).'</span>',
+			]) !!}
+		</div>
+	</div>
+</div> -->
+@endauth
 <!-- ===================== HERO ===================== -->
 <section class="hero" id="store-hero">
 	<div class="container">
 		<div class="hero-slides">
 			@foreach ($heroBanners as $index => $banner)
-				@php
-					$linkUrl = $banner->link_url ?: route('store.products.index');
-					$imageUrl = $banner->image_url ?: 'https://placehold.co/460x400/3d3868/ffffff?text=Hero';
-					$imageAlt = $banner->image_alt ?: strip_tags((string) $banner->title);
-				@endphp
-				<div class="hero-slide {{ $index === 0 ? 'active' : '' }}" data-slide="{{ $index }}">
-					<div class="hero-inner">
-						<div class="hero-content">
-							@if (! empty($banner->badge))
-								<div class="hero-badge">{{ $banner->badge }}</div>
-							@endif
-							<h1 class="hero-title">{!! $banner->title !!}</h1>
-							@if (! empty($banner->content))
-								<p class="hero-desc">{{ $banner->content }}</p>
-							@endif
-							@if (! empty($banner->link_title))
-								<div class="hero-actions">
-									<a href="{{ $linkUrl }}" class="btn btn-primary">{{ $banner->link_title }}</a>
-								</div>
-							@endif
+			@php
+			$linkUrl = $banner->link_url ?: route('store.products.index');
+			$imageUrl = $banner->image_url ?: 'https://placehold.co/460x400/3d3868/ffffff?text=Hero';
+			$imageAlt = $banner->image_alt ?: strip_tags((string) $banner->title);
+			@endphp
+			<div class="hero-slide {{ $index === 0 ? 'active' : '' }}" data-slide="{{ $index }}">
+				<div class="hero-inner">
+					<div class="hero-content">
+						@if (! empty($banner->badge))
+						<div class="hero-badge">{{ $banner->badge }}</div>
+						@endif
+						<h1 class="hero-title">{!! $banner->title !!}</h1>
+						@if (! empty($banner->content))
+						<p class="hero-desc">{{ $banner->content }}</p>
+						@endif
+						@if (! empty($banner->link_title))
+						<div class="hero-actions">
+							<a href="{{ $linkUrl }}"
+								class="btn btn-primary">{{ $banner->link_title }}</a>
 						</div>
+						@endif
+					</div>
 
-						<div class="hero-visual">
-							<div class="hero-glow"></div>
-							<img class="hero-img" src="{{ $imageUrl }}" alt="{{ $imageAlt }}">
-							<div class="float-badge fb1">
-								<div class="fb-icon" style="background:#fff3e0;">⭐</div>
-								<div>
-									<strong class="fb-strong">تقييم 4.9 / 5</strong>
-									<span class="fb-small">من +50,000 تقييم</span>
-								</div>
+					<div class="hero-visual">
+						<div class="hero-glow"></div>
+						<img class="hero-img" src="{{ $imageUrl }}"
+							alt="{{ $imageAlt }}">
+						<!-- <div class="float-badge fb1">
+							<div class="fb-icon" style="background:#fff3e0;">⭐
 							</div>
-							<div class="float-badge fb2">
-								<div class="fb-icon" style="background:#e8f5e9;">🚚</div>
-								<div>
-									<strong class="fb-strong">توصيل مجاني</strong>
-									<span class="fb-small">على الطلبات +500 ج.م</span>
-								</div>
+							<div>
+								<strong class="fb-strong">تقييم 4.9 /
+									5</strong>
+								<span class="fb-small">من +50,000
+									تقييم</span>
 							</div>
-						</div>
+						</div> -->
+						<!-- <div class="float-badge fb2">
+							<div class="fb-icon" style="background:#e8f5e9;">
+								🚚</div>
+							<div>
+								<strong class="fb-strong">توصيل
+									مجاني</strong>
+								<span class="fb-small">على الطلبات +500
+									ج.م</span>
+							</div>
+						</div> -->
 					</div>
 				</div>
+			</div>
 			@endforeach
 		</div>
 
 		@if ($heroBanners->count() > 1)
-			<div class="hero-dots-wrap">
-				<div class="hero-dots">
-					@foreach ($heroBanners as $index => $banner)
-						<button type="button" class="hero-dot {{ $index === 0 ? 'active' : '' }}" data-dot="{{ $index }}" aria-label="Slide {{ $index + 1 }}"></button>
-					@endforeach
-				</div>
+		<div class="hero-dots-wrap">
+			<div class="hero-dots">
+				@foreach ($heroBanners as $index => $banner)
+				<button type="button" class="hero-dot {{ $index === 0 ? 'active' : '' }}"
+					data-dot="{{ $index }}" aria-label="Slide {{ $index + 1 }}"></button>
+				@endforeach
 			</div>
+		</div>
 		@endif
 	</div>
 </section>
@@ -66,144 +107,202 @@
 <!-- ===================== CATEGORIES ===================== -->
 @php
 $servoCategoriesForGrid = collect($tab3eenCatalog ?? [])->map(function ($category) {
+$categoryName = trim((string) ($category['category_name'] ?? ''));
+$subCategoryName = trim((string) ($category['sub_category_name'] ?? ''));
+$displayName = $categoryName !== '' ? $categoryName : ($subCategoryName !== '' ? $subCategoryName : trim((string)
+($category['name'] ?? '')));
+$categoryId = (int) ($category['category_id'] ?? 0);
+
 return [
-'id' => (int) ($category['id'] ?? 0),
-'name' => (string) ($category['name'] ?? ''),
+'id' => $categoryId > 0 ? $categoryId : (int) ($category['id'] ?? 0),
+'category_id' => $categoryId > 0 ? $categoryId : null,
+'name' => $displayName,
+'category_name' => $categoryName,
+'sub_category_name' => $subCategoryName,
+'sub_category_id' => (int) ($category['sub_category_id'] ?? 0),
+'sub_categories' => $category['sub_categories'] ?? [],
 'image' => (string) ($category['image'] ?? ''),
 'products' => $category['products'] ?? [],
 ];
-})->filter(fn ($category) => $category['id'] > 0 && count($category['products']) > 0)->values();
-@endphp
-<script>
-window.__SSR_SERVO_CATEGORIES__ = @json($servoCategoriesForGrid);
-</script>
-<section class="cats-section section-sm">
-	<div class="container">
-		<div class="sec-head-row">
-			<div>
-				<h2 class="sec-title">تسوق حسب <span>الفئة</span></h2>
-				<p class="sec-sub">اكتشف تشكيلتنا من أفضل الفئات الإلكترونية</p>
+})->filter(fn ($category) => $category['id'] > 0 && $category['name'] !== '' && count($category['products']) > 0)
+->groupBy(fn ($category) => (int) ($category['category_id'] ?? 0) > 0 ? 'category-'.$category['category_id'] :
+'row-'.$category['id'])
+->map(function ($group) {
+$first = $group->first();
+$products = $group->flatMap(fn ($category) => $category['products'] ?? [])->unique('id')->values()->all();
+
+$withImage = $group->first(fn ($category) => trim((string) ($category['image'] ?? '')) !== '');
+
+$subCategories = collect($group)
+->flatMap(function ($category) {
+if (! empty($category['sub_categories']) && is_array($category['sub_categories'])) {
+return $category['sub_categories'];
+}
+$subId = (int) ($category['sub_category_id'] ?? 0);
+$subName = trim((string) ($category['sub_category_name'] ?? ''));
+if ($subId <= 0 || $subName==='' ) { return []; } return [[ 'id'=> $subId,
+	'name' => $subName,
+	'count' => count($category['products'] ?? []),
+	'image' => (string) ($category['image'] ?? ''),
+	]];
+	})
+	->filter(fn ($sub) => (int) ($sub['id'] ?? 0) > 0 && trim((string) ($sub['name'] ?? '')) !== '')
+	->unique('id')
+	->map(fn ($sub) => [
+	'id' => (int) $sub['id'],
+	'name' => trim((string) $sub['name']),
+	'count' => (int) ($sub['count'] ?? 0),
+	'image' => trim((string) ($sub['image'] ?? $sub['image_url'] ?? '')),
+	])
+	->values()
+	->all();
+
+	return [
+	'id' => (int) $first['id'],
+	'category_id' => $first['category_id'],
+	'name' => (string) $first['name'],
+	'category_name' => (string) $first['category_name'],
+	'sub_category_name' => '',
+	'sub_categories' => $subCategories,
+	'image' => (string) ($withImage['image'] ?? ''),
+	'products' => $products,
+	];
+	})->values();
+	@endphp
+	<script>
+	window.__SSR_SERVO_CATEGORIES__ = @json($servoCategoriesForGrid);
+	</script>
+	<section class="cats-section section-sm">
+		<div class="container">
+			<div class="sec-head-row">
+				<div>
+					<h2 class="sec-title">تسوق حسب <span>الفئة</span></h2>
+					<p class="sec-sub">اكتشف تشكيلتنا من أفضل الفئات الإلكترونية</p>
+				</div>
+				<a href="{{ route('store.products.index') }}" class="view-all">عرض الكل ←</a>
 			</div>
-			<a href="{{ route('store.products.index') }}" class="view-all">عرض الكل ←</a>
-		</div>
-		<div class="cats-grid" id="dynamic-categories-grid"></div>
-	</div>
-</section>
-
-<!-- ===================== FEATURED PRODUCTS ===================== -->
-<section class="section">
-	<div class="container">
-		<div class="sec-head-row">
-			<div>
-				<h2 class="sec-title">منتجات <span>مميزة</span></h2>
-				<p class="sec-sub">اختيارنا من أفضل المنتجات لهذا الأسبوع</p>
+			<div class="cats-scroll" role="region" aria-label="الفئات">
+				<div class="cats-grid" id="dynamic-categories-grid"></div>
 			</div>
-			<a href="{{route('store.products.index')}}" class="view-all">عرض الكل ←</a>
 		</div>
-		<div class="products-grid" id="dynamic-products-grid"></div>
-	</div>
-</section>
+	</section>
 
-@php
-$tab3eenProductsSeed = collect($tab3eenCatalog ?? [])->flatMap(function ($category) {
-return collect($category['products'] ?? [])->mapWithKeys(function ($item) use ($category) {
-$id = (int) ($item['id'] ?? 0);
-$vars = collect($item['variations'] ?? [])->map(function ($v) {
-return [
-'variation_id' => (int) ($v['variation_id'] ?? 0),
-'name' => (string) ($v['name'] ?? 'Default'),
-'sku' => (string) ($v['sku'] ?? ''),
-'price_inc_tax' => isset($v['price']) && $v['price'] !== null ? (float) $v['price'] : null,
-'qty_available' => (float) ($v['qty_available'] ?? 0),
-];
-})->values()->all();
-$def = $vars[0] ?? null;
-$price = $def && ($def['price_inc_tax'] ?? null) !== null ? (float) $def['price_inc_tax'] : null;
-$vid = (int) ($item['default_variation_id'] ?? ($def['variation_id'] ?? $id));
+	<!-- ===================== FEATURED PRODUCTS ===================== -->
+	<section class="section">
+		<div class="container">
+			<div class="sec-head-row">
+				<div>
+					<h2 class="sec-title">منتجات <span>مميزة</span></h2>
+					<p class="sec-sub">اختيارنا من أفضل المنتجات لهذا الأسبوع</p>
+				</div>
+				<a href="{{route('store.products.index')}}" class="view-all">عرض الكل ←</a>
+			</div>
+			<div class="products-grid" id="dynamic-products-grid"></div>
+		</div>
+	</section>
 
-return [
-$id => [
-'name' => (string) ($item['name'] ?? ''),
-'brand' => (string) ($category['name'] ?? ''),
-'category' => (string) ($category['name'] ?? ''),
-'unit' => '',
-'price' => $price,
-'has_price' => ! empty($item['has_price']) && $price !== null,
-'old' => null,
-'img' => (string) ($item['image_url'] ?? ''),
-'reviews' => 'متوفر',
-'variation_id' => $vid,
-'variations' => $vars,
-],
-];
-});
-})->all();
-@endphp
-@if (!empty($tab3eenCatalog))
-<style>
-.tab3een-cat-head {
-	display: flex;
-	align-items: center;
-	gap: 16px;
-}
+	@php
+	$tab3eenProductsSeed = collect($tab3eenCatalog ?? [])->flatMap(function ($category) {
+	return collect($category['products'] ?? [])->mapWithKeys(function ($item) use ($category) {
+	$id = (int) ($item['id'] ?? 0);
+	$vars = collect($item['variations'] ?? [])->map(function ($v) {
+	return [
+	'variation_id' => (int) ($v['variation_id'] ?? 0),
+	'name' => (string) ($v['name'] ?? 'Default'),
+	'sku' => (string) ($v['sku'] ?? ''),
+	'price_inc_tax' => isset($v['price']) && $v['price'] !== null ? (float) $v['price'] : null,
+	'qty_available' => (float) ($v['qty_available'] ?? 0),
+	];
+	})->values()->all();
+	$def = $vars[0] ?? null;
+	$price = $def && ($def['price_inc_tax'] ?? null) !== null ? (float) $def['price_inc_tax'] : null;
+	$vid = (int) ($item['default_variation_id'] ?? ($def['variation_id'] ?? $id));
 
-.tab3een-cat-img {
-	width: 56px;
-	height: 56px;
-	object-fit: contain;
-	border-radius: 12px;
-	background: var(--bg-soft);
-	padding: 6px;
-}
+	return [
+	$id => [
+	'name' => (string) ($item['name'] ?? ''),
+	'brand' => (string) (($category['name'] ?? '') !== '' ? $category['name'] : (($category['category_name'] ??
+	'') !== '' ? $category['category_name'] : ($category['sub_category_name'] ?? ''))),
+	'category' => (string) (($category['category_name'] ?? '') !== '' ? $category['category_name'] :
+	(($category['sub_category_name'] ?? '') !== '' ? $category['sub_category_name'] : ($category['name'] ?? ''))),
+	'unit' => '',
+	'price' => $price,
+	'has_price' => ! empty($item['has_price']) && $price !== null,
+	'old' => null,
+	'img' => (string) ($item['image_url'] ?? ''),
+	'reviews' => 'متوفر',
+	'variation_id' => $vid,
+	'variations' => $vars,
+	],
+	];
+	});
+	})->all();
+	@endphp
+	@if (!empty($tab3eenCatalog))
+	<style>
+	.tab3een-cat-head {
+		display: flex;
+		align-items: center;
+		gap: 16px;
+	}
 
-.tab3een-tabs {
-	display: flex;
-	flex-wrap: wrap;
-	gap: 10px;
-	margin-bottom: 28px;
-}
+	.tab3een-cat-img {
+		width: 56px;
+		height: 56px;
+		object-fit: contain;
+		border-radius: 12px;
+		background: var(--bg-soft);
+		padding: 6px;
+	}
 
-.tab3een-tab {
-	display: inline-flex;
-	align-items: center;
-	gap: 8px;
-	padding: 10px 18px;
-	border: 1px solid var(--border);
-	border-radius: 999px;
-	background: var(--bg-soft);
-	color: var(--primary);
-	font-weight: 600;
-	font-size: .9rem;
-	cursor: pointer;
-	transition: .2s;
-}
+	.tab3een-tabs {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 10px;
+		margin-bottom: 28px;
+	}
 
-.tab3een-tab img {
-	width: 28px;
-	height: 28px;
-	object-fit: contain;
-	border-radius: 8px;
-}
+	.tab3een-tab {
+		display: inline-flex;
+		align-items: center;
+		gap: 8px;
+		padding: 10px 18px;
+		border: 1px solid var(--border);
+		border-radius: 999px;
+		background: var(--bg-soft);
+		color: var(--primary);
+		font-weight: 600;
+		font-size: .9rem;
+		cursor: pointer;
+		transition: .2s;
+	}
 
-.tab3een-tab.active,
-.tab3een-tab:hover {
-	background: var(--primary);
-	color: #fff;
-	border-color: var(--primary);
-}
+	.tab3een-tab img {
+		width: 28px;
+		height: 28px;
+		object-fit: contain;
+		border-radius: 8px;
+	}
 
-.tab3een-panel {
-	display: none;
-}
+	.tab3een-tab.active,
+	.tab3een-tab:hover {
+		background: var(--primary);
+		color: #fff;
+		border-color: var(--primary);
+	}
 
-.tab3een-panel.active {
-	display: block;
-}
-</style>
-<script>
-window.__SSR_STORE_PRODUCTS__ = Object.assign(window.__SSR_STORE_PRODUCTS__ || {}, @json($tab3eenProductsSeed));
-</script>
-<!-- <section class="section tab3een-catalog-section">
+	.tab3een-panel {
+		display: none;
+	}
+
+	.tab3een-panel.active {
+		display: block;
+	}
+	</style>
+	<script>
+	window.__SSR_STORE_PRODUCTS__ = Object.assign(window.__SSR_STORE_PRODUCTS__ || {}, @json($tab3eenProductsSeed));
+	</script>
+	<!-- <section class="section tab3een-catalog-section">
 	<div class="container">
 		<div class="sec-head-row">
 			<div>
@@ -331,27 +430,27 @@ window.__SSR_STORE_PRODUCTS__ = Object.assign(window.__SSR_STORE_PRODUCTS__ || {
 		@endforeach
 	</div>
 </section> -->
-<script>
-document.querySelectorAll('.tab3een-tab').forEach(tab => {
-	tab.addEventListener('click', () => {
-		const targetId = tab.dataset.tab;
-		document.querySelectorAll('.tab3een-tab').forEach(t => {
-			t.classList.remove('active');
-			t.setAttribute('aria-selected',
-				'false');
+	<script>
+	document.querySelectorAll('.tab3een-tab').forEach(tab => {
+		tab.addEventListener('click', () => {
+			const targetId = tab.dataset.tab;
+			document.querySelectorAll('.tab3een-tab').forEach(t => {
+				t.classList.remove('active');
+				t.setAttribute('aria-selected',
+					'false');
+			});
+			document.querySelectorAll('.tab3een-panel').forEach(p => p
+				.classList.remove('active'));
+			tab.classList.add('active');
+			tab.setAttribute('aria-selected', 'true');
+			document.getElementById(targetId)?.classList.add('active');
 		});
-		document.querySelectorAll('.tab3een-panel').forEach(p => p
-			.classList.remove('active'));
-		tab.classList.add('active');
-		tab.setAttribute('aria-selected', 'true');
-		document.getElementById(targetId)?.classList.add('active');
 	});
-});
-</script>
-@endif
+	</script>
+	@endif
 
-<!-- ===================== FLASH DEALS ===================== -->
-<!-- <section class="flash-section section">
+	<!-- ===================== FLASH DEALS ===================== -->
+	<!-- <section class="flash-section section">
 		<div class="container">
 			<div class="flash-head">
 				<div class="flash-title">
@@ -380,33 +479,33 @@ document.querySelectorAll('.tab3een-tab').forEach(tab => {
 		</div>
 	</section> -->
 
-<!-- ===================== BRANDS ===================== -->
-<section class="brands-section section-sm">
-	<div class="container">
-		<h2 class="sec-title" style="text-align:center;margin-bottom:28px;">أفضل
-			<span>الماركات</span> العالمية
-		</h2>
-		<div class="brands-track" id="brands-track">
-			<div class="brand-tile">Apple</div>
-			<div class="brand-tile">Samsung</div>
-			<div class="brand-tile">Sony</div>
-			<div class="brand-tile">Xiaomi</div>
-			<div class="brand-tile">Huawei</div>
-			<div class="brand-tile">LG</div>
-			<div class="brand-tile">Dell</div>
-			<div class="brand-tile">HP</div>
-			<div class="brand-tile">Lenovo</div>
-			<div class="brand-tile">ASUS</div>
-			<div class="brand-tile">JBL</div>
-			<div class="brand-tile">Anker</div>
-			<div class="brand-tile">Apple</div>
-			<div class="brand-tile">Samsung</div>
+	<!-- ===================== BRANDS ===================== -->
+	<section class="brands-section section-sm">
+		<div class="container">
+			<h2 class="sec-title" style="text-align:center;margin-bottom:28px;">أفضل
+				<span>الماركات</span> العالمية
+			</h2>
+			<div class="brands-track" id="brands-track">
+				<div class="brand-tile">Apple</div>
+				<div class="brand-tile">Samsung</div>
+				<div class="brand-tile">Sony</div>
+				<div class="brand-tile">Xiaomi</div>
+				<div class="brand-tile">Huawei</div>
+				<div class="brand-tile">LG</div>
+				<div class="brand-tile">Dell</div>
+				<div class="brand-tile">HP</div>
+				<div class="brand-tile">Lenovo</div>
+				<div class="brand-tile">ASUS</div>
+				<div class="brand-tile">JBL</div>
+				<div class="brand-tile">Anker</div>
+				<div class="brand-tile">Apple</div>
+				<div class="brand-tile">Samsung</div>
+			</div>
 		</div>
-	</div>
-</section>
+	</section>
 
-<!-- ===================== OFFER BANNER ===================== -->
-<!-- <section class="section">
+	<!-- ===================== OFFER BANNER ===================== -->
+	<!-- <section class="section">
 	<div class="container">
 		<div class="offer-banner">
 			<div class="offer-content">
@@ -429,8 +528,8 @@ document.querySelectorAll('.tab3een-tab').forEach(tab => {
 	</div>
 </section> -->
 
-<!-- ===================== TESTIMONIALS ===================== -->
-<!-- <section class="testi-section section">
+	<!-- ===================== TESTIMONIALS ===================== -->
+	<!-- <section class="testi-section section">
 		<div class="container">
 			<div class="sec-head" style="text-align:center;">
 				<h2 class="sec-title">ماذا يقول <span>عملاؤنا</span></h2>
@@ -483,8 +582,8 @@ document.querySelectorAll('.tab3een-tab').forEach(tab => {
 		</div>
 	</section> -->
 
-<!-- ===================== NEWSLETTER ===================== -->
-<!-- <section class="news-section">
+	<!-- ===================== NEWSLETTER ===================== -->
+	<!-- <section class="news-section">
 		<div class="container">
 			<h2 class="news-title">📧 اشترك في نشرتنا البريدية</h2>
 			<p class="news-sub">احصل على أحدث العروض والخصومات مباشرة في بريدك الإلكتروني</p>
@@ -496,4 +595,4 @@ document.querySelectorAll('.tab3een-tab').forEach(tab => {
 		</div>
 	</section> -->
 
-@endsection
+	@endsection

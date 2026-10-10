@@ -690,6 +690,13 @@ class ContactController extends Controller
             $input['business_id'] = $business_id;
             $input['created_by'] = $request->session()->get('user.id');
 
+            if ($this->appCustomerMobileTaken($business_id, $request->input('type'), $request->input('mobile'))) {
+                return [
+                    'success' => false,
+                    'msg' => __('storefront.auth.mobile_taken'),
+                ];
+            }
+
             $input['credit_limit'] = $request->input('credit_limit') != '' ? $this->commonUtil->num_uf($request->input('credit_limit')) : null;
             $input['opening_balance'] = $this->commonUtil->num_uf($request->input('opening_balance'));
 
@@ -884,6 +891,13 @@ class ContactController extends Controller
                 $input['credit_limit'] = $request->input('credit_limit') != '' ? $this->commonUtil->num_uf($request->input('credit_limit')) : null;
 
                 $business_id = $request->session()->get('user.business_id');
+
+                if ($this->appCustomerMobileTaken($business_id, $request->input('type'), $request->input('mobile'), (int) $id)) {
+                    return [
+                        'success' => false,
+                        'msg' => __('storefront.auth.mobile_taken'),
+                    ];
+                }
 
                 $input['opening_balance'] = $this->commonUtil->num_uf($request->input('opening_balance'));
 
@@ -1808,6 +1822,11 @@ class ContactController extends Controller
         $query = Contact::where('business_id', $business_id)
                         ->where('mobile', 'like', "%{$mobile_number}");
 
+        $contactType = $request->input('contact_type');
+        if (! empty($contactType)) {
+            $query->where('type', $contactType);
+        }
+
         if (! empty($request->input('contact_id'))) {
             $query->where('id', '!=', $request->input('contact_id'));
         }
@@ -1845,5 +1864,23 @@ class ContactController extends Controller
             'is_tax_number_exists' => ! empty($contacts),
             'msg' => ! empty($contacts) ? __('lang_v1.tax_number_already_registered', ['contacts' => implode(', ', $contacts), 'tax_number' => $tax_number]) : '',
         ];
+    }
+
+    private function appCustomerMobileTaken(int $businessId, ?string $type, ?string $mobile, ?int $ignoreId = null): bool
+    {
+        $mobile = trim((string) $mobile);
+
+        if ($type !== 'app_customer' || $mobile === '') {
+            return false;
+        }
+
+        return Contact::query()
+            ->where('business_id', $businessId)
+            ->where('type', 'app_customer')
+            ->where('mobile', $mobile)
+            ->when($ignoreId, function ($query) use ($ignoreId) {
+                $query->where('id', '!=', $ignoreId);
+            })
+            ->exists();
     }
 }

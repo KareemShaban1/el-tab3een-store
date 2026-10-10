@@ -4,8 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Category;
 use App\Media;
+use App\Product;
 use App\Utils\ModuleUtil;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Yajra\DataTables\Facades\DataTables;
 
 class TaxonomyController extends Controller
@@ -59,15 +61,29 @@ class TaxonomyController extends Controller
 
             $category = collect();
 
-            // Get parents (those with parent_id = null or 0)
-            $parents = $grouped[null] ?? $grouped[0] ?? [];
+            // Get parents (those with parent_id = null or 0), sorted by order
+            $parents = collect($grouped[null] ?? $grouped[0] ?? [])
+                ->sortBy([
+                    ['order', 'asc'],
+                    ['name', 'asc'],
+                    ['id', 'asc'],
+                ])
+                ->values();
 
             foreach ($parents as $parent) {
                 // Push parent
                 $category->push($parent);
 
-                // Get and push children with prefixed parent name
-                foreach ($grouped[$parent->id] ?? [] as $child) {
+                // Get and push children with prefixed parent name (sorted by order)
+                $children = collect($grouped[$parent->id] ?? [])
+                    ->sortBy([
+                        ['order', 'asc'],
+                        ['name', 'asc'],
+                        ['id', 'asc'],
+                    ])
+                    ->values();
+
+                foreach ($children as $child) {
                     // Attach parent name for use in editColumn
                     $child->parent_name = $parent->name;
                     $category->push($child);
@@ -94,9 +110,31 @@ class TaxonomyController extends Controller
                     }
                     return $row->name;
                 })
+                ->editColumn('order', function ($row) {
+                    return (int) ($row->order ?? 0);
+                })
+                ->editColumn('active_in_app', function ($row) use ($can_edit) {
+                    if ($can_edit) {
+                        $on = (bool) ($row->active_in_app ?? false);
+                        $checked = $on ? 'checked' : '';
+                        $url = action([\App\Http\Controllers\TaxonomyController::class, 'toggleActiveInApp'], [$row->id]);
+                        $title = e(__('lang_v1.active_in_app'));
+
+                        return '<div class="tw-flex tw-items-center tw-justify-center"><label class="tw-m-0 tw-cursor-pointer taxonomy-flag-toggle-wrap" title="'.$title.'">'
+                            .'<input type="checkbox" class="taxonomy-flag-toggle tw-h-5 tw-w-5 tw-cursor-pointer" '
+                            .'data-url="'.e($url).'" '.$checked.' />'
+                            .'</label></div>';
+                    }
+
+                    $on = (bool) ($row->active_in_app ?? false);
+
+                    return $on
+                        ? '<span class="label label-success">'.__('messages.yes').'</span>'
+                        : '<span class="label bg-gray">'.__('messages.no').'</span>';
+                })
                 ->removeColumn('id')
                 ->removeColumn('parent_id')
-                ->rawColumns(['action'])
+                ->rawColumns(['action', 'active_in_app'])
                 ->make(true);
 
             }
@@ -350,6 +388,77 @@ class TaxonomyController extends Controller
         }
 
         return $this->respond($categories);
+    }
+
+    /**
+     * Toggle active_in_app from the taxonomy list DataTable.
+     *
+     * @param  int  $id
+     * @return array|\Illuminate\Http\Response
+     */
+    public function toggleActiveInApp($id)
+    {
+        $category = Category::findOrFail($id);
+
+        if ($category->category_type == 'product' && ! auth()->user()->can('category.update')) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        if (! request()->ajax()) {
+            abort(404);
+        }
+
+        $value = (int) request()->input('value');
+        if (! in_array($value, [0, 1], true)) {
+            return ['success' => false, 'msg' => __('messages.something_went_wrong')];
+        }
+
+        try {
+            $business_id = request()->session()->get('user.business_id');
+
+            DB::beginTransaction();
+
+            $updated = Category::where('business_id', $business_id)
+                ->where('id', $id)
+                ->update(['active_in_app' => $value]);
+
+            if (! $updated) {
+                DB::rollBack();
+
+                return ['success' => false, 'msg' => __('messages.something_went_wrong')];
+            }
+
+            // Keep child categories in sync when a parent category is toggled.
+            $child_category_ids = Category::where('business_id', $business_id)
+                ->where('parent_id', $id)
+                ->pluck('id')
+                ->all();
+
+            if (! empty($child_category_ids)) {
+                Category::where('business_id', $business_id)
+                    ->whereIn('id', $child_category_ids)
+                    ->update(['active_in_app' => $value]);
+            }
+
+            $category_ids = array_values(array_unique(array_merge([(int) $id], $child_category_ids)));
+
+            // Sync products assigned to this category or its subcategories.
+            Product::where('business_id', $business_id)
+                ->where(function ($query) use ($category_ids) {
+                    $query->whereIn('category_id', $category_ids)
+                        ->orWhereIn('sub_category_id', $category_ids);
+                })
+                ->update(['active_in_app' => $value]);
+
+            DB::commit();
+
+            return ['success' => true, 'msg' => __('lang_v1.updated_success')];
+        } catch (\Exception $e) {
+            DB::rollBack();
+            \Log::emergency('File:'.$e->getFile().'Line:'.$e->getLine().'Message:'.$e->getMessage());
+
+            return ['success' => false, 'msg' => __('messages.something_went_wrong')];
+        }
     }
 
     /**

@@ -1,244 +1,594 @@
 @extends('frontend.store.theme_layout')
 
 @php
-    $isServoProduct = ! empty($isServoProduct);
-    $product = $payload['data'];
-    $variations = $product['variations'] ?? [];
-    $isServoProduct = ! empty($isServoProduct) || (($product['source'] ?? null) === 'servo');
+$isServoProduct = ! empty($isServoProduct);
+$product = $payload['data'];
+$variations = $product['variations'] ?? [];
+$isServoProduct = ! empty($isServoProduct) || (($product['source'] ?? null) === 'servo');
 
-    $sfStr = static function ($value): string {
-        if ($value === null) {
-            return '';
-        }
-        if (is_scalar($value)) {
-            return (string) $value;
-        }
-        if (is_array($value)) {
-            return collect($value)->flatten()->filter(static fn ($x) => is_scalar($x))->map(static fn ($x) => (string) $x)->implode(' ');
-        }
-        if (is_object($value) && method_exists($value, '__toString')) {
-            return (string) $value;
-        }
+$sfStr = static function ($value): string {
+if ($value === null) {
+return '';
+}
+if (is_scalar($value)) {
+return (string) $value;
+}
+if (is_array($value)) {
+return collect($value)->flatten()->filter(static fn ($x) => is_scalar($x))->map(static fn ($x) => (string)
+$x)->implode(' ');
+}
+if (is_object($value) && method_exists($value, '__toString')) {
+return (string) $value;
+}
 
-        return '';
-    };
+return '';
+};
 
-    /** Safe translation string for Blade (some lang keys may be arrays). */
-    $tx = static function (string $key, array $replace = []) use ($sfStr): string {
-        return $sfStr(__($key, $replace));
-    };
+/** Safe translation string for Blade (some lang keys may be arrays). */
+$tx = static function (string $key, array $replace = []) use ($sfStr): string {
+return $sfStr(__($key, $replace));
+};
 
-    $variationLocationMap = [];
-    foreach ($variations as $vv) {
-        $row = is_array($vv) ? $vv : (method_exists($vv, 'toArray') ? $vv->toArray() : []);
-        $vid = $row['variation_id'] ?? null;
-        if ($vid !== null && $vid !== '') {
-            $variationLocationMap[(string) $vid] = array_values($row['locations'] ?? []);
-        }
-    }
+$variationLocationMap = [];
+foreach ($variations as $vv) {
+$row = is_array($vv) ? $vv : (method_exists($vv, 'toArray') ? $vv->toArray() : []);
+$vid = $row['variation_id'] ?? null;
+if ($vid !== null && $vid !== '') {
+$variationLocationMap[(string) $vid] = array_values($row['locations'] ?? []);
+}
+}
 @endphp
 
 @section('content')
 @if(! empty($variations))
 @php
-    $productIdForCart = (int) ($product['id'] ?? 0);
-    $firstVarForCart = $variations[0] ?? [];
-    $initialVariationIdForCart = (int) ($firstVarForCart['variation_id'] ?? $productIdForCart);
-    $initialPriceForCart = isset($firstVarForCart['price_inc_tax']) && $firstVarForCart['price_inc_tax'] !== null
-        ? (float) $firstVarForCart['price_inc_tax']
-        : null;
-    $initialHasPrice = $initialPriceForCart !== null;
-    $hasInitialPrice = $initialHasPrice;
+$productIdForCart = (int) ($product['id'] ?? 0);
+$firstVarForCart = $variations[0] ?? [];
+$initialVariationIdForCart = (int) ($firstVarForCart['variation_id'] ?? $productIdForCart);
+$initialPriceForCart = isset($firstVarForCart['price_inc_tax']) && $firstVarForCart['price_inc_tax'] !== null
+? (float) $firstVarForCart['price_inc_tax']
+: null;
+$initialHasPrice = $initialPriceForCart !== null;
+$hasInitialPrice = $initialHasPrice;
 @endphp
 <script>
 window.__SSR_STORE_PRODUCTS__ = window.__SSR_STORE_PRODUCTS__ || {};
-window.__SSR_STORE_PRODUCTS__[{{ $productIdForCart }}] = {
-    name: @json($sfStr($product['name'] ?? '')),
-    brand: @json($sfStr($product['brand'] ?? '')),
-    category: @json($sfStr($product['category'] ?? '')),
-    unit: '',
-    price: {{ $initialPriceForCart ?? 'null' }},
-    has_price: @json($initialHasPrice),
-    old: null,
-    img: @json($sfStr($product['image_url'] ?? '')),
-    reviews: 'متوفر',
-    variation_id: {{ $initialVariationIdForCart }},
-    source: @json($isServoProduct ? 'servo' : null),
-    variations: @json($variations),
+window.__SSR_STORE_PRODUCTS__[{
+	{
+		$productIdForCart
+	}
+}] = {
+	name: @json($sfStr($product['name'] ?? '')),
+	brand: @json($sfStr($product['brand'] ?? '')),
+	category: @json($sfStr($product['category'] ?? '')),
+	sub_category: @json($sfStr($product['sub_category'] ?? '')),
+	unit: '',
+	price: {
+		{
+			$initialPriceForCart ?? 'null'
+		}
+	},
+	has_price: @json($initialHasPrice),
+	old: null,
+	img: @json($sfStr($product['image_url'] ?? '')),
+	reviews: 'متوفر',
+	variation_id: {
+		{
+			$initialVariationIdForCart
+		}
+	},
+	source: @json($isServoProduct ? 'servo' : null),
+	variations: @json($variations),
 };
 </script>
 @endif
 <style>
-    .product-page { display: grid; gap: 16px; max-width: 1200px; margin: 30px auto; }
-    .product-hero { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
-    .product-media { background: #fff; border: 1px solid #e5e7eb; border-radius: 14px; padding: 12px; position: sticky; top: 12px; }
-    .product-image { width: 100%; max-height: 480px; object-fit: cover; border-radius: 12px; background: #f8fafc; }
-    .product-summary { background: #fff; border: 1px solid #e5e7eb; border-radius: 14px; padding: 18px; display: grid; gap: 14px; }
-    .back-link { display: inline-flex; align-items: center; gap: 6px; color: var(--accent, #ea541a); font-weight: 700; font-size: .9rem; text-decoration: none; margin-bottom: 4px; }
-    .back-link:hover { text-decoration: underline; }
-    .crumb { color: #6b7280; font-size: 13px; }
-    .product-name { margin: 0; font-size: clamp(1.35rem, 3vw, 1.85rem); line-height: 1.25; }
-    .meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-    .meta-box { background: #f8fafc; border-radius: 10px; padding: 10px; }
-    .meta-label { margin: 0; color: #6b7280; font-size: 11px; text-transform: uppercase; letter-spacing: .03em; }
-    .meta-value { margin: 5px 0 0; font-weight: 700; font-size: 15px; }
-    .purchase-block { border-top: 1px solid #f1f5f9; padding-top: 14px; display: grid; gap: 12px; }
-    .field-label { display: block; font-weight: 700; font-size: 13px; color: #374151; margin-bottom: 6px; }
-    .variant-select {
-        width: 100%; padding: 12px 14px; border-radius: 10px; border: 1px solid #e5e7eb;
-        font-family: var(--font, inherit); font-size: 15px; font-weight: 600; color: #111827;
-        background: #fff; cursor: pointer; appearance: none;
-        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236b7280'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E");
-        background-repeat: no-repeat; background-position: left 12px center; background-size: 18px;
-        padding-inline-start: 40px; text-align: right;
-    }
-    .variant-select:focus { outline: none; border-color: var(--accent, #ea541a); box-shadow: 0 0 0 3px rgba(234, 84, 26, .15); }
-    .variant-details {
-        display: grid; gap: 8px; padding: 14px; background: linear-gradient(180deg, #fafafa 0%, #f8fafc 100%);
-        border: 1px solid #e5e7eb; border-radius: 12px;
-    }
-    .detail-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
-    .detail-key { color: #6b7280; font-size: 13px; }
-    .detail-val { font-weight: 700; font-size: 14px; }
-    .detail-price { font-size: 22px; font-weight: 800; color: #111827; }
-    .loc-block { flex-direction: column; align-items: stretch !important; gap: 8px; }
-    .loc-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
-    .loc-list li {
-        display: flex; justify-content: space-between; align-items: center; gap: 10px;
-        padding: 8px 10px; background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; font-size: 13px;
-    }
-    .loc-list .loc-qty { font-weight: 800; color: #111827; flex-shrink: 0; }
-    .loc-item-inner { flex: 1; min-width: 0; display: grid; gap: 4px; }
-    .loc-title-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-    .loc-title { font-weight: 800; font-size: 14px; color: #111827; }
-    .loc-badge { font-size: 10px; font-weight: 800; text-transform: uppercase; padding: 3px 8px; border-radius: 6px; background: #dbeafe; color: #1e40af; }
-    .loc-meta { font-size: 12px; color: #6b7280; line-height: 1.35; }
-    .loc-meta + .loc-meta { margin-top: 2px; }
-    .loc-list-header { display: flex; justify-content: space-between; font-size: 11px; font-weight: 800; color: #6b7280; text-transform: uppercase; padding: 0 2px 4px; }
-    .chip { display: inline-flex; align-items: center; border-radius: 999px; padding: 5px 12px; font-size: 12px; font-weight: 700; }
-    .chip-ok { background: #dcfce7; color: #166534; }
-    .chip-low { background: #fef3c7; color: #92400e; }
-    .qty-row { display: grid; grid-template-columns: auto 1fr; gap: 12px; align-items: end; }
-    .qty-row input[type="number"] {
-        width: 100%; max-width: 120px; padding: 11px 12px; border-radius: 10px; border: 1px solid #e5e7eb;
-        font-family: var(--font, inherit); font-size: 16px; font-weight: 600; text-align: center;
-    }
-    .qty-row input:focus { outline: none; border-color: var(--accent, #ea541a); }
-    .cta-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; padding-top: 4px; }
-    .cta-row .btn { flex: 1; min-width: 140px; justify-content: center; text-align: center; }
-    .cta-row .btn.pa-cart { padding: 12px 14px; font-size: 0.95rem; border-radius: 10px; }
-    .cta-row .btn.is-disabled { opacity: 0.55; pointer-events: none; cursor: not-allowed; }
-    .empty-variations {
-        text-align: center; color: #6b7280; padding: 20px; border: 1px dashed #d1d5db; border-radius: 12px; background: #fafafa;
-    }
-    .product-warranties {
-        background: #fff;
-        border: 1px solid #e5e7eb;
-        border-radius: 14px;
-        overflow: hidden;
-    }
-    .product-warranties-toggle {
-        width: 100%;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 12px;
-        padding: 16px 18px;
-        border: 0;
-        background: #fff;
-        cursor: pointer;
-        text-align: right;
-        font-family: var(--font, inherit);
-    }
-    .product-warranties-toggle:hover {
-        background: #f8fafc;
-    }
-    .product-warranties-title {
-        margin: 0;
-        font-size: 1.05rem;
-        font-weight: 800;
-        color: #111827;
-    }
-    .product-warranties-chevron {
-        flex-shrink: 0;
-        width: 22px;
-        height: 22px;
-        color: #6b7280;
-        transition: transform .25s ease;
-    }
-    .product-warranties.is-open .product-warranties-chevron {
-        transform: rotate(180deg);
-    }
-    .product-warranties-panel {
-        display: grid;
-        gap: 12px;
-        padding: 0 18px;
-        max-height: 0;
-        overflow: hidden;
-        opacity: 0;
-        transition: max-height .3s ease, opacity .25s ease, padding .3s ease;
-    }
-    .product-warranties.is-open .product-warranties-panel {
-        max-height: 1200px;
-        opacity: 1;
-        padding: 0 18px 18px;
-    }
-    .warranty-card {
-        background: #f8fafc;
-        border: 1px solid #e5e7eb;
-        border-radius: 12px;
-        padding: 14px;
-        display: grid;
-        gap: 8px;
-    }
-    .warranty-card-name {
-        margin: 0;
-        font-size: 1rem;
-        font-weight: 800;
-        color: #111827;
-    }
-    .warranty-card-desc,
-    .warranty-text {
-        color: #374151;
-        font-size: 14px;
-        line-height: 1.7;
-        white-space: pre-wrap;
-    }
-    @media (max-width: 900px) {
-        .product-hero { grid-template-columns: 1fr; }
-        .product-media { position: static; }
-        .meta-grid { grid-template-columns: 1fr; }
-    }
+.product-page {
+	display: grid;
+	gap: 16px;
+	max-width: 1200px;
+	margin: 30px auto;
+}
+
+.product-hero {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 16px;
+	align-items: start;
+}
+
+.product-media {
+	background: #fff;
+	border: 1px solid #e5e7eb;
+	border-radius: 14px;
+	padding: 12px;
+	position: sticky;
+	top: 12px;
+}
+
+.product-image {
+	width: 100%;
+	max-height: 480px;
+	object-fit: cover;
+	border-radius: 12px;
+	background: #f8fafc;
+}
+
+.product-summary {
+	background: #fff;
+	border: 1px solid #e5e7eb;
+	border-radius: 14px;
+	padding: 18px;
+	display: grid;
+	gap: 14px;
+}
+
+.back-link {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	color: var(--accent, #ea541a);
+	font-weight: 700;
+	font-size: .9rem;
+	text-decoration: none;
+	margin-bottom: 4px;
+}
+
+.back-link:hover {
+	text-decoration: underline;
+}
+
+.crumb {
+	color: #6b7280;
+	font-size: 13px;
+}
+
+.product-name {
+	margin: 0;
+	font-size: clamp(1.35rem, 3vw, 1.85rem);
+	line-height: 1.25;
+}
+
+.meta-grid {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 10px;
+}
+
+.meta-box {
+	background: #f8fafc;
+	border-radius: 10px;
+	padding: 10px;
+}
+
+.meta-label {
+	margin: 0;
+	color: #6b7280;
+	font-size: 11px;
+	text-transform: uppercase;
+	letter-spacing: .03em;
+}
+
+.meta-value {
+	margin: 5px 0 0;
+	font-weight: 700;
+	font-size: 15px;
+}
+
+.purchase-block {
+	border-top: 1px solid #f1f5f9;
+	padding-top: 14px;
+	display: grid;
+	gap: 12px;
+}
+
+.field-label {
+	display: block;
+	font-weight: 700;
+	font-size: 13px;
+	color: #374151;
+	margin-bottom: 6px;
+}
+
+.variant-select {
+	width: 100%;
+	padding: 12px 14px;
+	border-radius: 10px;
+	border: 1px solid #e5e7eb;
+	font-family: var(--font, inherit);
+	font-size: 15px;
+	font-weight: 600;
+	color: #111827;
+	background: #fff;
+	cursor: pointer;
+	appearance: none;
+	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236b7280'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E");
+	background-repeat: no-repeat;
+	background-position: left 12px center;
+	background-size: 18px;
+	padding-inline-start: 40px;
+	text-align: right;
+}
+
+.variant-select:focus {
+	outline: none;
+	border-color: var(--accent, #ea541a);
+	box-shadow: 0 0 0 3px rgba(234, 84, 26, .15);
+}
+
+.variant-details {
+	display: grid;
+	gap: 8px;
+	padding: 14px;
+	background: linear-gradient(180deg, #fafafa 0%, #f8fafc 100%);
+	border: 1px solid #e5e7eb;
+	border-radius: 12px;
+}
+
+.detail-row {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	gap: 12px;
+	flex-wrap: wrap;
+}
+
+.detail-key {
+	color: #6b7280;
+	font-size: 13px;
+}
+
+.detail-val {
+	font-weight: 700;
+	font-size: 14px;
+}
+
+.detail-price {
+	font-size: 22px;
+	font-weight: 800;
+	color: #111827;
+}
+
+.loc-block {
+	flex-direction: column;
+	align-items: stretch !important;
+	gap: 8px;
+}
+
+.loc-list {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	display: grid;
+	gap: 6px;
+}
+
+.loc-list li {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	gap: 10px;
+	padding: 8px 10px;
+	background: #fff;
+	border: 1px solid #e5e7eb;
+	border-radius: 8px;
+	font-size: 13px;
+}
+
+.loc-list .loc-qty {
+	font-weight: 800;
+	color: #111827;
+	flex-shrink: 0;
+}
+
+.loc-item-inner {
+	flex: 1;
+	min-width: 0;
+	display: grid;
+	gap: 4px;
+}
+
+.loc-title-row {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	flex-wrap: wrap;
+}
+
+.loc-title {
+	font-weight: 800;
+	font-size: 14px;
+	color: #111827;
+}
+
+.loc-badge {
+	font-size: 10px;
+	font-weight: 800;
+	text-transform: uppercase;
+	padding: 3px 8px;
+	border-radius: 6px;
+	background: #dbeafe;
+	color: #1e40af;
+}
+
+.loc-meta {
+	font-size: 12px;
+	color: #6b7280;
+	line-height: 1.35;
+}
+
+.loc-meta+.loc-meta {
+	margin-top: 2px;
+}
+
+.loc-list-header {
+	display: flex;
+	justify-content: space-between;
+	font-size: 11px;
+	font-weight: 800;
+	color: #6b7280;
+	text-transform: uppercase;
+	padding: 0 2px 4px;
+}
+
+.chip {
+	display: inline-flex;
+	align-items: center;
+	border-radius: 999px;
+	padding: 5px 12px;
+	font-size: 12px;
+	font-weight: 700;
+}
+
+.chip-ok {
+	background: #dcfce7;
+	color: #166534;
+}
+
+.chip-low {
+	background: #fef3c7;
+	color: #92400e;
+}
+
+.qty-row {
+	display: grid;
+	grid-template-columns: auto 1fr;
+	gap: 12px;
+	align-items: end;
+}
+
+.qty-stepper {
+	display: inline-flex;
+	align-items: stretch;
+	width: 100%;
+	max-width: 160px;
+	border: 1px solid #e5e7eb;
+	border-radius: 10px;
+	overflow: hidden;
+	background: #fff;
+}
+
+.qty-stepper:focus-within {
+	border-color: var(--accent, #ea541a);
+}
+
+.qty-stepper__btn {
+	width: 40px;
+	flex-shrink: 0;
+	border: none;
+	background: #f8f9fc;
+	color: var(--primary, #2d294e);
+	font-size: 1.15rem;
+	font-weight: 700;
+	line-height: 1;
+	cursor: pointer;
+	font-family: var(--font, inherit);
+	transition: background .15s ease, color .15s ease;
+}
+
+.qty-stepper__btn:hover:not(:disabled) {
+	background: var(--accent, #ea541a);
+	color: #fff;
+}
+
+.qty-stepper__btn:disabled {
+	opacity: .4;
+	cursor: not-allowed;
+}
+
+.qty-row input[type="number"] {
+	flex: 1;
+	min-width: 0;
+	width: 100%;
+	max-width: none;
+	padding: 10px !important;
+	margin: 0px !important;
+	border: none;
+	border-radius: 0;
+	font-family: var(--font, inherit);
+	font-size: 16px;
+	font-weight: 600;
+	text-align: center;
+	appearance: textfield;
+	-moz-appearance: textfield;
+}
+
+.qty-row input[type="number"]::-webkit-outer-spin-button,
+.qty-row input[type="number"]::-webkit-inner-spin-button {
+	-webkit-appearance: none;
+	margin: 0;
+}
+
+.qty-row input:focus {
+	outline: none;
+}
+
+.cta-row {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 10px;
+	align-items: center;
+	padding-top: 4px;
+}
+
+.cta-row .btn {
+	flex: 1;
+	min-width: 140px;
+	justify-content: center;
+	text-align: center;
+}
+
+.cta-row .btn.pa-cart {
+	padding: 12px 14px;
+	font-size: 0.95rem;
+	border-radius: 10px;
+}
+
+.cta-row .btn.is-disabled {
+	opacity: 0.55;
+	pointer-events: none;
+	cursor: not-allowed;
+}
+
+.empty-variations {
+	text-align: center;
+	color: #6b7280;
+	padding: 20px;
+	border: 1px dashed #d1d5db;
+	border-radius: 12px;
+	background: #fafafa;
+}
+
+.product-warranties {
+	background: #fff;
+	border: 1px solid #e5e7eb;
+	border-radius: 14px;
+	overflow: hidden;
+}
+
+.product-warranties-toggle {
+	width: 100%;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	padding: 16px 18px;
+	border: 0;
+	background: #fff;
+	cursor: pointer;
+	text-align: right;
+	font-family: var(--font, inherit);
+}
+
+.product-warranties-toggle:hover {
+	background: #f8fafc;
+}
+
+.product-warranties-title {
+	margin: 0;
+	font-size: 1.05rem;
+	font-weight: 800;
+	color: #111827;
+}
+
+.product-warranties-chevron {
+	flex-shrink: 0;
+	width: 22px;
+	height: 22px;
+	color: #6b7280;
+	transition: transform .25s ease;
+}
+
+.product-warranties.is-open .product-warranties-chevron {
+	transform: rotate(180deg);
+}
+
+.product-warranties-panel {
+	display: grid;
+	gap: 12px;
+	padding: 0 18px;
+	max-height: 0;
+	overflow: hidden;
+	opacity: 0;
+	transition: max-height .3s ease, opacity .25s ease, padding .3s ease;
+}
+
+.product-warranties.is-open .product-warranties-panel {
+	max-height: 1200px;
+	opacity: 1;
+	padding: 0 18px 18px;
+}
+
+.warranty-card {
+	background: #f8fafc;
+	border: 1px solid #e5e7eb;
+	border-radius: 12px;
+	padding: 14px;
+	display: grid;
+	gap: 8px;
+}
+
+.warranty-card-name {
+	margin: 0;
+	font-size: 1rem;
+	font-weight: 800;
+	color: #111827;
+}
+
+.warranty-card-desc,
+.warranty-text {
+	color: #374151;
+	font-size: 14px;
+	line-height: 1.7;
+	white-space: pre-wrap;
+}
+
+@media (max-width: 900px) {
+	.product-hero {
+		grid-template-columns: 1fr;
+	}
+
+	.product-media {
+		position: static;
+	}
+
+	.meta-grid {
+		grid-template-columns: 1fr;
+	}
+}
 </style>
 
 <div class="container product-page">
-    <div class="product-hero">
-        <div class="product-media">
-            <img src="{{ $sfStr($product['image_url'] ?? '') }}" alt="{{ $sfStr($product['name'] ?? '') }}" class="product-image">
-        </div>
-        <div class="product-summary">
-            <div>
-                @if($isServoProduct)
-                    <a href="{{ route('welcome') }}" class="back-link">← {{ __('storefront.catalog.back_to_home') }}</a>
-                @else
-                    <a href="{{ route('store.products.index') }}" class="back-link">← {{ __('lang_v1.back_to_products') }}</a>
-                @endif
-            </div>
-            <h2 class="product-name">{{ $sfStr($product['name'] ?? '') }}</h2>
-            <!-- product description -->
-            @php
-                $productDescription = $sfStr($product['description'] ?? '');
-                $descriptionHasHtml = $productDescription !== strip_tags($productDescription);
-            @endphp
-            <div class="crumb product-description">
-                @if($descriptionHasHtml)
-                    {!! $productDescription !!}
-                @else
-                    {{ $productDescription }}
-                @endif
-            </div>
+	<div class="product-hero">
+		<div class="product-media">
+			<img src="{{ $sfStr($product['image_url'] ?? '') }}"
+				alt="{{ $sfStr($product['name'] ?? '') }}" class="product-image">
+		</div>
+		<div class="product-summary">
+			<div>
+				@if($isServoProduct)
+				<a href="{{ route('welcome') }}" class="back-link">←
+					{{ __('storefront.catalog.back_to_home') }}</a>
+				@else
+				<a href="{{ route('store.products.index') }}" class="back-link">←
+					{{ __('lang_v1.back_to_products') }}</a>
+				@endif
+			</div>
+			<h2 class="product-name">{{ $sfStr($product['name'] ?? '') }}</h2>
+			<!-- product description -->
+			@php
+			$productDescription = $sfStr($product['description'] ?? '');
+			$descriptionHasHtml = $productDescription !== strip_tags($productDescription);
+			@endphp
+			<div class="crumb product-description">
+				@if($descriptionHasHtml)
+				{!! $productDescription !!}
+				@else
+				{{ $productDescription }}
+				@endif
+			</div>
 
-            <!-- <div class="meta-grid">
+			<!-- <div class="meta-grid">
                 <div class="meta-box">
                     <p class="meta-label">{{ $tx('Unit') }}</p>
                     <p class="meta-value">{{ $sfStr($product['unit'] ?? '') ?: '—' }}</p>
@@ -249,430 +599,656 @@ window.__SSR_STORE_PRODUCTS__[{{ $productIdForCart }}] = {
                 </div>
             </div> -->
 
-            @if($isServoProduct && ($sfStr($product['brand'] ?? '') || $sfStr($product['category'] ?? '')))
-                <div class="meta-grid">
-                    @if($sfStr($product['brand'] ?? ''))
-                        <div class="meta-box">
-                            <p class="meta-label">{{ __('storefront.catalog.brand') }}</p>
-                            <p class="meta-value">{{ $sfStr($product['brand'] ?? '') }}</p>
-                        </div>
-                    @endif
-                    @if($sfStr($product['category'] ?? ''))
-                        <div class="meta-box">
-                            <p class="meta-label">{{ __('storefront.catalog.category') }}</p>
-                            <p class="meta-value">{{ $sfStr($product['category'] ?? '') }}</p>
-                        </div>
-                    @endif
-                </div>
-            @endif
+			@if($sfStr($product['brand'] ?? ''))
+			<div class="meta-grid">
+				<div class="meta-box">
+					<p class="meta-label">{{ __('storefront.catalog.brand') }}</p>
+					<p class="meta-value">{{ $sfStr($product['brand'] ?? '') }}</p>
+				</div>
+			</div>
+			@endif
 
-            @if(! empty($variations))
-                <div class="purchase-block" id="product-purchase">
-                    <div style="display: flex; gap: 10px;">
-                        <div style="flex: 1;">
-			<label class="field-label" for="product-variant-select">{{ __('lang_v1.choose_variation') }}</label>
-			<select id="product-variant-select" class="variant-select" aria-describedby="variant-details-panel">
-			@foreach($variations as $index => $v)
-				@php
-				$qty = (float) ($v['qty_available'] ?? 0);
-				$vName = $sfStr($v['name'] ?? '');
-				$vPrice = $v['price_inc_tax'] ?? null;
-				$label = $vName ?: $tx('Default');
-				if ($vPrice !== null) {
-					$label .= ' — ' . number_format((float) $vPrice, 2);
-				} else {
-					$label .= ' — ' . __('storefront.catalog.price_unavailable');
-				}
-				if ($qty <= 5 && $qty > 0) {
-					$label .= ' (' . __('lang_v1.low_stock') . ')';
-				}
-				@endphp
-				<option value="{{ $sfStr($v['variation_id'] ?? '') }}"
-				data-sku="{{ e($sfStr($v['sku'] ?? '')) }}"
-				data-qty="{{ $qty }}"
-				data-price="{{ $vPrice !== null ? (float) $vPrice : '' }}"
-				data-has-price="{{ $vPrice !== null ? '1' : '0' }}"
-				@selected($index === 0)
-				>{{ $label }}</option>
-			@endforeach
-			</select>
-		     </div>
+			@if(! empty($variations))
+			<div class="purchase-block" id="product-purchase">
+				<div style="display: flex; gap: 10px;">
+					<div style="flex: 1;">
+						<label class="field-label"
+							for="product-variant-select">{{ __('lang_v1.choose_variation') }}</label>
+						<select id="product-variant-select" class="variant-select"
+							aria-describedby="variant-details-panel">
+							@foreach($variations as $index => $v)
+							@php
+							$qty = (float) ($v['qty_available'] ?? 0);
+							$vName = $sfStr($v['name'] ?? '');
+							$vPrice = $v['price_inc_tax'] ?? null;
+							$label = $vName ?: $tx('Default');
+							if ($vPrice !== null) {
+							$label .= ' — ' . number_format((float) $vPrice,
+							2);
+							} else {
+							$label .= ' — ' .
+							__('storefront.catalog.price_unavailable');
+							}
+							if ($qty <= 5 && $qty> 0) {
+								$label .= ' (' . __('lang_v1.low_stock')
+								. ')';
+								}
+								@endphp
+								<option value="{{ $sfStr($v['variation_id'] ?? '') }}"
+									data-sku="{{ e($sfStr($v['sku'] ?? '')) }}"
+									data-qty="{{ $qty }}"
+									data-price="{{ $vPrice !== null ? (float) $vPrice : '' }}"
+									data-has-price="{{ $vPrice !== null ? '1' : '0' }}"
+									@selected($index===0)>
+									{{ $label }}</option>
+								@endforeach
+						</select>
+					</div>
 
- 		<div class="qty-row" style="flex: 1;">
-                        <div style="grid-column: 1 / -1;">
-                            <label class="field-label" for="product-variant-qty">{{ __('lang_v1.quantity') }}</label>
-                            <input type="number" id="product-variant-qty" name="qty" value="1" min="1" step="1">
-                        </div>
-                    </div>
-                    </div>
+					<div class="qty-row" style="flex: 1;">
+						<div style="grid-column: 1 / -1;">
+							<label class="field-label"
+								for="product-variant-qty">{{ __('lang_v1.quantity') }}</label>
+							<div class="qty-stepper">
+								<button type="button"
+									class="qty-stepper__btn"
+									id="product-qty-dec"
+									aria-label="تقليل الكمية">−</button>
+								<input type="number"
+									id="product-variant-qty"
+									name="qty" value="1" min="1"
+									step="1" inputmode="numeric">
+								<button type="button"
+									class="qty-stepper__btn"
+									id="product-qty-inc"
+									aria-label="زيادة الكمية">+</button>
+							</div>
+						</div>
+					</div>
+				</div>
 
-                    <div id="variant-details-panel" class="variant-details" role="region" aria-live="polite">
-                        <!-- <div class="detail-row">
+				<div id="variant-details-panel" class="variant-details" role="region"
+					aria-live="polite">
+					<!-- <div class="detail-row">
                             <span class="detail-key">{{ __('lang_v1.availability') }}</span>
                             <span id="variant-stock-chip" class="chip chip-ok"></span>
                         </div> -->
-                        <div class="detail-row">
-                            <span class="detail-key">{{ __('lang_v1.sku') }}</span>
-                            <span id="variant-sku" class="detail-val">—</span>
-                        </div>
-                        <div class="detail-row">
-                            <span class="detail-key">{{ __('lang_v1.in_stock') }}</span>
-                            <span id="variant-qty-text" class="detail-val">—</span>
-                        </div>
-                        <div class="detail-row" style="border-top: 1px solid #e5e7eb; padding-top: 10px; margin-top: 4px;">
-                            <span class="detail-key">{{ __('lang_v1.price') }}</span>
-                            <span id="variant-price" class="detail-price">—</span>
-                        </div>
-                        <!-- <div class="detail-row loc-block" style="border-top: 1px solid #e5e7eb; padding-top: 10px; margin-top: 4px;">
+					<div class="detail-row">
+						<span class="detail-key">{{ __('lang_v1.sku') }}</span>
+						<span id="variant-sku" class="detail-val">—</span>
+					</div>
+					<div class="detail-row">
+						<span class="detail-key">{{ __('lang_v1.in_stock') }}</span>
+						<span id="variant-qty-text" class="detail-val">—</span>
+					</div>
+					<div class="detail-row"
+						style="border-top: 1px solid #e5e7eb; padding-top: 10px; margin-top: 4px;">
+						<span class="detail-key">{{ __('lang_v1.price') }}</span>
+						<span id="variant-price" class="detail-price">—</span>
+					</div>
+					<!-- <div class="detail-row loc-block" style="border-top: 1px solid #e5e7eb; padding-top: 10px; margin-top: 4px;">
                             <div class="loc-list-header" style="width:100%;">
                                 <span>{{ __('lang_v1.location') }}</span>
                                 <span>{{ __('lang_v1.quantity') }}</span>
                             </div>
                             <ul id="variant-locations" class="loc-list" aria-label="{{ __('lang_v1.stock_by_location') }}"></ul>
                         </div> -->
-                    </div>
+				</div>
 
-                   
 
-                    <div class="cta-row">
-                        @auth('customer')
-                            <button type="button" id="product-buy-btn" class="btn pa-cart{{ ! $hasInitialPrice ? ' is-disabled' : '' }}"
-                                data-id="{{ $productIdForCart }}"
-                                data-name="{{ e($sfStr($product['name'] ?? '')) }}"
-                                data-price="{{ $hasInitialPrice ? $initialPriceForCart : '' }}"
-                                data-variation-id="{{ $initialVariationIdForCart }}"
-                                data-img="{{ e($sfStr($product['image_url'] ?? '')) }}"
-                                @if($isServoProduct) data-source="servo" @endif
-                                @if(! $hasInitialPrice) disabled aria-disabled="true" @endif>
-                                <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
-                                    <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
-                                    <line x1="3" y1="6" x2="21" y2="6" />
-                                </svg>
-                                {{ $hasInitialPrice ? 'أضف للسلة' : __('storefront.catalog.price_unavailable') }}
-                            </button>
-                        @else
-                            <a class="btn secondary" href="{{ route('store.auth.login.form') }}">{{ __('lang_v1.login_to_purchase') }}</a>
-                        @endauth
-                    </div>
-                </div>
-            @else
-                <div class="empty-variations">{{ $tx('No in-stock variations are available for this product right now.') }}</div>
-            @endif
-        </div>
-    </div>
 
-    @php
-        $warrantiesText = trim($sfStr($product['warranties'] ?? ''));
-        $warrantyInfo = $product['warranty'] ?? null;
-        $hasWarrantySection = $warrantiesText !== '' || ! empty($warrantyInfo);
-        $warrantiesHasHtml = $warrantiesText !== '' && $warrantiesText !== strip_tags($warrantiesText);
-    @endphp
-    @if($hasWarrantySection)
-        <section class="product-warranties" id="product-warranties">
-            <button type="button"
-                class="product-warranties-toggle"
-                id="product-warranties-toggle"
-                aria-expanded="false"
-                aria-controls="product-warranties-panel">
-                <h3 class="product-warranties-title">{{ __('lang_v1.warranties') }}</h3>
-                <svg class="product-warranties-chevron" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
-                </svg>
-            </button>
+				<div class="cta-row">
+					@auth('customer')
+					<button type="button" id="product-buy-btn"
+						class="btn pa-cart{{ ! $hasInitialPrice ? ' is-disabled' : '' }}"
+						data-id="{{ $productIdForCart }}"
+						data-name="{{ e($sfStr($product['name'] ?? '')) }}"
+						data-price="{{ $hasInitialPrice ? $initialPriceForCart : '' }}"
+						data-variation-id="{{ $initialVariationIdForCart }}"
+						data-img="{{ e($sfStr($product['image_url'] ?? '')) }}"
+						@if($isServoProduct) data-source="servo" @endif @if(!
+						$hasInitialPrice) disabled aria-disabled="true" @endif>
+						<svg width="14" height="14" fill="none"
+							stroke="currentColor" stroke-width="2.5"
+							viewBox="0 0 24 24" aria-hidden="true">
+							<path
+								d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
+							<line x1="3" y1="6" x2="21" y2="6" />
+						</svg>
+						{{ $hasInitialPrice ? 'أضف للسلة' : __('storefront.catalog.price_unavailable') }}
+					</button>
+					@else
+					<a class="btn btn-primary"
+						href="{{ route('store.auth.login.form', ['redirect' => url()->full()]) }}">{{ __('lang_v1.login_to_purchase') }}</a>
+					@endauth
+				</div>
+			</div>
+			@else
+			<div class="empty-variations">
+				{{ $tx('No in-stock variations are available for this product right now.') }}
+			</div>
+			@endif
+		</div>
+	</div>
 
-            <div class="product-warranties-panel" id="product-warranties-panel">
-                @if(! empty($warrantyInfo))
-                    <div class="warranty-card">
-                        <p class="warranty-card-name">{{ $sfStr($warrantyInfo['display_name'] ?? $warrantyInfo['name'] ?? '') }}</p>
-                        @if($sfStr($warrantyInfo['description'] ?? '') !== '')
-                            <div class="warranty-card-desc">{{ $sfStr($warrantyInfo['description'] ?? '') }}</div>
-                        @endif
-                    </div>
-                @endif
+	@php
+	$warrantiesText = trim($sfStr($product['warranties'] ?? ''));
+	$warrantyInfo = $product['warranty'] ?? null;
+	$hasWarrantySection = $warrantiesText !== '' || ! empty($warrantyInfo);
+	$warrantiesHasHtml = $warrantiesText !== '' && $warrantiesText !== strip_tags($warrantiesText);
+	@endphp
+	@if($hasWarrantySection)
+	<section class="product-warranties" id="product-warranties">
+		<button type="button" class="product-warranties-toggle" id="product-warranties-toggle"
+			aria-expanded="false" aria-controls="product-warranties-panel">
+			<h3 class="product-warranties-title">{{ __('lang_v1.warranties') }}</h3>
+			<svg class="product-warranties-chevron" fill="none" stroke="currentColor" stroke-width="2"
+				viewBox="0 0 24 24" aria-hidden="true">
+				<path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+			</svg>
+		</button>
 
-                @if($warrantiesText !== '')
-                    <div class="warranty-text">
-                        @if($warrantiesHasHtml)
-                            {!! $warrantiesText !!}
-                        @else
-                            {{ $warrantiesText }}
-                        @endif
-                    </div>
-                @endif
-            </div>
-        </section>
-        <script>
-        (function () {
-            var section = document.getElementById('product-warranties');
-            var toggle = document.getElementById('product-warranties-toggle');
-            if (!section || !toggle) return;
+		<div class="product-warranties-panel" id="product-warranties-panel">
+			@if(! empty($warrantyInfo))
+			<div class="warranty-card">
+				<p class="warranty-card-name">
+					{{ $sfStr($warrantyInfo['display_name'] ?? $warrantyInfo['name'] ?? '') }}
+				</p>
+				@if($sfStr($warrantyInfo['description'] ?? '') !== '')
+				<div class="warranty-card-desc">{{ $sfStr($warrantyInfo['description'] ?? '') }}
+				</div>
+				@endif
+			</div>
+			@endif
 
-            toggle.addEventListener('click', function () {
-                var isOpen = section.classList.toggle('is-open');
-                toggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
-            });
-        })();
-        </script>
-    @endif
+			@if($warrantiesText !== '')
+			<div class="warranty-text">
+				@if($warrantiesHasHtml)
+				{!! $warrantiesText !!}
+				@else
+				{{ $warrantiesText }}
+				@endif
+			</div>
+			@endif
+		</div>
+	</section>
+	<script>
+	(function() {
+		var section = document.getElementById('product-warranties');
+		var toggle = document.getElementById('product-warranties-toggle');
+		if (!section || !toggle) return;
+
+		toggle.addEventListener('click', function() {
+			var isOpen = section.classList.toggle('is-open');
+			toggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+		});
+	})();
+	</script>
+	@endif
 </div>
 
 @if(! empty($variations))
-<script type="application/json" id="store-product-locations-json">@json($variationLocationMap)</script>
+<script type="application/json" id="store-product-locations-json">
+@json($variationLocationMap)
+</script>
 <script>
-(function () {
-    var root = document.getElementById('product-purchase');
-    if (!root) return;
+(function() {
+	var root = document.getElementById('product-purchase');
+	if (!root) return;
 
-    var select = document.getElementById('product-variant-select');
-    var qtyInput = document.getElementById('product-variant-qty');
-    var buyBtn = document.getElementById('product-buy-btn');
-    var skuEl = document.getElementById('variant-sku');
-    var qtyTextEl = document.getElementById('variant-qty-text');
-    var priceEl = document.getElementById('variant-price');
-    var chipEl = document.getElementById('variant-stock-chip');
-    var locListEl = document.getElementById('variant-locations');
-    var emptyLocText = @json($tx('No location stock to show'));
-    var checkoutBranchLabel = @json($tx('Checkout branch'));
+	var select = document.getElementById('product-variant-select');
+	var qtyInput = document.getElementById('product-variant-qty');
+	var qtyDecBtn = document.getElementById('product-qty-dec');
+	var qtyIncBtn = document.getElementById('product-qty-inc');
+	var buyBtn = document.getElementById('product-buy-btn');
+	var skuEl = document.getElementById('variant-sku');
+	var qtyTextEl = document.getElementById('variant-qty-text');
+	var priceEl = document.getElementById('variant-price');
+	var chipEl = document.getElementById('variant-stock-chip');
+	var locListEl = document.getElementById('variant-locations');
+	var emptyLocText = @json($tx('No location stock to show'));
+	var checkoutBranchLabel = @json($tx('Checkout branch'));
 
-    var locMap = {};
-    var locJsonEl = document.getElementById('store-product-locations-json');
-    if (locJsonEl && locJsonEl.textContent) {
-        try {
-            locMap = JSON.parse(locJsonEl.textContent.trim()) || {};
-        } catch (err) {
-            locMap = {};
-        }
-    }
+	var locMap = {};
+	var locJsonEl = document.getElementById('store-product-locations-json');
+	if (locJsonEl && locJsonEl.textContent) {
+		try {
+			locMap = JSON.parse(locJsonEl.textContent.trim()) || {};
+		} catch (err) {
+			locMap = {};
+		}
+	}
 
-    var checkoutBase = root.getAttribute('data-checkout-base') || '';
-    var isCustomer = root.getAttribute('data-is-customer') === '1';
-    var isServoProduct = @json($isServoProduct);
-    var priceUnavailableText = @json(__('storefront.catalog.price_unavailable'));
+	var checkoutBase = root.getAttribute('data-checkout-base') || '';
+	var isCustomer = root.getAttribute('data-is-customer') === '1';
+	var isServoProduct = @json($isServoProduct);
+	var priceUnavailableText = @json(__('storefront.catalog.price_unavailable'));
+	var stockExceededTpl = @json(__('storefront.catalog.stock_exceeded'));
 
-    function getSelectedOption() {
-        return select.options[select.selectedIndex];
-    }
+	function getSelectedOption() {
+		return select.options[select.selectedIndex];
+	}
 
-    function formatNum(n) {
-        return Number(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    }
+	function notifyStockExceeded(requested, available) {
+		var msg = String(stockExceededTpl)
+			.replace(':requested', String(requested))
+			.replace(':available', String(available));
+		if (typeof window.toast === 'function') {
+			window.toast(msg, 'warn');
+		} else {
+			alert(msg);
+		}
+	}
 
-    function selectedHasPrice(opt) {
-        if (!opt) return false;
-        var rawPrice = opt.getAttribute('data-price');
-        return opt.getAttribute('data-has-price') === '1'
-            && rawPrice !== null
-            && rawPrice !== '';
-    }
+	function formatNum(n) {
+		return Number(n).toLocaleString(undefined, {
+			minimumFractionDigits: 2,
+			maximumFractionDigits: 2
+		});
+	}
 
-    function syncDetails() {
-        var opt = getSelectedOption();
-        if (!opt) return;
+	function selectedHasPrice(opt) {
+		if (!opt) return false;
+		var rawPrice = opt.getAttribute('data-price');
+		return opt.getAttribute('data-has-price') === '1' &&
+			rawPrice !== null &&
+			rawPrice !== '';
+	}
 
-        var sku = opt.getAttribute('data-sku') || '';
-        var qtyAvail = parseFloat(opt.getAttribute('data-qty') || '0') || 0;
-        var hasPrice = selectedHasPrice(opt);
-        var price = hasPrice ? (parseFloat(opt.getAttribute('data-price') || '0') || 0) : null;
-        var vid = select.value;
-        var locs = locMap[vid];
-        if (!Array.isArray(locs)) {
-            locs = locMap[String(vid)] || [];
-        }
+	function syncDetails() {
+		var opt = getSelectedOption();
+		if (!opt) return;
 
-        skuEl.textContent = sku || '—';
-        qtyTextEl.textContent = formatNum(qtyAvail);
-        priceEl.textContent = hasPrice ? formatNum(price) : priceUnavailableText;
+		var sku = opt.getAttribute('data-sku') || '';
+		var qtyAvail = parseFloat(opt.getAttribute('data-qty') || '0') || 0;
+		var hasPrice = selectedHasPrice(opt);
+		var price = hasPrice ? (parseFloat(opt.getAttribute('data-price') || '0') || 0) : null;
+		var vid = select.value;
+		var locs = locMap[vid];
+		if (!Array.isArray(locs)) {
+			locs = locMap[String(vid)] || [];
+		}
 
-        if (buyBtn) {
-            buyBtn.dataset.variationId = String(vid);
-            if (hasPrice) {
-                buyBtn.dataset.price = String(price);
-                buyBtn.disabled = false;
-                buyBtn.classList.remove('is-disabled');
-                buyBtn.removeAttribute('aria-disabled');
-                buyBtn.innerHTML = '<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/></svg> أضف للسلة';
-            } else {
-                buyBtn.dataset.price = '';
-                buyBtn.disabled = true;
-                buyBtn.classList.add('is-disabled');
-                buyBtn.setAttribute('aria-disabled', 'true');
-                buyBtn.textContent = priceUnavailableText;
-            }
-        }
+		skuEl.textContent = sku || '—';
+		qtyTextEl.textContent = formatNum(qtyAvail);
+		priceEl.textContent = hasPrice ? formatNum(price) : priceUnavailableText;
 
-        if (locListEl) {
-            locListEl.innerHTML = '';
-            try {
-                if (Array.isArray(locs) && locs.length) {
-                    locs.forEach(function (row) {
-                        var li = document.createElement('li');
+		if (buyBtn) {
+			buyBtn.dataset.variationId = String(vid);
+			if (hasPrice) {
+				buyBtn.dataset.price = String(price);
+				buyBtn.disabled = false;
+				buyBtn.classList.remove('is-disabled');
+				buyBtn.removeAttribute('aria-disabled');
+				buyBtn.innerHTML =
+					'<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/></svg> أضف للسلة';
+			} else {
+				buyBtn.dataset.price = '';
+				buyBtn.disabled = true;
+				buyBtn.classList.add('is-disabled');
+				buyBtn.setAttribute('aria-disabled', 'true');
+				buyBtn.textContent = priceUnavailableText;
+			}
+		}
 
-                        var inner = document.createElement('div');
-                        inner.className = 'loc-item-inner';
+		if (locListEl) {
+			locListEl.innerHTML = '';
+			try {
+				if (Array.isArray(locs) && locs.length) {
+					locs.forEach(function(row) {
+						var li = document
+							.createElement(
+								'li');
 
-                        var titleRow = document.createElement('div');
-                        titleRow.className = 'loc-title-row';
-                        var title = document.createElement('span');
-                        title.className = 'loc-title';
-                        title.textContent = row.name || ('#' + row.location_id);
-                        titleRow.appendChild(title);
-                        if (row.is_checkout_location) {
-                            var badge = document.createElement('span');
-                            badge.className = 'loc-badge';
-                            badge.textContent = checkoutBranchLabel;
-                            titleRow.appendChild(badge);
-                        }
-                        inner.appendChild(titleRow);
+						var inner = document
+							.createElement(
+								'div');
+						inner.className =
+							'loc-item-inner';
 
-                        if (row.address) {
-                            var addr = document.createElement('div');
-                            addr.className = 'loc-meta';
-                            addr.textContent = row.address;
-                            inner.appendChild(addr);
-                        }
-                        if (row.mobile) {
-                            var phone = document.createElement('div');
-                            phone.className = 'loc-meta';
-                            phone.textContent = row.mobile;
-                            inner.appendChild(phone);
-                        }
+						var titleRow = document
+							.createElement(
+								'div');
+						titleRow.className =
+							'loc-title-row';
+						var title = document
+							.createElement(
+								'span');
+						title.className = 'loc-title';
+						title.textContent = row
+							.name || ('#' + row
+								.location_id
+							);
+						titleRow.appendChild(title);
+						if (row
+							.is_checkout_location
+						) {
+							var badge = document
+								.createElement(
+									'span'
+								);
+							badge.className =
+								'loc-badge';
+							badge.textContent =
+								checkoutBranchLabel;
+							titleRow.appendChild(
+								badge
+							);
+						}
+						inner.appendChild(titleRow);
 
-                        var q = document.createElement('span');
-                        q.className = 'loc-qty';
-                        q.textContent = formatNum(parseFloat(row.qty_available) || 0);
+						if (row.address) {
+							var addr = document
+								.createElement(
+									'div'
+								);
+							addr.className =
+								'loc-meta';
+							addr.textContent =
+								row
+								.address;
+							inner.appendChild(
+								addr
+							);
+						}
+						if (row.mobile) {
+							var phone = document
+								.createElement(
+									'div'
+								);
+							phone.className =
+								'loc-meta';
+							phone.textContent =
+								row
+								.mobile;
+							inner.appendChild(
+								phone
+							);
+						}
 
-                        li.appendChild(inner);
-                        li.appendChild(q);
-                        locListEl.appendChild(li);
-                    });
-                } else {
-                    var emptyLi = document.createElement('li');
-                    emptyLi.style.justifyContent = 'center';
-                    emptyLi.style.color = '#6b7280';
-                    emptyLi.textContent = emptyLocText;
-                    locListEl.appendChild(emptyLi);
-                }
-            } catch (e) {
-                var errLi = document.createElement('li');
-                errLi.style.justifyContent = 'center';
-                errLi.style.color = '#6b7280';
-                errLi.textContent = emptyLocText;
-                locListEl.appendChild(errLi);
-            }
-        }
+						var q = document
+							.createElement(
+								'span');
+						q.className = 'loc-qty';
+						q.textContent = formatNum(
+							parseFloat(
+								row
+								.qty_available
+							) ||
+							0);
 
-        if (chipEl) {
-            if (qtyAvail <= 5 && qtyAvail > 0) {
-                chipEl.className = 'chip chip-low';
-                chipEl.textContent = @json($tx('Low stock'));
-            } else if (qtyAvail > 0) {
-                chipEl.className = 'chip chip-ok';
-                chipEl.textContent = @json($tx('In stock'));
-            } else {
-                chipEl.className = 'chip chip-low';
-                chipEl.textContent = @json($tx('Out of stock'));
-            }
-        }
+						li.appendChild(inner);
+						li.appendChild(q);
+						locListEl.appendChild(li);
+					});
+				} else {
+					var emptyLi = document.createElement('li');
+					emptyLi.style.justifyContent = 'center';
+					emptyLi.style.color = '#6b7280';
+					emptyLi.textContent = emptyLocText;
+					locListEl.appendChild(emptyLi);
+				}
+			} catch (e) {
+				var errLi = document.createElement('li');
+				errLi.style.justifyContent = 'center';
+				errLi.style.color = '#6b7280';
+				errLi.textContent = emptyLocText;
+				locListEl.appendChild(errLi);
+			}
+		}
 
-        var maxQ = Math.max(1, Math.floor(qtyAvail));
-        if (qtyAvail > 0 && qtyAvail < 1) {
-            maxQ = 1;
-        }
-        qtyInput.max = maxQ;
-        var q = parseInt(qtyInput.value, 10) || 1;
-        if (q < 1) q = 1;
-        if (q > maxQ) qtyInput.value = maxQ;
-        else qtyInput.value = q;
+		if (chipEl) {
+			if (qtyAvail <= 5 && qtyAvail > 0) {
+				chipEl.className = 'chip chip-low';
+				chipEl.textContent = @json($tx('Low stock'));
+			} else if (qtyAvail > 0) {
+				chipEl.className = 'chip chip-ok';
+				chipEl.textContent = @json($tx('In stock'));
+			} else {
+				chipEl.className = 'chip chip-low';
+				chipEl.textContent = @json($tx('Out of stock'));
+			}
+		}
 
-        if (isCustomer && buyBtn && checkoutBase) {
-            if (qtyAvail <= 0) {
-                buyBtn.classList.add('is-disabled');
-                buyBtn.setAttribute('aria-disabled', 'true');
-                buyBtn.setAttribute('href', '#');
-            } else {
-                buyBtn.classList.remove('is-disabled');
-                buyBtn.removeAttribute('aria-disabled');
-                var qv = parseInt(qtyInput.value, 10) || 1;
-                var u = new URL(checkoutBase, window.location.origin);
-                u.searchParams.set('variation_id', vid);
-                u.searchParams.set('qty', String(qv));
-                buyBtn.setAttribute('href', u.toString());
-            }
-        }
-    }
+		var maxQ = Math.max(1, Math.floor(qtyAvail));
+		if (qtyAvail > 0 && qtyAvail < 1) {
+			maxQ = 1;
+		}
+		qtyInput.max = maxQ;
+		var q = parseInt(qtyInput.value, 10) || 1;
+		if (q < 1) q = 1;
+		if (q > maxQ) q = maxQ;
+		qtyInput.value = q;
+		if (qtyDecBtn) qtyDecBtn.disabled = q <= 1;
+		if (qtyIncBtn) qtyIncBtn.disabled = q >= maxQ;
 
-    select.addEventListener('change', syncDetails);
-    qtyInput.addEventListener('input', function () {
-        var opt = getSelectedOption();
-        var max = opt ? parseFloat(opt.getAttribute('data-qty') || '0') : 0;
-        var maxQ = Math.max(1, Math.floor(max));
-        if (max > 0 && max < 1) maxQ = 1;
-        var q = parseInt(qtyInput.value, 10) || 1;
-        if (q < 1) qtyInput.value = 1;
-        else if (q > maxQ) qtyInput.value = maxQ;
-        syncDetails();
-    });
+		if (isCustomer && buyBtn && checkoutBase) {
+			if (qtyAvail <= 0) {
+				buyBtn.classList.add('is-disabled');
+				buyBtn.setAttribute('aria-disabled', 'true');
+				buyBtn.setAttribute('href', '#');
+			} else {
+				buyBtn.classList.remove('is-disabled');
+				buyBtn.removeAttribute('aria-disabled');
+				var qv = parseInt(qtyInput.value, 10) || 1;
+				var u = new URL(checkoutBase, window.location.origin);
+				u.searchParams.set('variation_id', vid);
+				u.searchParams.set('qty', String(qv));
+				buyBtn.setAttribute('href', u.toString());
+			}
+		}
+	}
 
-    syncDetails();
+	function getMaxQty() {
+		var opt = getSelectedOption();
+		var max = opt ? parseFloat(opt.getAttribute('data-qty') || '0') : 0;
+		var maxQ = Math.max(1, Math.floor(max));
+		if (max > 0 && max < 1) maxQ = 1;
+		return maxQ;
+	}
 
-    document.addEventListener('DOMContentLoaded', function () {
-        setTimeout(function () {
-            var btn = document.getElementById('product-buy-btn');
-            if (!btn || typeof window.addToCart !== 'function') return;
+	function clampQty(raw, notify) {
+		var maxQ = getMaxQty();
+		var requested = parseInt(raw, 10);
+		var q = requested;
+		if (isNaN(q) || q < 1) q = 1;
+		if (requested > maxQ) {
+			if (notify) {
+				notifyStockExceeded(requested, maxQ);
+			}
+			q = maxQ;
+		}
+		qtyInput.value = q;
+		syncDetails();
+		return q;
+	}
 
-            btn.onclick = async function () {
-                if (btn.disabled || btn.classList.contains('is-disabled')) return;
+	function stepQty(delta) {
+		var current = parseInt(qtyInput.value, 10) || 1;
+		var next = current + delta;
+		var maxQ = getMaxQty();
+		if (delta > 0 && next > maxQ) {
+			notifyStockExceeded(next, maxQ);
+			clampQty(maxQ, false);
+			return;
+		}
+		clampQty(next, false);
+	}
 
-                var id = +btn.dataset.id;
-                var name = btn.dataset.name || '';
-                var price = +btn.dataset.price;
-                var variationId = +(btn.dataset.variationId || id);
-                var img = btn.dataset.img || '';
-                var source = btn.dataset.source || null;
-                var n = parseInt(qtyInput.value, 10) || 1;
-                if (n < 1) n = 1;
+	select.addEventListener('change', syncDetails);
+	qtyInput.addEventListener('input', function() {
+		if (qtyInput.value === '') return;
+		clampQty(qtyInput.value, true);
+	});
+	qtyInput.addEventListener('change', function() {
+		clampQty(qtyInput.value || 1, true);
+	});
+	qtyInput.addEventListener('blur', function() {
+		clampQty(qtyInput.value || 1, true);
+	});
+	qtyDecBtn?.addEventListener('click', function() {
+		stepQty(-1);
+	});
+	qtyIncBtn?.addEventListener('click', function() {
+		stepQty(1);
+	});
 
-                if (source === 'servo') {
-                    if (!price || price <= 0) {
-                        if (typeof window.toast === 'function') {
-                            window.toast(typeof TAB3EEN_MSG !== 'undefined' ? TAB3EEN_MSG.price_unavailable : priceUnavailableText, 'error');
-                        }
-                        return;
-                    }
+	syncDetails();
 
-                    if (typeof window.validateServoStock === 'function') {
-                        btn.disabled = true;
-                        var existingQty = typeof window.getCartProductQty === 'function'
-                            ? window.getCartProductQty(id)
-                            : 0;
-                        var requestedQty = existingQty + n;
-                        var check = await window.validateServoStock(id, variationId, requestedQty);
-                        btn.disabled = false;
-                        if (!check.ok) {
-                            if (typeof window.toast === 'function') {
-                                window.toast(check.message, 'error');
-                            }
-                            return;
-                        }
-                    }
-                }
+	document.addEventListener('DOMContentLoaded', function() {
+		setTimeout(function() {
+			var btn = document.getElementById(
+				'product-buy-btn');
+			if (!btn || typeof window.addToCart !==
+				'function') return;
 
-                var i;
-                for (i = 0; i < n; i++) {
-                    window.addToCart(id, name, price, img, variationId, source);
-                }
+			btn.onclick = async function() {
+				if (btn.disabled ||
+					btn
+					.classList
+					.contains(
+						'is-disabled'
+					)
+				)
+					return;
 
-                if (typeof window.toast === 'function') {
-                    window.toast('تم إضافة "' + name + '" للسلة 🛒');
-                }
-                if (typeof window.animBtn === 'function') {
-                    window.animBtn(btn);
-                } else if (typeof animBtn === 'function') {
-                    animBtn(btn);
-                }
-            };
-        }, 0);
-    });
+				var id = +btn
+					.dataset
+					.id;
+				var name = btn
+					.dataset
+					.name ||
+					'';
+				var price = +
+					btn
+					.dataset
+					.price;
+				var variationId = +
+					(btn.dataset
+						.variationId ||
+						id
+					);
+				var img = btn
+					.dataset
+					.img ||
+					'';
+				var source =
+					btn
+					.dataset
+					.source ||
+					null;
+				var n = parseInt(qtyInput
+						.value,
+						10
+					) ||
+					1;
+				if (n < 1) n =
+					1;
+
+				if (source ===
+					'servo'
+				) {
+					if (!price ||
+						price <=
+						0
+					) {
+						if (typeof window
+							.toast ===
+							'function'
+						) {
+							window.toast(typeof TAB3EEN_MSG !==
+								'undefined' ?
+								TAB3EEN_MSG
+								.price_unavailable :
+								priceUnavailableText,
+								'error'
+							);
+						}
+						return;
+					}
+
+					if (typeof window
+						.validateServoStock ===
+						'function'
+					) {
+						btn.disabled =
+							true;
+						var existingQty =
+							typeof window
+							.getCartProductQty ===
+							'function' ?
+							window
+							.getCartProductQty(
+								id
+							) :
+							0;
+						var requestedQty =
+							existingQty +
+							n;
+						var check =
+							await window
+							.validateServoStock(
+								id,
+								variationId,
+								requestedQty
+							);
+						btn.disabled =
+							false;
+						if (!check
+							.ok
+						) {
+							if (typeof window
+								.toast ===
+								'function'
+							) {
+								window.toast(check.message,
+									'error'
+								);
+							}
+							return;
+						}
+					}
+				}
+
+				var i;
+				for (i = 0; i <
+					n; i++
+				) {
+					window.addToCart(id, name,
+						price,
+						img,
+						variationId,
+						source
+					);
+				}
+
+				if (typeof window
+					.toast ===
+					'function'
+				) {
+					window.toast('تم إضافة "' +
+						name +
+						'" للسلة 🛒'
+					);
+				}
+				if (typeof window
+					.animBtn ===
+					'function'
+				) {
+					window.animBtn(
+						btn
+					);
+				} else if (
+					typeof animBtn ===
+					'function'
+				) {
+					animBtn(
+						btn
+					);
+				}
+			};
+		}, 0);
+	});
 })();
 </script>
 @endif
