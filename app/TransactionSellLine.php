@@ -28,6 +28,11 @@ class TransactionSellLine extends Model
         return $this->belongsTo(\App\Variation::class, 'variation_id');
     }
 
+    public function discount()
+    {
+        return $this->belongsTo(\App\Discount::class, 'discount_id');
+    }
+
     public function modifiers()
     {
         return $this->hasMany(\App\TransactionSellLine::class, 'parent_sell_line_id')

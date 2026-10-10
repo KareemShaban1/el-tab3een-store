@@ -46,6 +46,11 @@ class Contact extends Authenticatable
         return $this->belongsTo(\App\Business::class);
     }
 
+    public function customerGroup()
+    {
+        return $this->belongsTo(\App\CustomerGroup::class, 'customer_group_id');
+    }
+
     public function scopeActive($query)
     {
         return $query->where('contacts.contact_status', 'active');

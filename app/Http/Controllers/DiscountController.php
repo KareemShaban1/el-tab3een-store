@@ -5,7 +5,9 @@ namespace App\Http\Controllers;
 use App\Brands;
 use App\BusinessLocation;
 use App\Category;
+use App\CustomerGroup;
 use App\Discount;
+use App\Product;
 use App\SellingPriceGroup;
 use App\Utils\Util;
 use Illuminate\Http\Request;
@@ -121,9 +123,11 @@ class DiscountController extends Controller
         $locations = BusinessLocation::forDropdown($business_id);
 
         $price_groups = SellingPriceGroup::forDropdown($business_id);
+        $products = Product::where('business_id', $business_id)->active()->pluck('name', 'id');
+        $customer_groups = CustomerGroup::forDropdown($business_id, false);
 
         return view('discount.create')
-                ->with(compact('categories', 'brands', 'locations', 'price_groups'));
+                ->with(compact('categories', 'brands', 'locations', 'price_groups', 'products', 'customer_groups'));
     }
 
     /**
@@ -139,32 +143,30 @@ class DiscountController extends Controller
         }
 
         try {
-            $input = $request->only(['name', 'brand_id', 'category_id',
-                'location_id', 'priority', 'discount_type', 'discount_amount', 'spg', ]);
-
+            $input = $this->buildDiscountInput($request);
             $business_id = $request->session()->get('user.business_id');
             $input['business_id'] = $business_id;
 
             $variation_ids = $request->input('variation_ids');
-
             if (! empty($variation_ids)) {
-                unset($input['brand_id']);
-                unset($input['category_id']);
-            }
-
-            $input['starts_at'] = $request->has('starts_at') ? $this->commonUtil->uf_date($request->input('starts_at'), true) : null;
-            $input['ends_at'] = $request->has('ends_at') ? $this->commonUtil->uf_date($request->input('ends_at'), true) : null;
-            $checkboxes = ['is_active', 'applicable_in_cg'];
-
-            foreach ($checkboxes as $checkbox) {
-                $input[$checkbox] = $request->has($checkbox) ? 1 : 0;
+                $input['brand_id'] = null;
+                $input['category_id'] = null;
+                $input['product_id'] = null;
+                $input['apply_on_all_variations'] = 0;
             }
 
             $discount = Discount::create($input);
+            $discount->syncCgFlagsFromMode();
+            $discount->save();
 
             if (! empty($variation_ids)) {
                 $discount->variations()->sync($variation_ids);
+            } else {
+                $discount->variations()->sync([]);
             }
+
+            $cg_ids = $request->input('customer_group_ids', []);
+            $discount->customerGroups()->sync($cg_ids ?: []);
 
             $output = ['success' => true,
                 'msg' => __('lang_v1.added_success'),
@@ -196,7 +198,7 @@ class DiscountController extends Controller
             $business_id = request()->session()->get('user.business_id');
 
             $discount = Discount::where('business_id', $business_id)
-                            ->with(['variations', 'variations.product', 'variations.product_variation'])
+                            ->with(['variations', 'variations.product', 'variations.product_variation', 'customerGroups'])
                             ->find($id);
 
             $starts_at = $this->commonUtil->format_date($discount->starts_at->toDateTimeString(), true);
@@ -217,9 +219,11 @@ class DiscountController extends Controller
             }
 
             $price_groups = SellingPriceGroup::forDropdown($business_id);
+            $products = Product::where('business_id', $business_id)->active()->pluck('name', 'id');
+            $customer_groups = CustomerGroup::forDropdown($business_id, false);
 
             return view('discount.edit')
-                ->with(compact('discount', 'starts_at', 'ends_at', 'brands', 'categories', 'locations', 'variations', 'price_groups'));
+                ->with(compact('discount', 'starts_at', 'ends_at', 'brands', 'categories', 'locations', 'variations', 'price_groups', 'products', 'customer_groups'));
         }
     }
 
@@ -238,32 +242,24 @@ class DiscountController extends Controller
 
         if (request()->ajax()) {
             try {
-                $input = $request->only(['name', 'brand_id', 'category_id',
-                    'location_id', 'priority', 'discount_type', 'discount_amount', 'spg', ]);
-
+                $input = $this->buildDiscountInput($request);
                 $business_id = $request->session()->get('user.business_id');
 
-                $input['starts_at'] = $request->has('starts_at') ? $this->commonUtil->uf_date($request->input('starts_at'), true) : null;
-                $input['ends_at'] = $request->has('ends_at') ? $this->commonUtil->uf_date($request->input('ends_at'), true) : null;
-                $checkboxes = ['is_active', 'applicable_in_cg'];
-
-                foreach ($checkboxes as $checkbox) {
-                    $input[$checkbox] = $request->has($checkbox) ? 1 : 0;
-                }
-
                 $variation_ids = $request->input('variation_ids');
-
                 if (! empty($variation_ids)) {
-                    unset($input['brand_id']);
-                    unset($input['category_id']);
+                    $input['brand_id'] = null;
+                    $input['category_id'] = null;
+                    $input['product_id'] = null;
+                    $input['apply_on_all_variations'] = 0;
                 }
 
-                $discount = Discount::where('business_id', $business_id)
-                            ->find($id);
-
+                $discount = Discount::where('business_id', $business_id)->find($id);
                 $discount->update($input);
+                $discount->syncCgFlagsFromMode();
+                $discount->save();
 
-                $discount->variations()->sync($variation_ids);
+                $discount->variations()->sync($variation_ids ?: []);
+                $discount->customerGroups()->sync($request->input('customer_group_ids', []) ?: []);
 
                 $output = ['success' => true,
                     'msg' => __('lang_v1.updated_success'),
@@ -278,6 +274,53 @@ class DiscountController extends Controller
 
             return $output;
         }
+    }
+
+    /**
+     * Build discount payload from request.
+     */
+    protected function buildDiscountInput(Request $request): array
+    {
+        $input = $request->only([
+            'name', 'brand_id', 'category_id', 'sub_category_id', 'product_id',
+            'location_id', 'priority', 'discount_type', 'discount_amount', 'spg',
+            'discount_kind', 'cg_mode', 'promo_application', 'banner_title',
+            'min_cart_subtotal', 'max_discount_amount', 'flash_quota_qty',
+            'max_qty_per_order', 'max_redemptions_total', 'max_redemptions_per_customer',
+            'sort_order',
+        ]);
+
+        $input['starts_at'] = $request->filled('starts_at') ? $this->commonUtil->uf_date($request->input('starts_at'), true) : null;
+        $input['ends_at'] = $request->filled('ends_at') ? $this->commonUtil->uf_date($request->input('ends_at'), true) : null;
+
+        $checkboxes = [
+            'is_active', 'include_sub_categories', 'apply_on_all_variations',
+            'apply_in_pos', 'apply_in_ecommerce', 'requires_promo_code', 'first_order_only',
+        ];
+        foreach ($checkboxes as $checkbox) {
+            $input[$checkbox] = $request->has($checkbox) ? 1 : 0;
+        }
+
+        if (empty($input['cg_mode'])) {
+            $input['cg_mode'] = 'any';
+        }
+        if (empty($input['discount_kind'])) {
+            $input['discount_kind'] = 'standard';
+        }
+        if (empty($input['promo_application'])) {
+            $input['promo_application'] = 'eligible_lines';
+        }
+
+        // Sync legacy flag
+        $input['applicable_in_cg'] = in_array($input['cg_mode'], ['with_group_only', 'specific_groups'], true) ? 1 : 0;
+
+        foreach (['min_cart_subtotal', 'max_discount_amount', 'flash_quota_qty', 'max_qty_per_order'] as $num) {
+            if (isset($input[$num]) && $input[$num] === '') {
+                $input[$num] = null;
+            }
+        }
+
+        return $input;
     }
 
     /**

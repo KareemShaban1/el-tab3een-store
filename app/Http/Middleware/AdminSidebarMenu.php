@@ -397,6 +397,11 @@ $is_superadmin = auth()->user()->can('superadmin');
                                 __('lang_v1.discounts'),
                                 ['icon' => '', 'active' => request()->segment(1) == 'discount']
                             );
+                            $sub->url(
+                                action([\App\Http\Controllers\PromoCodeController::class, 'index']),
+                                __('lang_v1.promo_codes'),
+                                ['icon' => '', 'active' => request()->segment(1) == 'promo-code']
+                            );
                         }
                         if (in_array('subscription', $enabled_modules) && auth()->user()->can('direct_sell.access')) {
                             $sub->url(

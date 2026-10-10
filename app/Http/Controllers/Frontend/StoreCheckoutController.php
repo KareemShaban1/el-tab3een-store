@@ -85,6 +85,7 @@ class StoreCheckoutController extends Controller
             'products.*.quantity' => 'required|numeric|min:0.0001',
             'products.*.product_id' => 'nullable|integer',
             'products.*.source' => 'nullable|in:servo',
+            'promo_code' => 'nullable|string|max:50',
             'addresses' => 'nullable|array',
             'shipping_address_option' => 'nullable|in:existing,new',
             'addresses.shipping_address.shipping_name' => 'nullable|string|max:191',
@@ -265,18 +266,46 @@ class StoreCheckoutController extends Controller
                 }
 
                 $unit_price = (float) $variation->sell_price_inc_tax;
+                $resolver = app(\App\Services\Pricing\DiscountResolverService::class);
+                $auto = $resolver->resolveForVariation([
+                    'business_id' => $business_id,
+                    'location_id' => $location_id,
+                    'variation_id' => $variation->id,
+                    'product' => $product,
+                    'customer_group_id' => $customer_contact->customer_group_id ?? null,
+                    'channel' => 'ecommerce',
+                    'quantity' => $requested_qty,
+                ]);
+
+                $line_discount_type = null;
+                $line_discount_amount = 0;
+                $discount_id = null;
+                $price_after = $unit_price;
+                if (! empty($auto)) {
+                    $line_discount_type = $auto->discount_type;
+                    $line_discount_amount = (float) $auto->discount_amount;
+                    $discount_id = $auto->id;
+                    $price_after = $resolver->applyDiscountToAmount($unit_price, $line_discount_type, $line_discount_amount);
+                }
+
                 $sell_lines[] = [
                     'product_id' => $product->id,
                     'unit_price_before_discount' => $unit_price,
-                    'unit_price' => $unit_price,
-                    'unit_price_inc_tax' => $unit_price,
+                    'unit_price' => $price_after,
+                    'unit_price_inc_tax' => $price_after,
+                    'line_discount_type' => $line_discount_type,
+                    'line_discount_amount' => $line_discount_amount,
+                    'discount_id' => $discount_id,
+                    'discount_snapshot_name' => $auto->name ?? null,
+                    'discount_snapshot_type' => $line_discount_type,
+                    'discount_snapshot_amount' => $line_discount_amount,
                     'variation_id' => $variation->id,
                     'quantity' => $requested_qty,
                     'item_tax' => 0,
                     'enable_stock' => $product->enable_stock,
                     'tax_id' => null,
                 ];
-                $final_total += ($requested_qty * $unit_price);
+                $final_total += ($requested_qty * $price_after);
             }
 
             if (! $is_valid) {
@@ -288,11 +317,80 @@ class StoreCheckoutController extends Controller
                 ];
             }
 
+            $invoice_discount = ['discount_type' => 'fixed', 'discount_amount' => 0];
+            $promo_code_id = null;
+            $promo_code_text = null;
+            $promo_code_discount_total = 0;
+            $promo_code_input = $validated['promo_code'] ?? ($request->input('promo_code') ?? null);
+
+            if (! empty($promo_code_input)) {
+                $cart_lines = array_map(function ($line) {
+                    return [
+                        'variation_id' => $line['variation_id'],
+                        'quantity' => $line['quantity'],
+                        'unit_price_inc_tax' => $line['unit_price_inc_tax'],
+                    ];
+                }, $sell_lines);
+
+                $promo_result = app(\App\Services\Pricing\PromoCodeService::class)->validate($promo_code_input, [
+                    'business_id' => $business_id,
+                    'location_id' => $location_id,
+                    'contact_id' => $customer->id,
+                    'customer_group_id' => $customer_contact->customer_group_id ?? null,
+                    'channel' => 'ecommerce',
+                    'cart_subtotal' => $final_total,
+                    'cart_lines' => $cart_lines,
+                ]);
+
+                if (empty($promo_result['success'])) {
+                    DB::rollBack();
+
+                    return [
+                        'success' => false,
+                        'errors' => [$promo_result['msg'] ?? __('lang_v1.promo_code_invalid')],
+                    ];
+                }
+
+                $promo_code_id = $promo_result['promo_code_id'];
+                $promo_code_text = $promo_result['promo_code_text'];
+                $promo_code_discount_total = $promo_result['savings'] ?? 0;
+
+                if (($promo_result['application'] ?? '') === 'cart_wide') {
+                    $invoice_discount = app(\App\Services\Pricing\PromoCodeService::class)->invoiceDiscountFromValidation($promo_result)
+                        ?: $invoice_discount;
+                } elseif (($promo_result['application'] ?? '') === 'eligible_lines') {
+                    $resolver = app(\App\Services\Pricing\DiscountResolverService::class);
+                    $final_total = 0;
+                    foreach ($promo_result['line_updates'] as $upd) {
+                        foreach ($sell_lines as $k => $line) {
+                            if ((int) $line['variation_id'] === (int) $upd['variation_id']) {
+                                $sell_lines[$k]['discount_id'] = $upd['discount_id'];
+                                $sell_lines[$k]['line_discount_type'] = $upd['line_discount_type'];
+                                $sell_lines[$k]['line_discount_amount'] = $upd['line_discount_amount'];
+                                $after = $resolver->applyDiscountToAmount(
+                                    (float) $line['unit_price_before_discount'],
+                                    $upd['line_discount_type'],
+                                    (float) $upd['line_discount_amount']
+                                );
+                                $sell_lines[$k]['unit_price'] = $after;
+                                $sell_lines[$k]['unit_price_inc_tax'] = $after;
+                            }
+                        }
+                    }
+                    foreach ($sell_lines as $line) {
+                        $final_total += ((float) $line['quantity'] * (float) $line['unit_price_inc_tax']);
+                    }
+                }
+            }
+
+            $calc = $this->productUtil->calculateInvoiceTotal($sell_lines, null, $invoice_discount, false);
+            $order_total = ($calc['final_total'] ?? $final_total) + $delivery_fee;
+
             $order_data = [
                 'business_id' => $business_id,
                 'location_id' => $location_id,
                 'contact_id' => $customer->id,
-                'final_total' => $final_total + $delivery_fee,
+                'final_total' => $order_total,
                 'shipping_charges' => $delivery_fee,
                 'created_by' => $user_id,
                 'status' => 'final',
@@ -312,11 +410,17 @@ class StoreCheckoutController extends Controller
                 'is_direct_sale' => 1,
                 'source' => 'ecommerce',
                 'ref_no' => $validated['idempotency_key'] ?? ('ecom_'.uniqid()),
-                'discount_type' => 'fixed',
-                'discount_amount' => 0,
+                'discount_type' => $invoice_discount['discount_type'] ?? 'fixed',
+                'discount_amount' => $invoice_discount['discount_amount'] ?? 0,
+                'promo_code_id' => $promo_code_id,
+                'promo_code_text' => $promo_code_text,
+                'promo_code_discount_total' => $promo_code_discount_total,
             ];
 
-            $invoice_total = ['total_before_tax' => $final_total + $delivery_fee, 'tax' => 0];
+            $invoice_total = [
+                'total_before_tax' => ($calc['total_before_tax'] ?? $final_total) + $delivery_fee,
+                'tax' => $calc['tax'] ?? 0,
+            ];
             $business_data = [
                 'id' => $business_id,
                 'accounting_method' => $business->accounting_method,
@@ -329,6 +433,25 @@ class StoreCheckoutController extends Controller
             $transaction->sub_status = 'ecommerce_new';
             $transaction->save();
             $this->transactionUtil->createOrUpdateSellLines($transaction, $order_data['products'], $location_id, false, null, [], false);
+
+            try {
+                $promoService = app(\App\Services\Pricing\PromoCodeService::class);
+                $promoService->recordAutomaticRedemptions($transaction);
+                if (! empty($promo_code_id)) {
+                    $promo = \App\PromoCode::find($promo_code_id);
+                    if ($promo) {
+                        $promoService->consume($promo, $transaction, (float) $promo_code_discount_total);
+                    }
+                }
+            } catch (\Throwable $e) {
+                DB::rollBack();
+                Log::warning('Ecommerce discount redemption failed: '.$e->getMessage());
+
+                return [
+                    'success' => false,
+                    'errors' => [$e->getMessage()],
+                ];
+            }
 
             foreach ($order_data['products'] as $product) {
                 if ($product['enable_stock']) {

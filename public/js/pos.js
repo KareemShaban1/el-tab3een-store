@@ -936,6 +936,64 @@ $(document).ready(function() {
         calculate_balance_due();
     });
 
+    //Apply promo code from discount modal
+    $(document).on('click', '#posApplyPromoCode', function (e) {
+        e.preventDefault();
+        var code = $('#promo_code_modal').val();
+        if (!code) {
+            toastr.error(LANG.promo_code_invalid || 'Invalid promo code');
+            return;
+        }
+        var cart_lines = [];
+        var cart_subtotal = 0;
+        $('table#pos_table tbody tr').each(function () {
+            var variation_id = $(this).find('input.row_variation_id').val() || $(this).find('input[name*="[variation_id]"]').val();
+            var qty = __read_number($(this).find('input.pos_quantity'));
+            var price = __read_number($(this).find('input.pos_unit_price_inc_tax'));
+            if (variation_id) {
+                cart_lines.push({
+                    variation_id: variation_id,
+                    quantity: qty,
+                    unit_price_inc_tax: price,
+                });
+                cart_subtotal += qty * price;
+            }
+        });
+        $.ajax({
+            method: 'POST',
+            url: '/promo-code/validate-code',
+            dataType: 'json',
+            data: {
+                code: code,
+                location_id: $('input#location_id').val(),
+                contact_id: $('input#customer_id').val() || $('select#customer_id').val(),
+                cart_subtotal: cart_subtotal,
+                cart_lines: cart_lines,
+                channel: 'pos',
+            },
+            success: function (result) {
+                if (result.success) {
+                    $('#promo_code').val(result.promo_code_text);
+                    $('#promo_code_id').val(result.promo_code_id);
+                    $('#promo_code_msg').removeClass('hide').text(result.msg || (LANG.promo_code_applied || 'Promo code applied'));
+                    if (result.application === 'cart_wide' && result.invoice_discount) {
+                        $('#discount_type_modal').val(result.invoice_discount.discount_type).change();
+                        __write_number($('#discount_amount_modal'), result.invoice_discount.discount_amount);
+                    }
+                    toastr.success(result.msg || 'OK');
+                } else {
+                    $('#promo_code').val('');
+                    $('#promo_code_id').val('');
+                    $('#promo_code_msg').addClass('hide');
+                    toastr.error(result.msg);
+                }
+            },
+            error: function () {
+                toastr.error(LANG.something_went_wrong || 'Something went wrong');
+            },
+        });
+    });
+
     //Update discount
     $('button#posEditDiscountModalUpdate').click(function() {
 

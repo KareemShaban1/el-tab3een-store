@@ -386,6 +386,68 @@ class SellPosController extends Controller
                 $discount = ['discount_type' => $input['discount_type'],
                     'discount_amount' => $input['discount_amount'],
                 ];
+
+                // Promo code (optional) — re-validate server-side
+                $promo_code_input = $request->input('promo_code') ?: $request->input('promo_code_text');
+                if (! empty($promo_code_input)) {
+                    $contact_id_for_promo = $request->get('contact_id', null);
+                    $cg_for_promo = $this->contactUtil->getCustomerGroup($business_id, $contact_id_for_promo);
+                    $cart_lines = [];
+                    $cart_subtotal = 0;
+                    foreach ($input['products'] as $p) {
+                        $qty = $this->productUtil->num_uf($p['quantity'] ?? 0);
+                        $price = $this->productUtil->num_uf($p['unit_price_inc_tax'] ?? 0);
+                        $cart_subtotal += $qty * $price;
+                        $cart_lines[] = [
+                            'variation_id' => $p['variation_id'] ?? null,
+                            'quantity' => $qty,
+                            'unit_price_inc_tax' => $price,
+                        ];
+                    }
+                    $promo_result = app(\App\Services\Pricing\PromoCodeService::class)->validate($promo_code_input, [
+                        'business_id' => $business_id,
+                        'location_id' => $input['location_id'] ?? null,
+                        'contact_id' => $contact_id_for_promo,
+                        'customer_group_id' => $cg_for_promo->id ?? null,
+                        'channel' => 'pos',
+                        'cart_subtotal' => $cart_subtotal,
+                        'cart_lines' => $cart_lines,
+                    ]);
+                    if (empty($promo_result['success'])) {
+                        $output = ['success' => 0, 'msg' => $promo_result['msg'] ?? __('lang_v1.promo_code_invalid')];
+                        if (! $is_direct_sale) {
+                            return $output;
+                        }
+
+                        return redirect()->back()->with('status', $output);
+                    }
+                    $input['promo_code_id'] = $promo_result['promo_code_id'];
+                    $input['promo_code_text'] = $promo_result['promo_code_text'];
+                    $input['promo_code_discount_total'] = $promo_result['savings'] ?? 0;
+                    if (($promo_result['application'] ?? '') === 'cart_wide') {
+                        $inv = app(\App\Services\Pricing\PromoCodeService::class)->invoiceDiscountFromValidation($promo_result);
+                        if (! empty($inv)) {
+                            $discount = $inv;
+                            $input['discount_type'] = $inv['discount_type'];
+                            $input['discount_amount'] = $inv['discount_amount'];
+                        }
+                    } elseif (($promo_result['application'] ?? '') === 'eligible_lines') {
+                        foreach ($promo_result['line_updates'] as $upd) {
+                            $vid = $upd['variation_id'];
+                            foreach ($input['products'] as $k => $p) {
+                                if ((int) ($p['variation_id'] ?? 0) === (int) $vid) {
+                                    $input['products'][$k]['discount_id'] = $upd['discount_id'];
+                                    $input['products'][$k]['line_discount_type'] = $upd['line_discount_type'];
+                                    $input['products'][$k]['line_discount_amount'] = $upd['line_discount_amount'];
+                                    $input['products'][$k]['discount_snapshot_name'] = $promo_result['discount']->name ?? null;
+                                    $input['products'][$k]['discount_snapshot_type'] = $upd['line_discount_type'];
+                                    $input['products'][$k]['discount_snapshot_amount'] = $upd['line_discount_amount'];
+                                }
+                            }
+                        }
+                    }
+                }
+
                 $invoice_total = $this->productUtil->calculateInvoiceTotal($input['products'], $input['tax_rate_id'], $discount);
 
                 DB::beginTransaction();
@@ -592,6 +654,25 @@ class SellPosController extends Controller
                         'pos_settings' => $pos_settings,
                     ];
                     $this->transactionUtil->mapPurchaseSell($business, $transaction->sell_lines, 'purchase');
+
+                    // Record discount / promo redemptions
+                    try {
+                        $promoService = app(\App\Services\Pricing\PromoCodeService::class);
+                        $promoService->recordAutomaticRedemptions($transaction);
+                        if (! empty($transaction->promo_code_id)) {
+                            $promo = \App\PromoCode::find($transaction->promo_code_id);
+                            if (! empty($promo)) {
+                                $promoService->consume(
+                                    $promo,
+                                    $transaction,
+                                    (float) ($transaction->promo_code_discount_total ?? 0)
+                                );
+                            }
+                        }
+                    } catch (\Throwable $e) {
+                        \Log::warning('Discount redemption failed: '.$e->getMessage());
+                        throw $e;
+                    }
 
                     //Auto send notification
                     $whatsapp_link = $this->notificationUtil->autoSendNotification($business_id, 'new_sale', $transaction, $transaction->contact);

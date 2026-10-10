@@ -250,6 +250,16 @@ textarea.checkout-input-error {
 					<span class="checkout-summary-value" id="checkout-subtotal-value">0
 						ج.م</span>
 				</div>
+				<div style="margin:12px 0;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+					<input type="text" name="promo_code" id="checkout-promo-code" class="checkout-location-select"
+						placeholder="{{ __('lang_v1.enter_promo_code') }}" style="flex:1;min-width:160px;text-transform:uppercase;">
+					<button type="button" class="btn" id="checkout-apply-promo" style="width:auto;">{{ __('lang_v1.apply_promo_code') }}</button>
+				</div>
+				<p class="muted" id="checkout-promo-msg" style="margin:0 0 8px;"></p>
+				<div class="checkout-summary-row" id="checkout-promo-savings-row" style="display:none;">
+					<span class="checkout-summary-label">{{ __('lang_v1.promo_code') }}</span>
+					<span class="checkout-summary-value" id="checkout-promo-savings-value">0 ج.م</span>
+				</div>
 				@if(!empty($locations_fees_enabled))
 				<div class="checkout-summary-row" id="checkout-delivery-fee-row">
 					<span
@@ -544,7 +554,62 @@ window.updateCheckoutOrderSummary = function(deliveryFee) {
 		}
 	}
 	if (grandEl) grandEl.textContent = checkoutFormatMoney(grandTotal);
+
+	// Re-apply promo savings preview if present
+	const promoSavings = Number(window.__checkoutPromoSavings || 0);
+	const promoRow = document.getElementById('checkout-promo-savings-row');
+	const promoVal = document.getElementById('checkout-promo-savings-value');
+	if (promoSavings > 0 && promoRow && promoVal && grandEl) {
+		promoRow.style.display = '';
+		promoVal.textContent = '-' + checkoutFormatMoney(promoSavings);
+		grandEl.textContent = checkoutFormatMoney(Math.max(0, grandTotal - promoSavings));
+	}
 };
+
+document.getElementById('checkout-apply-promo')?.addEventListener('click', async function() {
+	const codeInput = document.getElementById('checkout-promo-code');
+	const msg = document.getElementById('checkout-promo-msg');
+	const code = (codeInput?.value || '').trim();
+	if (!code) {
+		if (msg) msg.textContent = @json(__('lang_v1.promo_code_invalid'));
+		return;
+	}
+	const cart = (typeof window.__checkoutReadCart === 'function') ? window.__checkoutReadCart() : [];
+	const cart_lines = cart.map(item => ({
+		variation_id: item.variation_id || item.id,
+		quantity: item.qty || 1,
+		unit_price_inc_tax: item.price || 0,
+	}));
+	const cart_subtotal = cart_lines.reduce((s, l) => s + (Number(l.quantity) * Number(l.unit_price_inc_tax)), 0);
+	try {
+		const res = await fetch(@json(route('store.promo_codes.validate')), {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json',
+				'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content
+					|| document.querySelector('input[name="_token"]')?.value,
+				'Accept': 'application/json',
+			},
+			body: JSON.stringify({ code, cart_subtotal, cart_lines }),
+		});
+		const data = await res.json();
+		if (data.success) {
+			window.__checkoutPromoSavings = Number(data.savings || 0);
+			if (msg) msg.textContent = data.msg || @json(__('lang_v1.promo_code_applied'));
+			if (typeof window.updateCheckoutOrderSummary === 'function') {
+				window.updateCheckoutOrderSummary(window.__lfLastDeliveryFee);
+			}
+		} else {
+			window.__checkoutPromoSavings = 0;
+			if (msg) msg.textContent = data.msg || @json(__('lang_v1.promo_code_invalid'));
+			if (typeof window.updateCheckoutOrderSummary === 'function') {
+				window.updateCheckoutOrderSummary(window.__lfLastDeliveryFee);
+			}
+		}
+	} catch (err) {
+		if (msg) msg.textContent = @json(__('messages.something_went_wrong'));
+	}
+});
 
 (function() {
 	const CART_STORAGE_KEY = 'store_cart_v1';

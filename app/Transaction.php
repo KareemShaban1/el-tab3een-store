@@ -51,6 +51,11 @@ class Transaction extends Model
         return $this->belongsTo(\App\Contact::class, 'contact_id');
     }
 
+    public function promoCode()
+    {
+        return $this->belongsTo(\App\PromoCode::class, 'promo_code_id');
+    }
+
     public function delivery_person_user()
     {
         return $this->belongsTo(\App\User::class, 'delivery_person');

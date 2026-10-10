@@ -586,56 +586,132 @@ class StorefrontController extends Controller
     {
         $business_id = self::resolveBusinessId($request);
         $location_id = $this->resolveLocationId($business_id, $request);
+        $resolver = app(\App\Services\Pricing\DiscountResolverService::class);
 
-        $products = Product::where('business_id', $business_id)
-            ->active()
-            ->productForSales()
-            ->activeInApp()
-            ->whereHas('variations.variation_location_details', function ($q) use ($location_id) {
-                $q->where('location_id', $location_id)->where('qty_available', '>', 0);
-            })
-            ->storefrontSortOrder()
-            ->select('id', 'name', 'image', 'brand_id')
-            ->with(['brand:id,name'])
-            ->limit(8)
-            ->get();
+        $flashDiscounts = $resolver->getActiveFlashSales($business_id, $location_id);
+        $deals = collect();
 
-        $deals = $products->map(function ($product) use ($location_id) {
-            $variation = Variation::where('product_id', $product->id)
-                ->with(['variation_location_details' => function ($q) use ($location_id) {
+        foreach ($flashDiscounts as $discount) {
+            $variationCandidates = collect();
+
+            if ($discount->variations->isNotEmpty()) {
+                $variationCandidates = $discount->variations;
+            } elseif (! empty($discount->product_id) && ! empty($discount->apply_on_all_variations) && $discount->product) {
+                $variationCandidates = $discount->product->variations;
+            } elseif (! empty($discount->category_id) || ! empty($discount->brand_id)) {
+                $q = Product::where('business_id', $business_id)
+                    ->active()
+                    ->productForSales()
+                    ->activeInApp();
+                if (! empty($discount->category_id)) {
+                    $q->where('category_id', $discount->category_id);
+                }
+                if (! empty($discount->brand_id)) {
+                    $q->where('brand_id', $discount->brand_id);
+                }
+                $variationCandidates = Variation::whereIn('product_id', $q->pluck('id'))->with('product')->limit(20)->get();
+            }
+
+            foreach ($variationCandidates as $variation) {
+                $variation->loadMissing(['product.brand', 'variation_location_details' => function ($q) use ($location_id) {
                     $q->where('location_id', $location_id);
-                }])
-                ->get()
-                ->first(function ($v) {
-                    return (float) optional($v->variation_location_details->first())->qty_available > 0;
-                });
+                }]);
+                $product = $variation->product;
+                if (empty($product)) {
+                    continue;
+                }
+                $stock = (float) optional($variation->variation_location_details->first())->qty_available;
+                if ($stock <= 0) {
+                    continue;
+                }
 
-            $price = (float) optional($variation)->sell_price_inc_tax;
-            $old_price = $price > 0 ? round($price * 1.12, 2) : null;
-            $stock = (float) optional(optional($variation)->variation_location_details->first())->qty_available;
-            $sold_pct = $stock <= 0 ? 100 : min(95, max(20, 100 - (int) $stock));
+                $base = (float) $variation->sell_price_inc_tax;
+                $priced = $resolver->getCatalogPrice([
+                    'business_id' => $business_id,
+                    'location_id' => $location_id,
+                    'variation_id' => $variation->id,
+                    'product' => $product,
+                    'channel' => 'ecommerce',
+                    'base_price_inc_tax' => $base,
+                    'quantity' => 1,
+                ]);
 
-            return [
-                'id' => $product->id,
-                'variation_id' => optional($variation)->id,
-                'name' => $product->name,
-                'brand' => optional($product->brand)->name,
-                'image_url' => $product->image_url,
-                'price' => $price,
-                'old_price' => $old_price,
-                'sold_pct' => $sold_pct,
-                'qty_left' => max(0, (int) round($stock)),
-            ];
-        })->filter(function ($item) {
-            return ! empty($item['variation_id']) && $item['price'] > 0;
-        })->values();
+                if (empty($priced['discount']) || (int) $priced['discount']->id !== (int) $discount->id) {
+                    // still show if this flash is the target even if another higher priority won
+                    $final = $resolver->applyDiscountToAmount($base, $discount->discount_type, (float) $discount->discount_amount);
+                } else {
+                    $final = $priced['final_price_inc_tax'];
+                }
+
+                $quota = $discount->flash_quota_qty;
+                $sold = (float) $discount->flash_sold_qty;
+                $qty_left = ! is_null($quota) ? max(0, (float) $quota - $sold) : (int) round($stock);
+                $sold_pct = ! is_null($quota) && $quota > 0
+                    ? min(100, (int) round(($sold / (float) $quota) * 100))
+                    : min(95, max(5, 100 - (int) min(95, $stock)));
+
+                $deals->push([
+                    'id' => $product->id,
+                    'variation_id' => $variation->id,
+                    'discount_id' => $discount->id,
+                    'name' => $discount->banner_title ?: $product->name,
+                    'brand' => optional($product->brand)->name,
+                    'image_url' => $product->image_url,
+                    'price' => round($final, 2),
+                    'old_price' => $final < $base ? round($base, 2) : null,
+                    'sold_pct' => $sold_pct,
+                    'qty_left' => (int) round($qty_left),
+                    'ends_at' => optional($discount->ends_at)->toDateTimeString(),
+                    'is_flash' => true,
+                ]);
+
+                if ($deals->count() >= 12) {
+                    break 2;
+                }
+            }
+        }
 
         return response()->json([
             'success' => true,
             'business_id' => $business_id,
             'location_id' => $location_id,
-            'data' => $deals,
+            'data' => $deals->values(),
         ]);
+    }
+
+    /**
+     * Validate a storefront promo code against a cart payload.
+     */
+    public function validatePromoCode(Request $request)
+    {
+        $business_id = self::resolveBusinessId($request);
+        $location_id = $this->resolveLocationId($business_id, $request);
+        $customer = auth('customer')->user();
+        $contact = null;
+        if ($customer) {
+            $contact = Contact::where('business_id', $business_id)
+                ->where(function ($q) use ($customer) {
+                    $q->where('id', $customer->id)->orWhere('mobile', $customer->mobile);
+                })
+                ->first();
+        }
+
+        $result = app(\App\Services\Pricing\PromoCodeService::class)->validate($request->input('code', ''), [
+            'business_id' => $business_id,
+            'location_id' => $location_id,
+            'contact_id' => $contact->id ?? ($customer->id ?? null),
+            'customer_group_id' => $contact->customer_group_id ?? ($customer->customer_group_id ?? null),
+            'channel' => 'ecommerce',
+            'cart_subtotal' => (float) $request->input('cart_subtotal', 0),
+            'cart_lines' => $request->input('cart_lines', []),
+        ]);
+
+        if (! empty($result['success'])) {
+            $result['msg'] = __('lang_v1.promo_code_applied');
+            unset($result['promo_code'], $result['discount']);
+        }
+
+        return response()->json($result);
     }
 
     private function productsServoCatalog(Request $request, Tab3eenCatalogService $tab3eenCatalogService)

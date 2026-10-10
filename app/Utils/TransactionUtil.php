@@ -74,6 +74,14 @@ class TransactionUtil extends Util
             'tax_id' => ! empty($input['tax_rate_id']) ? $input['tax_rate_id'] : null,
             'discount_type' => ! empty($input['discount_type']) ? $input['discount_type'] : null,
             'discount_amount' => $uf_data ? $this->num_uf($input['discount_amount']) : $input['discount_amount'],
+            'promo_code_id' => ! empty($input['promo_code_id']) ? $input['promo_code_id'] : null,
+            'promo_code_text' => ! empty($input['promo_code_text']) ? $input['promo_code_text'] : null,
+            'promotional_discount_total' => isset($input['promotional_discount_total'])
+                ? ($uf_data ? $this->num_uf($input['promotional_discount_total']) : $input['promotional_discount_total'])
+                : 0,
+            'promo_code_discount_total' => isset($input['promo_code_discount_total'])
+                ? ($uf_data ? $this->num_uf($input['promo_code_discount_total']) : $input['promo_code_discount_total'])
+                : 0,
             'tax_amount' => $invoice_total['tax'],
             'final_total' => $final_total,
             'additional_notes' => ! empty($input['sale_note']) ? $input['sale_note'] : null,
@@ -381,6 +389,9 @@ class TransactionUtil extends Util
                     'sell_line_note' => ! empty($product['sell_line_note']) ? $product['sell_line_note'] : '',
                     'sub_unit_id' => ! empty($product['sub_unit_id']) ? $product['sub_unit_id'] : null,
                     'discount_id' => ! empty($product['discount_id']) ? $product['discount_id'] : null,
+                    'discount_snapshot_name' => ! empty($product['discount_snapshot_name']) ? $product['discount_snapshot_name'] : null,
+                    'discount_snapshot_amount' => ! empty($product['discount_snapshot_amount']) ? $product['discount_snapshot_amount'] : null,
+                    'discount_snapshot_type' => ! empty($product['discount_snapshot_type']) ? $product['discount_snapshot_type'] : null,
                     'res_service_staff_id' => ! empty($product['res_service_staff_id']) ? $product['res_service_staff_id'] : null,
                     'res_line_order_status' => ! empty($product['res_service_staff_id']) ? 'received' : null,
                     'so_line_id' => ! empty($product['so_line_id']) ? $product['so_line_id'] : null,

@@ -98,6 +98,9 @@
 
 		@if(!empty($discount))
 			{!! Form::hidden("products[$row_count][discount_id]", $discount->id); !!}
+			{!! Form::hidden("products[$row_count][discount_snapshot_name]", $discount->name); !!}
+			{!! Form::hidden("products[$row_count][discount_snapshot_type]", $discount->discount_type); !!}
+			{!! Form::hidden("products[$row_count][discount_snapshot_amount]", $discount->discount_amount); !!}
 		@endif
 
 		@php

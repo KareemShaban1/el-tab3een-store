@@ -1,8 +1,9 @@
-# Discounts & Flash Sales — Feature Specification
+# Discounts, Flash Sales & Promo Codes — Feature Specification
 
-> **Purpose:** Implementation blueprint for enhancing **discounts** and adding real **flash sales**, scoped to this codebase (UltimatePOS / Tab3een store).  
+> **Purpose:** Implementation blueprint for enhancing **discounts**, adding real **flash sales**, and adding **promo codes (coupons)**, scoped to this codebase (UltimatePOS / Tab3een store).  
 > **Status:** Design doc only — no code changes yet.  
-> **Related:** Existing ERP discounts (`discounts`, `discount_variations`), POS sell flow, ecommerce storefront (`StorefrontController`, `StoreCheckoutController`), customer groups, selling price groups.
+> **Related:** Existing ERP discounts (`discounts`, `discount_variations`), POS sell flow, ecommerce storefront (`StorefrontController`, `StoreCheckoutController`), customer groups, selling price groups.  
+> **Note:** MyFatoorah `coupon_code` in Superadmin subscription billing is **out of scope** — this spec covers retail/POS/ecommerce store promo codes only.
 
 ---
 
@@ -17,8 +18,9 @@ Support promotional pricing that can be:
 | **Product — selected variations** | Discount applies only to chosen variation IDs (one or many) |
 | **Customer groups** | Discount can be restricted to (or excluded from) specific customer groups, or apply only when customer has a group |
 | **Flash sale** | Time-boxed, high-visibility campaign (storefront + POS), with optional stock/qty caps, sold counters, and channel flags |
+| **Promo code** | Customer/cashier enters a code to unlock a discount (cart-wide or scoped to eligible lines), with usage limits and audit trail |
 
-All applied discounts must be **persisted on sales** so reports, returns, and accounting remain auditable.
+All applied discounts and promo codes must be **persisted on sales** so reports, returns, and accounting remain auditable.
 
 ---
 
@@ -80,10 +82,14 @@ A discount matches when **all** of the following hold:
 1) Base variation price  (variations.default_sell_price / sell_price_inc_tax)
 2) Customer group % markup/markdown  (if price_calculation_type = percentage)
    OR selling price group price     (if CG uses SPG / POS price_group selected)
-3) Promotional discount             (getProductDiscount → line_discount_* + discount_id)
+3) Automatic promotional / flash    (getProductDiscount → line_discount_* + discount_id)
+   — excludes discounts that require a promo code
 4) Manual line discount edits       (cashier may change if permitted)
-5) Invoice-level discount           (transactions.discount_*)
-6) Order tax on (subtotal − invoice discount)
+5) Promo code (if entered):
+   — eligible_lines → extra/override line discount on matching lines (see §5.6)
+   — cart_wide → invoice-level (transactions.discount_*)
+6) Manual invoice discount          (only if no cart_wide promo code; or cashier override with permission)
+7) Order tax on (subtotal − invoice discount)
 ```
 
 Relevant code:
@@ -118,9 +124,9 @@ Relevant code:
 | Catalog prices | Uses raw `variations.sell_price_inc_tax` — ignores promos / CG |
 | `GET` flash deals | `StorefrontController::flashDeals()` — **stub**: invents `old_price = price * 1.12`, fake `sold_pct` |
 | Checkout | `StoreCheckoutController` builds sell lines with **no** line discount, `discount_amount => 0`, no `discount_id`, no `getProductDiscount()` |
-| Coupons | No retail/ecommerce coupon codes (MyFatoorah coupons are Superadmin billing only) |
+| Coupons / promo codes | **Missing** for retail & ecommerce. Only MyFatoorah Superadmin subscription billing accepts a `coupon_code` (unrelated) |
 
-So: **ERP discounts work in POS; storefront/flash deals do not use them.**
+So: **ERP discounts work in POS; storefront/flash deals and promo codes do not.**
 
 ---
 
@@ -151,21 +157,32 @@ So: **ERP discounts work in POS; storefront/flash deals do not use them.**
 6. **Flash sale**  
    - Same pricing engine as discount, plus campaign metadata for storefront/POS banners  
 
+7. **Promo code (coupon)** — **required for feature completion**  
+   - Unique code per business (e.g. `RAMADAN10`, `VIP50`)  
+   - Linked to a `discounts` rule (amount/type, targets, CG, dates, channels)  
+   - **Not auto-applied** — only when cashier/customer submits the code  
+   - Application mode:
+     - `cart_wide` → invoice-level (`transactions.discount_*`)  
+     - `eligible_lines` → line-level on matching category/product/variations  
+   - Usage limits: total uses, per-customer uses, optional single-use codes  
+   - Optional: min cart subtotal, first-order only, max discount cap (for %)  
+
 ### 3.2 Channels
 
-Discount/flash should declare where it applies:
+Discount / flash / promo code should declare where it applies:
 
 - `pos`  
 - `ecommerce` / app  
 - `both` (default)
 
-Today everything is POS-oriented; ecommerce must call the same resolver.
+Today everything is POS-oriented; ecommerce must call the same resolver + promo-code validator.
 
 ### 3.3 Non-goals (v1 unless product asks)
 
-- Full coupon-code engine (can be phase 2)  
-- Buy-X-get-Y / cart-rule engine  
-- Multi-category polymorphic targeting via unused `categorizables` table (unless product explicitly needs multi-category products first)
+- Buy-X-get-Y / BOGO cart-rule engine  
+- Multi-category polymorphic targeting via unused `categorizables` table (unless product explicitly needs multi-category products first)  
+- Free-shipping-only coupons as a separate type (can be phase 5: set `shipping_charges = 0` when code type is `free_shipping`)  
+- Sharing MyFatoorah Superadmin subscription coupons with store sales
 
 ---
 
@@ -208,7 +225,19 @@ ALTER TABLE discounts
   ADD COLUMN banner_title VARCHAR(191) NULL,
   ADD COLUMN banner_image VARCHAR(255) NULL,
   ADD COLUMN sort_order INT NULL DEFAULT 0;
+
+-- Promo-code gate (automatic resolver skips these)
+ALTER TABLE discounts
+  ADD COLUMN requires_promo_code TINYINT(1) NOT NULL DEFAULT 0,
+  ADD COLUMN promo_application VARCHAR(20) NOT NULL DEFAULT 'eligible_lines'
+    COMMENT 'cart_wide|eligible_lines',
+  ADD COLUMN min_cart_subtotal DECIMAL(22,4) NULL,
+  ADD COLUMN max_discount_amount DECIMAL(22,4) NULL
+    COMMENT 'cap for percentage codes, absolute money',
+  ADD COLUMN first_order_only TINYINT(1) NOT NULL DEFAULT 0;
 ```
+
+`requires_promo_code = 1` means the discount is **never** returned by the automatic catalog/POS line resolver; it is only applied after a successful promo-code validation.
 
 #### 4.1.2 New pivot: `discount_customer_groups`
 
@@ -245,8 +274,19 @@ CREATE TABLE discount_redemptions (
 Use this to:
 
 - Increment `flash_sold_qty`  
-- Enforce per-customer / total redemption caps  
-- Report flash performance  
+- Enforce per-customer / total redemption caps (auto discounts + promo codes)  
+- Report flash / promo performance  
+- Store `promo_code_id` when redemption came from a code (see column below)
+
+Extend redemptions for promo codes:
+
+```sql
+ALTER TABLE discount_redemptions
+  ADD COLUMN promo_code_id INT NULL AFTER discount_id,
+  ADD COLUMN redemption_source VARCHAR(20) NOT NULL DEFAULT 'automatic'
+    COMMENT 'automatic|promo_code|manual',
+  ADD INDEX (promo_code_id);
+```
 
 #### 4.1.4 Keep `discount_variations`
 
@@ -254,24 +294,70 @@ Unchanged for “selected variations” targeting.
 
 When `product_id` + `apply_on_all_variations = 1`, do **not** require pivot rows.
 
-### 4.2 Sell / transaction records (already mostly sufficient)
+#### 4.1.5 New table: `promo_codes`
+
+Promo codes are the **entry key**; the linked `discounts` row holds the pricing rule.
+
+```sql
+CREATE TABLE promo_codes (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  business_id INT NOT NULL,
+  discount_id INT NOT NULL COMMENT 'FK discounts.id — rule to apply',
+  code VARCHAR(50) NOT NULL COMMENT 'stored UPPERCASE trimmed',
+  description VARCHAR(255) NULL,
+  is_active TINYINT(1) NOT NULL DEFAULT 1,
+  starts_at DATETIME NULL COMMENT 'optional override; else use discount.starts_at',
+  ends_at DATETIME NULL COMMENT 'optional override; else use discount.ends_at',
+  max_uses_total INT NULL COMMENT 'null = unlimited',
+  max_uses_per_customer INT NULL COMMENT 'null = unlimited',
+  used_count INT NOT NULL DEFAULT 0,
+  is_single_use TINYINT(1) NOT NULL DEFAULT 0 COMMENT 'shortcut: max_uses_total = 1',
+  created_by INT NULL,
+  created_at TIMESTAMP NULL,
+  updated_at TIMESTAMP NULL,
+  deleted_at TIMESTAMP NULL,
+  UNIQUE KEY promo_codes_business_code_unique (business_id, code),
+  INDEX (discount_id),
+  INDEX (business_id, is_active)
+);
+```
+
+**Rules:**
+
+- One `discounts` row may have **many** codes (e.g. unique influencer codes sharing the same 10% rule).  
+- Code uniqueness is per `business_id`, case-insensitive (`SAVE10` = `save10`).  
+- Soft-delete so historical redemptions still resolve the code name.  
+- Effective window = intersection of `promo_codes.starts_at/ends_at` (if set) and `discounts.starts_at/ends_at`.  
+
+Optional bulk single-use codes (phase later): generate N random codes for the same `discount_id` with `is_single_use = 1`.
+
+### 4.2 Sell / transaction records
 
 #### Header — `transactions`
 
 | Column | Use |
 |--------|-----|
-| `discount_type` / `discount_amount` | Invoice-level discount (manual / business default) — **orthogonal** to promo |
+| `discount_type` / `discount_amount` | Invoice-level: manual **or** `cart_wide` promo code |
 | `customer_group_id` | Snapshot of buyer’s group at sale time |
 | `selling_price_group_id` | Snapshot of price list used |
 | `source` | e.g. `ecommerce` vs POS — use with `apply_in_*` |
 
-No hard requirement to add header promo fields if every promo is line-level (recommended). Optional:
+**Required additions for promo codes:**
 
 ```sql
--- optional denormalized summary
 ALTER TABLE transactions
-  ADD COLUMN promotional_discount_total DECIMAL(22,4) NOT NULL DEFAULT 0;
+  ADD COLUMN promo_code_id INT NULL AFTER discount_amount,
+  ADD COLUMN promo_code_text VARCHAR(50) NULL AFTER promo_code_id
+    COMMENT 'snapshot of code string at sale time',
+  ADD COLUMN promotional_discount_total DECIMAL(22,4) NOT NULL DEFAULT 0
+    COMMENT 'sum of automatic line promo savings',
+  ADD COLUMN promo_code_discount_total DECIMAL(22,4) NOT NULL DEFAULT 0
+    COMMENT 'money saved by promo code (line or invoice)';
 ```
+
+- `promo_code_id` / `promo_code_text`: set whenever a code was successfully applied (cart-wide **or** eligible-lines).  
+- Keep writing `discount_type` / `discount_amount` for cart-wide codes so `calculateInvoiceTotal()` stays unchanged.  
+- For eligible-lines codes, invoice `discount_amount` may stay 0; savings live on sell lines + `promo_code_discount_total`.
 
 #### Line — `transaction_sell_lines` (already correct pattern)
 
@@ -313,6 +399,22 @@ brand()              // belongsTo Brands
 location()           // belongsTo BusinessLocation
 customerGroups()     // belongsToMany CustomerGroup via discount_customer_groups
 redemptions()        // hasMany DiscountRedemption
+promoCodes()         // hasMany PromoCode
+```
+
+`app/PromoCode.php` (new):
+
+```php
+discount()      // belongsTo Discount
+business()      // belongsTo Business
+redemptions()   // hasMany DiscountRedemption
+transactions()  // hasMany Transaction
+```
+
+`app/Transaction.php`:
+
+```php
+promoCode() // belongsTo PromoCode
 ```
 
 `app/TransactionSellLine.php`:
@@ -376,6 +478,7 @@ getCatalogPrice(Variation $v, ...): array
 ```
 candidates = active discounts for business + location + now in [starts_at, ends_at]
             + channel flag matches
+            + requires_promo_code = 0          # code-gated rules never auto-apply
             + not exhausted (flash_sold_qty < flash_quota_qty if set)
             + customer group policy matches
             + SPG rule matches (existing spg column)
@@ -422,10 +525,80 @@ If product later wants “promo replaces CG price”, add a setting — do not c
 
 | Layer | Stack? |
 |-------|--------|
-| Multiple promotional discounts on same line | **No** — highest priority wins |
-| Promo + manual line edit | Cashier may override amount if permission allows; keep `discount_id` if still same campaign or clear if fully overridden |
-| Promo line + invoice discount | **Yes** — same as today |
-| Flash + standard | Treated as same pool; priority decides |
+| Multiple automatic promotional discounts on same line | **No** — highest priority wins |
+| Auto line promo + manual line edit | Cashier may override amount if permission allows; keep `discount_id` if still same campaign or clear if fully overridden |
+| Auto line promo + **cart_wide** promo code | **Yes** — code uses invoice `discount_*` on top of line-discounted subtotal |
+| Auto line promo + **eligible_lines** promo code on same line | **No on same line** — higher priority between auto and code-linked discount wins for that line (default: promo code wins when explicitly entered) |
+| Flash + standard (automatic) | Same pool; priority decides |
+| Two promo codes on one sale | **No** — one code per transaction |
+| Cart-wide promo code + manual invoice discount | **No** — code owns invoice discount fields; cashier override only with permission and clears `promo_code_id` |
+
+### 5.6 Promo code validation & application
+
+New service: `app/Services/Pricing/PromoCodeService.php`
+
+#### 5.6.1 Validate API
+
+```php
+validate(string $code, array $context): PromoCodeValidationResult
+// context: business_id, location_id, contact_id, customer_group_id,
+//          channel, cart_lines[{variation_id, product_id, category_id, qty, unit_price_inc_tax}],
+//          cart_subtotal, is_first_order
+```
+
+Checks (fail fast with clear error keys for UI):
+
+1. Code exists for `business_id`, not soft-deleted, `is_active`  
+2. Linked `discounts` row active, channel flags, location (null = all or match)  
+3. Now inside effective date window (code ∩ discount)  
+4. CG policy on linked discount  
+5. `used_count < max_uses_total` (and `is_single_use`)  
+6. Per-customer uses from `discount_redemptions` where `promo_code_id` + `contact_id`  
+7. `min_cart_subtotal` if set  
+8. `first_order_only` → contact has no prior `transactions.type=sell` + `status=final`  
+9. If `promo_application = eligible_lines`: at least one cart line matches discount targets  
+10. Re-check flash-style quotas on linked discount if any  
+
+#### 5.6.2 Apply
+
+**A) `cart_wide`**
+
+```
+invoice_discount_type   = discount.discount_type
+invoice_discount_amount = discount.discount_amount
+# if percentage and max_discount_amount set:
+#   computed = % of cart_subtotal; clamp to max_discount_amount;
+#   store as fixed amount on transaction OR keep % and clamp in calculateInvoiceTotal extension
+transactions.promo_code_id / promo_code_text = code
+transactions.promo_code_discount_total = computed savings
+```
+
+Prefer extending `calculateInvoiceTotal()` to accept optional `max_discount_amount` clamp when applying percentage codes.
+
+**B) `eligible_lines`**
+
+For each matching cart line, set/override:
+
+```
+line_discount_type / line_discount_amount from discount
+discount_id = discount.id
+```
+
+Non-matching lines keep automatic promo (if any). Matching lines: **promo code wins** over automatic.
+
+Still set header `promo_code_id` / `promo_code_text` for reporting even though invoice discount may be 0.
+
+#### 5.6.3 Consume on finalize
+
+Inside the same DB transaction as sale create:
+
+1. Lock `promo_codes` row (`lockForUpdate`)  
+2. Re-validate limits  
+3. `used_count += 1`  
+4. Insert `discount_redemptions` with `promo_code_id`, `redemption_source = promo_code`  
+5. If sale fails / rolls back → no increment  
+
+On full sell-return of a sale that used a code: decrement `used_count` (min 0) and insert reversing redemption (or mark original redeemed as reversed) — **default: restore one use** so the customer can reuse if policy allows; single-use codes become reusable only if return is approved (document in admin: “restore on return” checkbox, default **on**).
 
 ---
 
@@ -435,17 +608,22 @@ If product later wants “promo replaces CG price”, add a setting — do not c
 
 1. Load product row (`getSellLineRow` / `getPosProductRow`)  
 2. Resolve CG + SPG prices  
-3. Call `DiscountResolverService` (channel=`pos`)  
+3. Call `DiscountResolverService` (channel=`pos`) — **skip** `requires_promo_code = 1`  
 4. Blade fills:
    - `products[n][discount_id]`  
    - `products[n][line_discount_type]`  
    - `products[n][line_discount_amount]`  
 5. `pos.js` recalculates unit price / tax / totals  
-6. On submit (`SellPosController`):
+6. **Promo code UI** (new): input + Apply on POS payment / discount modal  
+   - AJAX `POST /promo-codes/validate` → returns application preview  
+   - If `cart_wide`: fill `#discount_type` / `#discount_amount` (same as invoice discount modal) + hidden `promo_code_id`  
+   - If `eligible_lines`: update matching rows’ line discount fields + `discount_id`  
+7. On submit (`SellPosController`):
+   - Re-validate code server-side (never trust client)  
    - `calculateInvoiceTotal($products, $tax_id, $invoiceDiscount)`  
-   - `createSellTransaction(...)` — header discount, CG, SPG  
+   - `createSellTransaction(...)` — header discount, CG, SPG, **`promo_code_id`, `promo_code_text`**  
    - `createOrUpdateSellLines(...)` — writes line discount + `discount_id`  
-7. After commit: write `discount_redemptions` + bump `flash_sold_qty`  
+8. After sell lines: write `discount_redemptions` + bump `flash_sold_qty` / `promo_codes.used_count`  
 
 ### 6.2 Ecommerce checkout (must be wired)
 
@@ -485,16 +663,19 @@ Today (~267–317) sets:
 ```
 
 5. Prefer `ProductUtil::calculateInvoiceTotal()` instead of hand-rolled `$final_total` so tax/discount math matches POS  
-6. Persist redemptions / flash sold qty after successful order  
-7. Re-validate promo still active at checkout time (catalog price may be stale)
+6. Accept `promo_code` (or `coupon_code`) in checkout payload → `PromoCodeService::validate` + apply  
+7. Persist redemptions / flash sold qty / `promo_codes.used_count` after successful order  
+8. Re-validate automatic promo **and** promo code still active at checkout time (catalog price may be stale)
 
 ### 6.3 Storefront catalog & flash deals
 
 | Endpoint / method | Change |
 |-------------------|--------|
-| Product list / detail APIs in `StorefrontController` | Return `price`, `old_price`, `discount_id`, `discount_label`, `ends_at`, `is_flash` from resolver |
+| Product list / detail APIs in `StorefrontController` | Return `price`, `old_price`, `discount_id`, `discount_label`, `ends_at`, `is_flash` from resolver (**never** apply code-gated discounts here) |
 | `flashDeals()` | Query `discounts` where `discount_kind = flash_sale` AND active window AND `apply_in_ecommerce` — **remove fake 1.12 markup** |
 | Cart preview (if any) | Same resolver as checkout |
+| **New** `POST /store/promo-codes/validate` (or under existing store API prefix) | Validate code against current cart; return savings preview + application mode |
+| Checkout UI (`theme_layout` / cart) | Promo code field + apply/remove; send code on place-order |
 
 ### 6.4 Returns / edit sale
 
@@ -508,8 +689,9 @@ Ensure these keep using sell-line snapshots (they already mostly do via `unit_pr
 
 | Area | Notes |
 |------|-------|
-| Profit / sales reports | Use `unit_price` / `unit_price_inc_tax` (already discounted) |
-| Discount reports | New: sum by `discount_id`, join `discounts`, filter `discount_kind` |
+| Profit / sales reports | Use `unit_price` / `unit_price_inc_tax` (already discounted); invoice discount already in `final_total` |
+| Discount reports | Sum by `discount_id`, join `discounts`, filter `discount_kind` |
+| **Promo code reports** | Filter/group by `transactions.promo_code_id` / `promo_code_text`; uses from `promo_codes.used_count` + redemptions |
 | Customer group reports | Filter via `transactions.customer_group_id` |
 | Tax | Remains on post–line-discount prices; invoice tax on (subtotal − invoice discount) |
 | Payments | Unchanged — based on `final_total` |
@@ -520,9 +702,10 @@ Ensure these keep using sell-line snapshots (they already mostly do via `unit_pr
 
 | Record | Fields related to this feature |
 |--------|--------------------------------|
-| `transactions` | `customer_group_id`, `selling_price_group_id`, `discount_type`, `discount_amount`, `final_total`, `total_before_tax`, `tax_amount`, `source` |
+| `transactions` | `customer_group_id`, `selling_price_group_id`, `discount_type`, `discount_amount`, **`promo_code_id`**, **`promo_code_text`**, `promotional_discount_total`, `promo_code_discount_total`, `final_total`, `total_before_tax`, `tax_amount`, `source` |
 | `transaction_sell_lines` | `unit_price_before_discount`, `line_discount_*`, `discount_id`, `unit_price`, `unit_price_inc_tax`, `item_tax`, qty |
-| `discount_redemptions` (new) | Link discount ↔ transaction/line/contact/qty/amount |
+| `discount_redemptions` (new) | Link discount ↔ transaction/line/contact/qty/amount; **`promo_code_id`**, `redemption_source` |
+| `promo_codes.used_count` | Increment when code applied |
 | `discounts.flash_sold_qty` | Increment for flash |
 | `transaction_payments` | No schema change |
 | `transaction_sell_lines_purchase_lines` | No schema change |
@@ -557,12 +740,38 @@ Mutually exclusive groups as needed (same as today: variations clear brand/categ
 - Quota / max per order / max per customer  
 - Channel checkboxes: POS / Ecommerce  
 
-### 7.4 Permissions
+### 7.4 Promo code section (on discount form **or** dedicated Promo Codes screen)
 
-Reuse `discount.access`. Optional finer permissions later:
+**Recommended UX:** dedicated `Promo Codes` menu under Sales / Products (same permission family), each row links to a discount rule.
+
+Fields:
+
+| Field | Notes |
+|-------|--------|
+| Code | Required, unique per business; auto-uppercase |
+| Linked discount | Select existing discount (or inline-create) |
+| Active | Toggle |
+| Starts / ends | Optional overrides |
+| Max uses total / per customer | Optional |
+| Single-use | Checkbox |
+| Restore on return | Checkbox (default on) |
+
+On the **discount** form, add:
+
+- `requires_promo_code`  
+- `promo_application` (`cart_wide` \| `eligible_lines`)  
+- `min_cart_subtotal`, `max_discount_amount`, `first_order_only`  
+
+Show a warning: *“When Requires promo code is on, this discount will not auto-apply on POS/catalog.”*
+
+### 7.5 Permissions
+
+Reuse `discount.access`. Optional finer permissions:
 
 - `discount.flash_sale`  
 - `discount.manage_cg_rules`  
+- `promo_code.access` (manage codes)  
+- `promo_code.apply_in_pos` (cashier may enter codes)  
 
 ---
 
@@ -572,7 +781,9 @@ Reuse `discount.access`. Optional finer permissions later:
 
 - New migration(s) under `database/migrations/`  
 - `app/Discount.php`  
-- New `app/DiscountRedemption.php` (if used)  
+- New `app/PromoCode.php`  
+- New `app/DiscountRedemption.php`  
+- `app/Transaction.php` — `promoCode()` + new columns  
 - `app/TransactionSellLine.php` — `discount()` relation  
 - `app/Contact.php` — `customerGroup()` relation  
 - `app/CustomerGroup.php` — optional `discounts()`  
@@ -580,27 +791,34 @@ Reuse `discount.access`. Optional finer permissions later:
 ### Domain logic
 
 - **New** `app/Services/Pricing/DiscountResolverService.php`  
-- `app/Utils/ProductUtil.php` — `getProductDiscount`, `getSellLineRow`, optionally catalog helpers  
-- `app/Utils/TransactionUtil.php` — after sell lines created, hook redemptions; ensure line fields remain correct  
-- `app/Utils/ContactUtil.php` — already exposes CG for POS  
+- **New** `app/Services/Pricing/PromoCodeService.php`  
+- `app/Utils/ProductUtil.php` — `getProductDiscount`, `getSellLineRow`, `calculateInvoiceTotal` (max cap for %), catalog helpers  
+- `app/Utils/TransactionUtil.php` — persist `promo_code_*`; after sell lines, hook redemptions / `used_count`  
+- `app/Utils/ContactUtil.php` — already exposes CG for POS; helper `isFirstOrder($contact_id)`  
 
 ### Controllers / UI
 
 - `app/Http/Controllers/DiscountController.php`  
+- **New** `app/Http/Controllers/PromoCodeController.php` (CRUD + validate endpoint for POS)  
 - `resources/views/discount/*`  
+- **New** `resources/views/promo_code/*`  
 - Lang files (`lang/en/lang_v1.php`, etc.)  
-- `public/js/pos.js` — only if new client-side flash UI needed (math already OK)  
-- `resources/views/sale_pos/product_row.blade.php` — show flash badge text if needed  
+- `routes/web.php` — promo code resource + validate  
+- `public/js/pos.js` — promo code apply/remove + recalc invoice/lines  
+- `resources/views/sale_pos/*` — promo code input near discount modal  
+- `resources/views/sale_pos/product_row.blade.php` — flash/promo badge text if needed  
 
 ### Ecommerce
 
 - `app/Http/Controllers/Frontend/StorefrontController.php` — catalog + **replace** `flashDeals()`  
-- `app/Http/Controllers/Frontend/StoreCheckoutController.php` — apply resolver on sell lines  
-- Any FE consuming flash-deals API (Servo / app) — expect real `old_price` / `ends_at`  
+- `app/Http/Controllers/Frontend/StoreCheckoutController.php` — resolver + promo code on sell  
+- **New** storefront validate-promo endpoint (controller method or dedicated)  
+- `resources/views/frontend/store/theme_layout.blade.php` (or cart partial) — code field  
+- Any FE consuming flash-deals / checkout API — send `promo_code`  
 
 ### Docs / plan sync
 
-- `docs/ECOMMERCE_ERP_PLAN.md` — Phase 3 already mentions discount computation; mark as covered by this spec  
+- `docs/ECOMMERCE_ERP_PLAN.md` — Phase 3 discount computation + promo codes covered by this spec  
 
 ---
 
@@ -608,8 +826,8 @@ Reuse `discount.access`. Optional finer permissions later:
 
 ### Phase 1 — Data model & resolver (ERP core)
 
-1. Migrations for new columns + `discount_customer_groups` (+ optional redemptions)  
-2. Implement `DiscountResolverService` with parity to current `getProductDiscount` + new targets  
+1. Migrations for new discount columns + `discount_customer_groups` + `discount_redemptions`  
+2. Implement `DiscountResolverService` with parity to current `getProductDiscount` + new targets; **exclude** `requires_promo_code`  
 3. Wire POS through the service (behavior unchanged for old discounts)  
 4. Admin UI: product-all-variations + CG specific groups  
 
@@ -633,10 +851,29 @@ Reuse `discount.access`. Optional finer permissions later:
 
 **Acceptance:** App shows real old/new price and countdown; checkout totals match catalog; POS flash optional via `apply_in_pos`.
 
-### Phase 4 (optional) — Coupons & advanced rules
+### Phase 4 — Promo codes (required for feature completion)
 
-- Coupon codes table linked to a discount  
-- Min cart amount, first-order only, stacking rules UI  
+1. Migrations: `promo_codes` + `transactions.promo_code_*` + redemption `promo_code_id` + discount promo fields (`requires_promo_code`, `promo_application`, min cart, max cap, first order)  
+2. `PromoCode` model + `PromoCodeController` CRUD  
+3. `PromoCodeService::validate` / apply / consume  
+4. POS: apply/remove code UI + server re-validation on `SellPosController` store/update  
+5. Ecommerce: validate endpoint + checkout payload + cart UI  
+6. Reports: sales by promo code; used_count correctness  
+7. Return path: restore use when configured  
+
+**Acceptance:**
+
+- Code does not auto-appear on catalog/POS lines  
+- Valid code reduces total correctly (`cart_wide` or `eligible_lines`)  
+- Invalid / expired / exhausted / wrong CG / below min cart return clear errors  
+- One code per sale; `promo_code_id` + snapshot text stored  
+- Concurrent double-use of single-use code is blocked (row lock)  
+
+### Phase 5 (optional) — Advanced
+
+- Bulk generate single-use codes  
+- Free-shipping code type  
+- Buy-X-get-Y rules  
 
 ---
 
@@ -702,6 +939,71 @@ discounts:
 
 No rows required in `discount_variations`.
 
+### Example D — Cart-wide promo code `SAVE10`
+
+```
+discounts:
+  name: "Save 10% with code"
+  requires_promo_code: 1
+  promo_application: cart_wide
+  discount_type: percentage
+  discount_amount: 10
+  max_discount_amount: 50          # cap savings at 50 currency units
+  min_cart_subtotal: 100
+  cg_mode: any
+  apply_in_pos: 1
+  apply_in_ecommerce: 1
+  # no category/product target needed for cart_wide
+
+promo_codes:
+  code: SAVE10
+  discount_id: <above>
+  max_uses_total: 1000
+  max_uses_per_customer: 1
+```
+
+Checkout cart subtotal 200 → invoice discount computed 20 → stored on `transactions.discount_type=percentage` (or fixed 20 after clamp logic), `promo_code_id` set, `promo_code_discount_total=20`.
+
+Automatic flash/category line discounts still apply on lines first; then invoice code reduces the cart.
+
+### Example E — Line-scoped promo code `OIL15` (category only)
+
+```
+discounts:
+  name: "15% off cooking oil with code"
+  requires_promo_code: 1
+  promo_application: eligible_lines
+  category_id: 5
+  discount_type: percentage
+  discount_amount: 15
+  first_order_only: 0
+
+promo_codes:
+  code: OIL15
+  discount_id: <above>
+  max_uses_per_customer: 3
+```
+
+Cart has oil + rice:
+
+- Oil lines get `line_discount_*` + `discount_id` from this rule (wins over any automatic on those lines)  
+- Rice keeps automatic promo only  
+- Header still stores `promo_code_id` / `promo_code_text=OIL15`  
+- Invoice `discount_amount` stays 0 unless cashier adds a separate invoice discount  
+
+### Example F — Single-use influencer codes sharing one rule
+
+```
+discounts:
+  requires_promo_code: 1
+  promo_application: cart_wide
+  discount_type: fixed
+  discount_amount: 25
+
+promo_codes:  (many rows, same discount_id)
+  AHMED25, SARA25, ... each is_single_use=1, max_uses_total=1
+```
+
 ---
 
 ## 11. Edge cases & rules to decide before coding
@@ -716,10 +1018,20 @@ No rows required in `discount_variations`.
 | Inactive products | Resolver should skip `is_inactive` / `not_for_selling` for catalog; POS already filters |
 | Combo products | Confirm whether combo parent lines should inherit component promos (default: **discount on combo variation only**) |
 | Concurrent flash oversell | Use DB transaction + check `flash_sold_qty + qty <= flash_quota_qty` at checkout |
+| Promo code case / spaces | Normalize: `trim` + `strtoupper` before lookup and before storing `promo_code_text` |
+| Guest checkout (no contact) | Allow codes with `max_uses_per_customer` / `first_order_only` only when contact is identified; otherwise reject with “login required” **or** count by phone if ecommerce always creates contact |
+| Code removed after apply, before pay | Re-validate on finalize; clear totals if invalid |
+| Partial payment / draft sale | Do not increment `used_count` until status becomes `final` |
+| Cart-wide % + order tax | Keep current `calculateInvoiceTotal` order: tax on (subtotal − invoice discount) |
+| Eligible-lines code with empty matching lines | Validation fails: “No eligible products in cart” |
+| Stacking two codes | Reject second apply; must remove first |
+| MyFatoorah subscription coupon | Ignore — different product surface |
 
 ---
 
 ## 12. Testing checklist
+
+### Automatic discounts & flash
 
 - [ ] Category discount applies to all products in category on POS  
 - [ ] Sub-category include/exclude behaves as configured  
@@ -730,12 +1042,30 @@ No rows required in `discount_variations`.
 - [ ] SPG + `spg` filter still works  
 - [ ] Priority picks correct discount when two overlap  
 - [ ] Sell line stores `discount_id` + correct unit prices  
-- [ ] Invoice discount still stacks with line promo  
+- [ ] Invoice discount still stacks with **automatic** line promo  
 - [ ] Ecommerce checkout totals match resolver  
 - [ ] `flashDeals` returns only active flash rows (no fake 12%)  
 - [ ] Flash quota blocks oversell  
 - [ ] Return adjusts flash sold qty (if that rule is adopted)  
 - [ ] Reports: filter sales by discount / flash  
+
+### Promo codes
+
+- [ ] Discount with `requires_promo_code=1` never auto-applies on POS row or catalog  
+- [ ] Valid `cart_wide` code sets transaction `discount_*` + `promo_code_id` + `promo_code_text`  
+- [ ] Percentage code respects `max_discount_amount` cap  
+- [ ] `min_cart_subtotal` rejects undersized carts  
+- [ ] `first_order_only` allows first final sale only  
+- [ ] `eligible_lines` code discounts only matching lines  
+- [ ] CG-restricted code rejected for wrong customer group  
+- [ ] Exhausted `max_uses_total` / `max_uses_per_customer` / single-use blocked  
+- [ ] Concurrent checkout cannot double-consume single-use code  
+- [ ] `used_count` increments only on `final` sale  
+- [ ] Return restores use when “restore on return” enabled  
+- [ ] POS apply + remove recalculates totals  
+- [ ] Ecommerce validate endpoint + checkout both re-validate server-side  
+- [ ] Report: sales grouped by promo code  
+- [ ] Code case-insensitive (`save10` = `SAVE10`)  
 
 ---
 
@@ -743,12 +1073,21 @@ No rows required in `discount_variations`.
 
 | Layer | Action |
 |-------|--------|
-| **Reuse** | `discounts`, `discount_variations`, sell-line discount columns, POS application path |
-| **Extend** | Product-level target, CG pivot + modes, flash metadata, channel flags, redemptions |
-| **Extract** | Shared `DiscountResolverService` used by POS + storefront + checkout |
-| **Fix** | Replace stub `flashDeals`; stop zeroing ecommerce discounts |
-| **Persist** | Always write line snapshot (`unit_price_before_discount`, `line_discount_*`, `discount_id`) on every channel |
-| **Do not** | Rely on changing live `variations.sell_price_inc_tax` for temporary promos — that breaks history and non-campaign sales |
+| **Reuse** | `discounts`, `discount_variations`, sell-line discount columns, invoice `transactions.discount_*`, POS application path |
+| **Extend** | Product-level target, CG pivot + modes, flash metadata, channel flags, redemptions, **`promo_codes` + code-gated discount fields** |
+| **Extract** | `DiscountResolverService` (automatic) + `PromoCodeService` (explicit codes) for POS + storefront + checkout |
+| **Fix** | Replace stub `flashDeals`; stop zeroing ecommerce discounts; stop treating coupons as Superadmin-only |
+| **Persist** | Line snapshot (`unit_price_before_discount`, `line_discount_*`, `discount_id`); header `promo_code_id` / `promo_code_text` / discount totals |
+| **Do not** | Auto-apply code-gated discounts; change live `variations.sell_price_inc_tax` for temporary promos; trust client-only code validation |
 
-This document is the source of truth for a future implementation PR series; implement Phase 1–3 in order unless a release needs ecommerce flash first (then still land the resolver before wiring `flashDeals`).
+### Feature-complete definition
+
+The feature is complete when Phases **1–4** are done:
+
+1. Automatic category / product / variation discounts (+ CG rules)  
+2. Persisted on sell lines & redemptions  
+3. Real flash sales on ecommerce + optional POS  
+4. **Promo codes** on POS and ecommerce with limits, audit, and reports  
+
+This document is the source of truth for a future implementation PR series; implement Phase 1→4 in order unless a release needs ecommerce flash or promo codes first (still land the shared resolver/validator before wiring UI).
 )

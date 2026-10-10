@@ -86,14 +86,7 @@
           </div>
         </div>
         <div class="clearfix"></div>
-        <div class="col-sm-6">
-          <div class="form-group">
-            <br>
-            <label>
-              {!! Form::checkbox('applicable_in_cg', 1, false, ['class' => 'input-icheck']); !!} <strong>@lang('lang_v1.applicable_in_cg')</strong>
-            </label>
-          </div>
-        </div>
+        @include('discount.partials.extra_fields', ['discount' => null, 'products' => $products, 'customer_groups' => $customer_groups])
         <div class="col-sm-6">
           <div class="form-group">
             <label>

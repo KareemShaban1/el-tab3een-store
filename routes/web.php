@@ -16,6 +16,7 @@ use App\Http\Controllers\ContactController;
 use App\Http\Controllers\CustomerGroupController;
 use App\Http\Controllers\DashboardConfiguratorController;
 use App\Http\Controllers\DiscountController;
+use App\Http\Controllers\PromoCodeController;
 use App\Http\Controllers\DocumentAndNoteController;
 use App\Http\Controllers\ExpenseCategoryController;
 use App\Http\Controllers\ExpenseController;
@@ -130,6 +131,9 @@ Route::middleware(['setData'])->group(function () {
             Route::get('/products/{id}', [StorefrontController::class, 'product'])->name('products.show');
             Route::get('/categories', [StorefrontController::class, 'categories'])->name('categories.index');
             Route::get('/flash-deals', [StorefrontController::class, 'flashDeals'])->name('flash_deals.index');
+            Route::post('/promo-codes/validate', [StorefrontController::class, 'validatePromoCode'])
+                ->middleware('throttle:30,1')
+                ->name('promo_codes.validate');
             Route::get('/tab3een/catalog', [StorefrontController::class, 'tab3eenCatalog'])
                 ->middleware('throttle:60,1')
                 ->name('tab3een.catalog');
@@ -540,6 +544,9 @@ Route::middleware(['setData', 'auth', 'SetSessionData', 'language', 'timezone', 
     Route::get('/discount/activate/{id}', [DiscountController::class, 'activate']);
     Route::post('/discount/mass-deactivate', [DiscountController::class, 'massDeactivate']);
     Route::resource('discount', DiscountController::class);
+
+    Route::post('/promo-code/validate-code', [PromoCodeController::class, 'validateCode']);
+    Route::resource('promo-code', PromoCodeController::class);
 
     Route::prefix('account')->group(function () {
         Route::resource('/account', AccountController::class);

@@ -37,6 +37,17 @@
 				    @endphp
 				    <div class="col-md-6">
 				        <div class="form-group">
+				            {!! Form::label('promo_code_modal', __('lang_v1.promo_code') ) !!}
+				            <div class="input-group" style="margin-bottom:10px;">
+				                {!! Form::text('promo_code_modal', null, ['class' => 'form-control', 'id' => 'promo_code_modal', 'placeholder' => __('lang_v1.enter_promo_code')]); !!}
+				                <span class="input-group-btn">
+				                    <button type="button" class="btn btn-info" id="posApplyPromoCode">@lang('lang_v1.apply_promo_code')</button>
+				                </span>
+				            </div>
+				            <input type="hidden" name="promo_code" id="promo_code" value="">
+				            <input type="hidden" name="promo_code_id" id="promo_code_id" value="">
+				            <p class="help-block text-success hide" id="promo_code_msg"></p>
+
 				            {!! Form::label('discount_amount_modal', __('sale.discount_amount') . ':*' ) !!}
 				            <div class="input-group">
 				                <span class="input-group-addon">

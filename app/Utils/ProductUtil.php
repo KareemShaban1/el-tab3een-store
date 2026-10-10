@@ -672,6 +672,13 @@ class ProductUtil extends Util
                 $output['discount'] = $discount_amount;
             } else {
                 $output['discount'] = ($discount_amount / 100) * $output['total_before_tax'];
+                // Optional cap (promo codes)
+                if (! empty($discount['max_discount_amount'])) {
+                    $max_cap = $uf_number ? $this->num_uf($discount['max_discount_amount']) : $discount['max_discount_amount'];
+                    if ($output['discount'] > $max_cap) {
+                        $output['discount'] = $max_cap;
+                    }
+                }
             }
         }
 
@@ -1537,58 +1544,78 @@ class ProductUtil extends Util
      * bool $is_spg
      * @return obj discount
      */
-    public function getProductDiscount($product, $business_id, $location_id, $is_cg = false, $price_group = null, $variation_id = null)
+    public function getProductDiscount($product, $business_id, $location_id, $is_cg = false, $price_group = null, $variation_id = null, $channel = 'pos', $customer_group_id = null, $quantity = 1)
     {
-        $now = \Carbon::now()->toDateTimeString();
+        try {
+            $resolver = app(\App\Services\Pricing\DiscountResolverService::class);
 
-        //Search if both category and brand matches
-        $query = Discount::where('business_id', $business_id)
-                    ->where('location_id', $location_id)
-                    ->where('is_active', 1)
-                    ->where('starts_at', '<=', $now)
-                    ->where('ends_at', '>=', $now)
-                    ->where(function ($q) use ($product, $variation_id) {
-                        $q->where(function ($sub_q) use ($product) {
-                            if (! empty($product->brand_id)) {
-                                $sub_q->where('brand_id', $product->brand_id);
-                            }
-                            if (! empty($product->category_id)) {
-                                $sub_q->where('category_id', $product->category_id);
+            // Prefer real customer_group_id; if only legacy $is_cg, use sentinel so with_group_only matches
+            $resolved_cg_id = $customer_group_id;
+            if (empty($resolved_cg_id) && $is_cg) {
+                $resolved_cg_id = 1;
+            }
+
+            return $resolver->resolveForVariation([
+                'business_id' => $business_id,
+                'location_id' => $location_id,
+                'variation_id' => $variation_id,
+                'product' => $product,
+                'customer_group_id' => $resolved_cg_id,
+                'selling_price_group_id' => $price_group,
+                'channel' => $channel,
+                'quantity' => $quantity,
+            ]);
+        } catch (\Throwable $e) {
+            \Log::warning('getProductDiscount resolver fallback: '.$e->getMessage());
+
+            // Legacy fallback if new columns/tables missing
+            $now = \Carbon::now()->toDateTimeString();
+            $query = Discount::where('business_id', $business_id)
+                        ->where('location_id', $location_id)
+                        ->where('is_active', 1)
+                        ->where('starts_at', '<=', $now)
+                        ->where('ends_at', '>=', $now)
+                        ->where(function ($q) use ($product, $variation_id) {
+                            $q->where(function ($sub_q) use ($product) {
+                                if (! empty($product->brand_id)) {
+                                    $sub_q->where('brand_id', $product->brand_id);
+                                }
+                                if (! empty($product->category_id)) {
+                                    $sub_q->where('category_id', $product->category_id);
+                                }
+                            })
+                                ->orWhere(function ($sub_q) use ($product) {
+                                    $sub_q->whereRaw('(brand_id="'.$product->brand_id.'" AND category_id IS NULL)')
+                                    ->orWhereRaw('(category_id="'.$product->category_id.'" AND brand_id IS NULL)');
+                                });
+
+                            if (! empty($variation_id)) {
+                                $q->orWhereHas('variations', function ($sub_q) use ($variation_id) {
+                                    $sub_q->where('variation_id', $variation_id);
+                                });
                             }
                         })
-                            ->orWhere(function ($sub_q) use ($product) {
-                                $sub_q->whereRaw('(brand_id="'.$product->brand_id.'" AND category_id IS NULL)')
-                                ->orWhereRaw('(category_id="'.$product->category_id.'" AND brand_id IS NULL)');
-                            });
+                        ->orderBy('priority', 'desc')
+                        ->latest();
+            if ($is_cg) {
+                $query->where('applicable_in_cg', 1);
+            }
+            if (! is_null($price_group)) {
+                $query->where(function ($q) use ($price_group) {
+                    $q->whereNull('spg')->orWhere('spg', (string) $price_group);
+                });
+            } else {
+                $query->whereNull('spg');
+            }
 
-                        if (! empty($variation_id)) {
-                            $q->orWhereHas('variations', function ($sub_q) use ($variation_id) {
-                                $sub_q->where('variation_id', $variation_id);
-                            });
-                        }
-                    })
-                    ->orderBy('priority', 'desc')
-                    ->latest();
-        if ($is_cg) {
-            $query->where('applicable_in_cg', 1);
+            $discount = $query->first();
+            if (! empty($discount)) {
+                $discount->formated_starts_at = $this->format_date($discount->starts_at->toDateTimeString(), true);
+                $discount->formated_ends_at = $this->format_date($discount->ends_at->toDateTimeString(), true);
+            }
+
+            return $discount;
         }
-        if (! is_null($price_group)) {
-            $query->where(function ($q) use ($price_group) {
-                $q->whereNull('spg')
-                    ->orWhere('spg', (string) $price_group);
-            });
-        } else {
-            $query->whereNull('spg');
-        }
-
-        $discount = $query->first();
-
-        if (! empty($discount)) {
-            $discount->formated_starts_at = $this->format_date($discount->starts_at->toDateTimeString(), true);
-            $discount->formated_ends_at = $this->format_date($discount->ends_at->toDateTimeString(), true);
-        }
-
-        return $discount;
     }
 
     /**
@@ -2606,7 +2633,17 @@ class ProductUtil extends Util
         } else {
             $is_cg = !empty($cg->id) ? true : false;
 
-            $discount = $this->getProductDiscount($product, $business_id, $location_id, $is_cg, $price_group, $variation_id);
+            $discount = $this->getProductDiscount(
+                $product,
+                $business_id,
+                $location_id,
+                $is_cg,
+                $price_group,
+                $variation_id,
+                'pos',
+                $cg->id ?? null,
+                $quantity
+            );
 
             if ($is_direct_sell) {
                 $edit_discount = auth()->user()->can('edit_product_discount_from_sale_screen');
