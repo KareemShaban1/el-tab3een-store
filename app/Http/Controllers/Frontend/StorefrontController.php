@@ -619,12 +619,17 @@ class StorefrontController extends Controller
         $flashDiscounts = $resolver->getActiveFlashSales($business_id, $location_id);
         $deals = collect();
 
+        $business_location_ids = BusinessLocation::where('business_id', $business_id)
+            ->where('is_active', 1)
+            ->pluck('id');
+
         foreach ($flashDiscounts as $discount) {
             $variationCandidates = collect();
 
             if ($discount->variations->isNotEmpty()) {
                 $variationCandidates = $discount->variations;
-            } elseif (! empty($discount->product_id) && ! empty($discount->apply_on_all_variations) && $discount->product) {
+            } elseif (! empty($discount->product_id) && $discount->product) {
+                // Product-level flash: include all variations (apply_on_all_variations optional).
                 $variationCandidates = $discount->product->variations;
             } elseif (! empty($discount->category_id) || ! empty($discount->brand_id)) {
                 $q = Product::where('business_id', $business_id)
@@ -641,14 +646,20 @@ class StorefrontController extends Controller
             }
 
             foreach ($variationCandidates as $variation) {
-                $variation->loadMissing(['product.brand', 'variation_location_details' => function ($q) use ($location_id) {
-                    $q->where('location_id', $location_id);
+                // Match product page: stock in any business location, prefer checkout location.
+                $variation->loadMissing(['product.brand', 'variation_location_details' => function ($q) use ($business_location_ids) {
+                    $q->whereIn('location_id', $business_location_ids)
+                        ->where('qty_available', '>', 0);
                 }]);
                 $product = $variation->product;
                 if (empty($product)) {
                     continue;
                 }
-                $stock = (float) optional($variation->variation_location_details->first())->qty_available;
+                $stockRows = $variation->variation_location_details;
+                $preferredStock = $stockRows->first(function ($row) use ($location_id) {
+                    return (int) $row->location_id === (int) $location_id;
+                }) ?? $stockRows->first();
+                $stock = (float) optional($preferredStock)->qty_available;
                 if ($stock <= 0) {
                     continue;
                 }

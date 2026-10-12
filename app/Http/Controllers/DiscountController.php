@@ -153,6 +153,9 @@ class DiscountController extends Controller
                 $input['category_id'] = null;
                 $input['product_id'] = null;
                 $input['apply_on_all_variations'] = 0;
+            } elseif (! empty($input['product_id'])) {
+                // Selecting a product means all of its variations unless variation_ids were chosen.
+                $input['apply_on_all_variations'] = 1;
             }
 
             $discount = Discount::create($input);
@@ -251,6 +254,8 @@ class DiscountController extends Controller
                     $input['category_id'] = null;
                     $input['product_id'] = null;
                     $input['apply_on_all_variations'] = 0;
+                } elseif (! empty($input['product_id'])) {
+                    $input['apply_on_all_variations'] = 1;
                 }
 
                 $discount = Discount::where('business_id', $business_id)->find($id);

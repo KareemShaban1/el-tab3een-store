@@ -454,7 +454,7 @@ if ($subId <= 0 || $subName==='' ) { return []; } return [[ 'id'=> $subId,
 	@endif
 
 	<!-- ===================== FLASH DEALS ===================== -->
-	<!-- <section class="flash-section section">
+	<section class="flash-section section">
 		<div class="container">
 			<div class="flash-head">
 				<div class="flash-title">
@@ -481,7 +481,7 @@ if ($subId <= 0 || $subName==='' ) { return []; } return [[ 'id'=> $subId,
 			</div>
 			<div class="flash-grid" id="dynamic-flash-grid"></div>
 		</div>
-	</section> -->
+	</section>
 
 	<!-- ===================== BRANDS ===================== -->
 	<section class="brands-section section-sm">

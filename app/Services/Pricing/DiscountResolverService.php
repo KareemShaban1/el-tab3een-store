@@ -241,11 +241,14 @@ class DiscountResolverService
                 });
             }
 
-            // Product all variations
+            // Product-level target (all variations of that product)
             if (! empty($product_id)) {
                 $q->orWhere(function ($sub) use ($product_id) {
                     $sub->where('product_id', $product_id)
-                        ->where('apply_on_all_variations', 1);
+                        ->where(function ($flags) {
+                            $flags->where('apply_on_all_variations', 1)
+                                ->orWhereDoesntHave('variations');
+                        });
                 });
             }
 
@@ -322,12 +325,15 @@ class DiscountResolverService
             return true;
         }
 
-        if (! empty($discount->product_id) && (int) $discount->product_id === (int) $product->id && ! empty($discount->apply_on_all_variations)) {
-            return true;
+        if (! empty($discount->product_id) && (int) $discount->product_id === (int) $product->id) {
+            // Product-level rule applies to all variations unless specific variation pivots exist
+            if (! $discount->variations()->exists() || ! empty($discount->apply_on_all_variations)) {
+                return true;
+            }
         }
 
         // If discount is variation/product targeted only, stop
-        if ($discount->variations()->exists() || (! empty($discount->product_id) && empty($discount->apply_on_all_variations))) {
+        if ($discount->variations()->exists() || ! empty($discount->product_id)) {
             return false;
         }
 
