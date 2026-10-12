@@ -11,7 +11,7 @@
 </section>
 
 <section class="content">
-    {!! Form::open(['url' => action([\App\Http\Controllers\StorefrontSeoController::class, 'update']), 'method' => 'put', 'id' => 'storefront_seo_form']) !!}
+    {!! Form::open(['url' => action([\App\Http\Controllers\StorefrontSeoController::class, 'update']), 'method' => 'put', 'id' => 'storefront_seo_form', 'files' => true]) !!}
 
     <div class="row">
         <div class="col-md-12">
@@ -60,11 +60,30 @@
                                         <p class="help-block">@lang('storefront_seo.robots_help')</p>
                                     </div>
                                 </div>
-                                <div class="col-sm-12">
+                                <div class="col-sm-6">
                                     <div class="form-group">
-                                        {!! Form::label("pages[{$pageKey}][og_image]", __('storefront_seo.og_image') . ':') !!}
-                                        {!! Form::text("pages[{$pageKey}][og_image]", $page['og_image'], ['class' => 'form-control', 'maxlength' => 500, 'placeholder' => 'https://...']) !!}
+                                        {!! Form::label("pages[{$pageKey}][og_image_file]", __('storefront_seo.og_image') . ':') !!}
+                                        {!! Form::file("pages[{$pageKey}][og_image_file]", ['class' => 'form-control', 'accept' => 'image/*']) !!}
+                                        <p class="help-block">@lang('storefront_seo.og_image_upload_help')</p>
                                     </div>
+                                </div>
+                                <div class="col-sm-6">
+                                    <div class="form-group">
+                                        {!! Form::label("pages[{$pageKey}][og_image]", __('storefront_seo.og_image_url') . ':') !!}
+                                        {!! Form::text("pages[{$pageKey}][og_image]", $page['og_image'], ['class' => 'form-control', 'maxlength' => 500, 'placeholder' => 'https://...']) !!}
+                                        <p class="help-block">@lang('storefront_seo.og_image_url_help')</p>
+                                    </div>
+                                    @if(!empty($page['og_image']))
+                                        <div class="form-group">
+                                            <img src="{{ $page['og_image'] }}" alt="" style="max-height:140px;max-width:100%;border-radius:8px;border:1px solid #ddd;">
+                                            <div class="checkbox" style="margin-top:8px;">
+                                                <label>
+                                                    <input type="checkbox" name="pages[{{ $pageKey }}][remove_og_image]" value="1">
+                                                    @lang('storefront_seo.remove_og_image')
+                                                </label>
+                                            </div>
+                                        </div>
+                                    @endif
                                 </div>
                             </div>
                         </div>
