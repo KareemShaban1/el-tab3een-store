@@ -121,6 +121,7 @@ return [
 'sub_category_name' => $subCategoryName,
 'sub_category_id' => (int) ($category['sub_category_id'] ?? 0),
 'sub_categories' => $category['sub_categories'] ?? [],
+'category_image' => (string) ($category['category_image'] ?? ''),
 'image' => (string) ($category['image'] ?? ''),
 'products' => $category['products'] ?? [],
 ];
@@ -131,7 +132,9 @@ return [
 $first = $group->first();
 $products = $group->flatMap(fn ($category) => $category['products'] ?? [])->unique('id')->values()->all();
 
+$withCategoryImage = $group->first(fn ($category) => trim((string) ($category['category_image'] ?? '')) !== '');
 $withImage = $group->first(fn ($category) => trim((string) ($category['image'] ?? '')) !== '');
+$categoryImage = (string) ($withCategoryImage['category_image'] ?? '');
 
 $subCategories = collect($group)
 ->flatMap(function ($category) {
@@ -164,7 +167,8 @@ if ($subId <= 0 || $subName==='' ) { return []; } return [[ 'id'=> $subId,
 	'category_name' => (string) $first['category_name'],
 	'sub_category_name' => '',
 	'sub_categories' => $subCategories,
-	'image' => (string) ($withImage['image'] ?? ''),
+	'category_image' => $categoryImage,
+	'image' => $categoryImage !== '' ? $categoryImage : (string) ($withImage['image'] ?? ''),
 	'products' => $products,
 	];
 	})->values();

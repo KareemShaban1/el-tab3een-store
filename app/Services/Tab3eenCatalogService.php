@@ -261,6 +261,7 @@ class Tab3eenCatalogService
 
                 [$categoryName, $subCategoryName] = $this->categoryLabelParts($category, true);
                 $displayName = $categoryName !== '' ? $categoryName : $subCategoryName;
+                $categoryImage = $this->resolveCategoryImage($category);
 
                 return [
                     'id' => (int) ($category['id'] ?? $category['category_id'] ?? $category['sub_category_id'] ?? 0),
@@ -269,6 +270,7 @@ class Tab3eenCatalogService
                     'category_name' => $categoryName,
                     'sub_category_name' => $subCategoryName,
                     'name' => $displayName,
+                    'category_image' => $categoryImage,
                     'image' => (string) ($category['image'] ?? ''),
                     'sort_order' => (int) ($category['sort_order'] ?? 0),
                     'products' => $products,
@@ -278,6 +280,23 @@ class Tab3eenCatalogService
             ->values();
 
         return $this->groupCategoriesByParent($normalized);
+    }
+
+    /**
+     * Main-category image from the Servo/Tab3een API (`category_image`).
+     *
+     * @param  array<string, mixed>  $category
+     */
+    private function resolveCategoryImage(array $category): string
+    {
+        if (is_array($category['category'] ?? null)) {
+            $nested = trim((string) ($category['category']['category_image'] ?? ''));
+            if ($nested !== '') {
+                return $nested;
+            }
+        }
+
+        return trim((string) ($category['category_image'] ?? ''));
     }
 
     /**
@@ -315,8 +334,10 @@ class Tab3eenCatalogService
                     ->unique()
                     ->values()
                     ->all();
+                $withCategoryImage = $group->first(fn ($category) => trim((string) ($category['category_image'] ?? '')) !== '');
                 $withImage = $group->first(fn ($category) => trim((string) ($category['image'] ?? '')) !== '');
-                $image = (string) ($withImage['image'] ?? '');
+                $categoryImage = (string) ($withCategoryImage['category_image'] ?? '');
+                $image = $categoryImage !== '' ? $categoryImage : (string) ($withImage['image'] ?? '');
                 $subCategories = $group
                     ->filter(function ($category) {
                         return trim((string) ($category['sub_category_name'] ?? '')) !== ''
@@ -355,6 +376,7 @@ class Tab3eenCatalogService
                     'sub_category_name' => '',
                     'sub_categories' => $subCategories,
                     'name' => (string) ($first['name'] ?? ''),
+                    'category_image' => $categoryImage,
                     'image' => $image,
                     'sort_order' => (int) $group->min('sort_order'),
                     'products' => $products,

@@ -226,7 +226,7 @@
 				<!-- <span class="logo-icon">⚡</span>
                 <span>التابعين للإلكترونيات</span> -->
 				<img src="{{ asset('img/logo.png') }}" alt="logo" class="logo-img"
-					style="width: 80px; height: 70px;">
+					style="width: 110px; height: 80px;">
 			</a>
 			<div class="nav-actions">
 				<a class="btn btn-ghost" href="{{ route('store.products.index') }}">المتجر</a>

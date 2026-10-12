@@ -72,7 +72,7 @@
 				<!-- Logo -->
 				<a href="{{ route('welcome') }}" class="logo">
 					<img src="{{ asset('img/logo.png') }}" alt="logo" class="logo-img"
-						style="width: 80px; height: 70px;">
+						style="width: 110px; height: 80px;">
 					<!-- <div>
 						<div class="logo-name">
 							{{ $appearance['brand_name'] ?? 'التابعين' }}
@@ -1115,6 +1115,20 @@
 		return String(c.name || '').trim();
 	}
 
+	function servoMainCategoryImage(c) {
+		const nested = c && c.category && typeof c.category === 'object' ?
+			String(c.category.category_image || '').trim() : '';
+		if (nested) return nested;
+		return String((c && (c.category_image || c.image_url || c.image)) || '').trim();
+	}
+
+	function mainCategoryImageUrl(c) {
+		if (c && c.source === 'servo') {
+			return servoMainCategoryImage(c);
+		}
+		return String((c && (c.image_url || c.image)) || '').trim();
+	}
+
 	function subsFromServoRow(c) {
 		if (Array.isArray(c.sub_categories) && c.sub_categories.length) {
 			return c.sub_categories.map((sub) => ({
@@ -1170,6 +1184,7 @@
 				.length > 0;
 			const existing = groups.get(key);
 			const sortOrder = Number(c.sort_order ?? c.order ?? 0);
+			const categoryImage = servoMainCategoryImage(c);
 			if (!existing) {
 				groups.set(key, {
 					id: categoryId > 0 ? categoryId :
@@ -1179,7 +1194,8 @@
 					name: servoCategoryDisplayName(c),
 					count,
 					order: sortOrder,
-					image_url: String(c.image_url || c
+					category_image: categoryImage,
+					image_url: categoryImage || String(c.image_url || c
 						.image || ''),
 					source: 'servo',
 					sub_categories: incomingSubs,
@@ -1191,8 +1207,11 @@
 			existing._productIds = [...seen];
 			existing.count = products.length ? seen.size : existing.count + count;
 			existing.order = Math.min(Number(existing.order || 0), sortOrder);
+			if (!existing.category_image && categoryImage) {
+				existing.category_image = categoryImage;
+			}
 			if (!existing.image_url) {
-				existing.image_url = String(c.image_url || c.image || '');
+				existing.image_url = categoryImage || String(c.image_url || c.image || '');
 			}
 			existing.sub_categories = mergeServoSubCategories(existing.sub_categories,
 				incomingSubs, !aggregatedSubs);
@@ -1393,7 +1412,7 @@
 			const subs = (Array.isArray(c.sub_categories) ? c.sub_categories : [])
 				.filter((sub) => sub && Number(sub.id) > 0 && String(sub.name || '')
 					.trim() !== '');
-			const categoryImage = c.image_url || c.image || '';
+			const categoryImage = mainCategoryImageUrl(c);
 			const iconHtml = categoryImageHtml(c.name || '', categoryImage,
 				'cat-icon-img');
 			const key = categoryGridKey(c);
@@ -1551,7 +1570,7 @@
 				const subs = Array.isArray(c.sub_categories) ? c.sub_categories : [];
 				const name = megaEsc(c.name || '');
 				const source = String(c.source || 'local');
-				const categoryImage = c.image_url || c.image || '';
+				const categoryImage = mainCategoryImageUrl(c);
 				const parentThumb = categoryImageHtml(c.name || '', categoryImage,
 					'mega-cat-img');
 
@@ -1664,7 +1683,7 @@
 		wrap.innerHTML = categories.map((c) => {
 			const subs = Array.isArray(c.sub_categories) ? c.sub_categories : [];
 			const parentHref = categoryCardHref(c);
-			const categoryImage = c.image_url || c.image || '';
+			const categoryImage = mainCategoryImageUrl(c);
 			const parentThumb = categoryImageHtml(c.name || '', categoryImage,
 				'mm-cat-img');
 
