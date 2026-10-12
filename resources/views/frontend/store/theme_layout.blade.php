@@ -71,8 +71,9 @@
 
 				<!-- Logo -->
 				<a href="{{ route('welcome') }}" class="logo">
-					<div class="logo-icon">⚡</div>
-					<div>
+					<img src="{{ asset('img/logo.png') }}" alt="logo" class="logo-img"
+						style="width: 80px; height: 70px;">
+					<!-- <div>
 						<div class="logo-name">
 							{{ $appearance['brand_name'] ?? 'التابعين' }}
 							@if (! empty($appearance['brand_name_highlight']))
@@ -83,7 +84,7 @@
 						<div class="logo-sub">{{ $appearance['brand_name_en'] }}
 						</div>
 						@endif
-					</div>
+					</div> -->
 				</a>
 
 				<!-- Search -->
@@ -126,7 +127,8 @@
 				<div class="header-actions">
 					@auth('customer')
 					<div class="account-dropdown">
-						<button type="button" class="h-action account-toggle" aria-haspopup="true" aria-expanded="false">
+						<button type="button" class="h-action account-toggle"
+							aria-haspopup="true" aria-expanded="false">
 							<svg fill="none" stroke="currentColor"
 								stroke-width="1.9" viewBox="0 0 24 24">
 								<path
@@ -149,7 +151,8 @@
 						</div>
 					</div>
 					@else
-					<a href="{{ route('store.auth.login.form', ['redirect' => url()->full()]) }}" class="h-action">
+					<a href="{{ route('store.auth.login.form', ['redirect' => url()->full()]) }}"
+						class="h-action">
 						<svg fill="none" stroke="currentColor" stroke-width="1.9"
 							viewBox="0 0 24 24">
 							<path
@@ -466,7 +469,8 @@
 				حسابي
 			</a>
 			@else
-			<a class="mob-nav-item" href="{{ route('store.auth.login.form', ['redirect' => url()->full()]) }}">
+			<a class="mob-nav-item"
+				href="{{ route('store.auth.login.form', ['redirect' => url()->full()]) }}">
 				<svg fill="none" stroke="currentColor" stroke-width="1.9" viewBox="0 0 24 24">
 					<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
 					<circle cx="12" cy="7" r="4" />
@@ -549,6 +553,7 @@
 	}
 
 	@keyframes store-whatsapp-fab-pulse {
+
 		0%,
 		100% {
 			transform: scale(1);
@@ -574,6 +579,7 @@
 	}
 
 	@media (prefers-reduced-motion: reduce) {
+
 		.store-whatsapp-fab,
 		.store-whatsapp-fab::before,
 		.store-whatsapp-fab::after {
@@ -606,6 +612,7 @@
 	}
 	const IS_CUSTOMER_AUTHED = "{{ auth('customer')->check() ? '1' : '0' }}" === "1";
 	const STORE_LOGIN_URL = "{{ route('store.auth.login.form') }}";
+
 	function storeLoginUrl(returnUrl) {
 		const target = returnUrl || (window.location.pathname + window.location.search + window.location.hash);
 		try {
@@ -874,19 +881,20 @@
 			const defaultVariant = variations[0] || null;
 			const defaultPrice = Number(defaultVariant ? defaultVariant.price_inc_tax : (p
 				.min_price || p.price || 0));
-			const defaultOld = defaultVariant && defaultVariant.old_price
-				? Number(defaultVariant.old_price)
-				: (p.old_price ? Number(p.old_price) : null);
-			const saleBadge = (defaultOld && defaultOld > defaultPrice) || p.is_flash
-				? '<span class="badge-sale" style="background:var(--accent);color:#fff;padding:2px 8px;border-radius:6px;font-size:.7rem;font-weight:800;">عرض</span>'
-				: '';
+			const defaultOld = defaultVariant && defaultVariant.old_price ?
+				Number(defaultVariant.old_price) :
+				(p.old_price ? Number(p.old_price) : null);
+			const saleBadge = (defaultOld && defaultOld > defaultPrice) || p.is_flash ?
+				'<span class="badge-sale" style="background:var(--accent);color:#fff;padding:2px 8px;border-radius:6px;font-size:.7rem;font-weight:800;">عرض</span>' :
+				'';
 			PRODUCTS[p.id] = {
 				name: p.name,
 				brand: p.brand || '',
 				category: p.category || '',
 				unit: '',
 				price: defaultPrice,
-				old: defaultOld && defaultOld > defaultPrice ? defaultOld : null,
+				old: defaultOld && defaultOld > defaultPrice ? defaultOld :
+					null,
 				img: p.image_url,
 				variation_id: defaultVariant ? Number(defaultVariant
 					.variation_id) : (p.variation_id || p
@@ -896,9 +904,9 @@
 			const variantsOptions = variations.map(v =>
 				`<option value="${Number(v.variation_id)}" data-price="${Number(v.price_inc_tax)}" data-old-price="${v.old_price ? Number(v.old_price) : ''}">${(v.name || 'Default')} - ${fmt(Number(v.price_inc_tax))}</option>`
 			).join('');
-			const oldHtml = defaultOld && defaultOld > defaultPrice
-				? `<span class="price-was" id="prod-old-${p.id}" style="color:var(--light);text-decoration:line-through;font-size:.85rem;margin-inline-start:6px;">${fmt(defaultOld)}</span>`
-				: `<span class="price-was" id="prod-old-${p.id}" style="display:none;color:var(--light);text-decoration:line-through;font-size:.85rem;margin-inline-start:6px;"></span>`;
+			const oldHtml = defaultOld && defaultOld > defaultPrice ?
+				`<span class="price-was" id="prod-old-${p.id}" style="color:var(--light);text-decoration:line-through;font-size:.85rem;margin-inline-start:6px;">${fmt(defaultOld)}</span>` :
+				`<span class="price-was" id="prod-old-${p.id}" style="display:none;color:var(--light);text-decoration:line-through;font-size:.85rem;margin-inline-start:6px;"></span>`;
 			return `
 			<div class="prod-card">
 				<div class="prod-img-wrap">
@@ -992,11 +1000,12 @@
 				}
 				const priceEl = $(`prod-price-${productId}`);
 				const oldEl = $(`prod-old-${productId}`);
-				const selectedOld = selectedOption?.dataset.oldPrice
-					? Number(selectedOption.dataset.oldPrice)
-					: null;
+				const selectedOld = selectedOption?.dataset.oldPrice ?
+					Number(selectedOption.dataset.oldPrice) :
+					null;
 				if (oldEl) {
-					if (selectedOld && selectedPrice !== null && selectedOld > selectedPrice) {
+					if (selectedOld && selectedPrice !== null &&
+						selectedOld > selectedPrice) {
 						oldEl.style.display = '';
 						oldEl.textContent = fmt(selectedOld);
 					} else {
@@ -1006,7 +1015,10 @@
 				}
 				if (PRODUCTS[productId]) {
 					PRODUCTS[productId].price = selectedPrice;
-					PRODUCTS[productId].old = (selectedOld && selectedPrice !== null && selectedOld > selectedPrice) ? selectedOld : null;
+					PRODUCTS[productId].old = (selectedOld &&
+						selectedPrice !== null &&
+						selectedOld > selectedPrice
+					) ? selectedOld : null;
 				}
 				if (priceEl) {
 					priceEl.textContent = selectedHasPrice &&
@@ -1304,7 +1316,7 @@
 					panel.classList
 						.remove(
 							'is-animating'
-							);
+						);
 					panel._catsAnimTimer =
 						null;
 				}, settleMs);
@@ -1540,7 +1552,8 @@
 				const name = megaEsc(c.name || '');
 				const source = String(c.source || 'local');
 				const categoryImage = c.image_url || c.image || '';
-				const parentThumb = categoryImageHtml(c.name || '', categoryImage, 'mega-cat-img');
+				const parentThumb = categoryImageHtml(c.name || '', categoryImage,
+					'mega-cat-img');
 
 				if (!subs.length) {
 					return `<div class="mega-sitem" data-category-id="${Number(c.id)}" data-source="${megaEsc(source)}" role="button" tabindex="0"><span class="mega-sitem-ico">${parentThumb}</span><span class="mega-cat-name">${name}</span></div>`;
@@ -1548,7 +1561,8 @@
 
 				const parentLabel = `كل منتجات ${name}`;
 				const subRows = subs.map((sub) => {
-					const subImage = sub.image_url || sub.image || categoryImage;
+					const subImage = sub.image_url || sub
+						.image || categoryImage;
 					return `<button type="button" class="mega-sub-item" data-category-id="${Number(c.id)}" data-sub-category-id="${Number(sub.id)}" data-source="${megaEsc(source)}" data-category-label="${megaEsc(sub.name || '')}">
 						<span class="mega-sub-thumb">${categoryImageHtml(sub.name || '', subImage, 'mega-sub-img')}</span>
 						<span class="mega-sub-name">${megaEsc(sub.name || '')}</span>
@@ -1718,8 +1732,10 @@
 		(items || []).forEach((p) => {
 			const variations = Array.isArray(p.variations) ? p.variations : [];
 			const def = variations[0];
-			const price = def ? Number(def.price_inc_tax) : Number(p.min_price || p.price || 0);
-			const old = def && def.old_price ? Number(def.old_price) : (p.old_price ? Number(p.old_price) : null);
+			const price = def ? Number(def.price_inc_tax) : Number(p.min_price || p
+				.price || 0);
+			const old = def && def.old_price ? Number(def.old_price) : (p.old_price ?
+				Number(p.old_price) : null);
 			const vid = def ? Number(def.variation_id) : Number(p.variation_id || p.id);
 			PRODUCTS[p.id] = {
 				name: p.name,
@@ -1751,7 +1767,8 @@
 		if (categoryId !== '' && categoryId !== null && !Number.isNaN(Number(categoryId))) {
 			url.searchParams.set('category_id', String(categoryId));
 		}
-		if (subCategoryId !== '' && subCategoryId !== null && subCategoryId !== undefined && !Number.isNaN(Number(subCategoryId)) && Number(subCategoryId) > 0) {
+		if (subCategoryId !== '' && subCategoryId !== null && subCategoryId !== undefined && !Number.isNaN(
+				Number(subCategoryId)) && Number(subCategoryId) > 0) {
 			url.searchParams.set('sub_category_id', String(subCategoryId));
 		}
 		if (source === 'servo') {
@@ -1781,16 +1798,21 @@
 						const def = variations[0];
 						const price = Number(def ? def.price_inc_tax : p
 							.min_price || p.price || 0);
-						const old = def && def.old_price ? Number(def.old_price) : (p.old_price ? Number(p.old_price) : null);
+						const old = def && def.old_price ? Number(def
+							.old_price) : (p.old_price ?
+							Number(p.old_price) : null);
 						const img = String(p.image_url || '').replace(
 							/"/g, '');
 						const name = megaEsc(p.name || '');
 						const pid = Number(p.id);
-						const productSource = String(p.source || source || '');
-						const href = productSource === 'servo' ? storeTab3eenProductShowUrl(pid) : storeProductShowUrl(pid);
-						const priceHtml = old && old > price
-							? `<span class="mega-pprice">${fmt(price)}</span> <span style="text-decoration:line-through;color:var(--light);font-size:.75rem;">${fmt(old)}</span>`
-							: `<span class="mega-pprice">${fmt(price)}</span>`;
+						const productSource = String(p.source ||
+							source || '');
+						const href = productSource === 'servo' ?
+							storeTab3eenProductShowUrl(pid) :
+							storeProductShowUrl(pid);
+						const priceHtml = old && old > price ?
+							`<span class="mega-pprice">${fmt(price)}</span> <span style="text-decoration:line-through;color:var(--light);font-size:.75rem;">${fmt(old)}</span>` :
+							`<span class="mega-pprice">${fmt(price)}</span>`;
 						return `<a href="${href}" class="mega-item mega-item--product">
 						<div class="mega-pthumb"><img src="${img}" alt=""></div>
 						<div class="mega-pmeta">
@@ -2145,7 +2167,8 @@
 		quickVariant?.addEventListener('change', () => {
 			const option = quickVariant.options[quickVariant.selectedIndex];
 			const price = +(option?.dataset.price || 0);
-			const oldPrice = option?.dataset.oldPrice ? +(option.dataset.oldPrice) : 0;
+			const oldPrice = option?.dataset.oldPrice ? +(option.dataset
+				.oldPrice) : 0;
 			const quickOldEl = $('quick-old-price');
 			if (quickPrice) quickPrice.textContent = fmt(price);
 			if (quickOldEl) {
@@ -2268,7 +2291,9 @@
 			const id = raw === undefined || raw === '' ? '' : Number(raw);
 			let label = 'كل المنتجات';
 			if (id !== '' && !Number.isNaN(id)) {
-				const cat = megaMenuCategories.find((c) => Number(c.id) === id && String(c.source || 'local') === String(source || 'local'));
+				const cat = megaMenuCategories.find((c) => Number(c.id) === id &&
+					String(c.source || 'local') === String(source ||
+						'local'));
 				label = cat ? String(cat.name || '') : 'المنتجات';
 			}
 			loadMegaCategoryProducts(id === '' || Number.isNaN(id) ? '' : id, label, {
