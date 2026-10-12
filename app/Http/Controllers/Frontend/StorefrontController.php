@@ -51,9 +51,18 @@ class StorefrontController extends Controller
             $heroBanners = collect([StoreHeroBanner::defaultFallback()]);
         }
 
+        $location_id = $this->resolveLocationId($business_id, $request);
+        $business_location_ids = BusinessLocation::where('business_id', $business_id)
+            ->where('is_active', 1)
+            ->pluck('id');
+        $hasFlashSales = app(\App\Services\Pricing\DiscountResolverService::class)
+            ->getActiveFlashSales($business_id, $location_id, $business_location_ids)
+            ->isNotEmpty();
+
         return view('frontend.welcome', [
             'tab3eenCatalog' => $tab3eenCatalog,
             'heroBanners' => $heroBanners,
+            'hasFlashSales' => $hasFlashSales,
             'heroStats' => [
                 'products' => $this->formatHeroStat($localProductCount + $tab3eenProductCount),
                 'customers' => $this->formatHeroStat($customerCount),

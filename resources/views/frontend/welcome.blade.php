@@ -33,6 +33,7 @@
 	</div>
 </div> -->
 @endauth
+@if (empty($hasFlashSales))
 <!-- ===================== HERO ===================== -->
 <section class="hero" id="store-hero">
 	<div class="container">
@@ -103,7 +104,7 @@
 		@endif
 	</div>
 </section>
-
+@else
 	<!-- ===================== FLASH DEALS ===================== -->
 	<section class="flash-section section">
 		<div class="container">
@@ -132,6 +133,7 @@
 			<div class="flash-grid" id="dynamic-flash-grid"></div>
 		</div>
 	</section>
+@endif
 
 <!-- ===================== CATEGORIES ===================== -->
 @php
