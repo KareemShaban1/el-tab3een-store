@@ -488,6 +488,7 @@ class StorefrontController extends Controller
                     'old_price' => $priced['old_price'],
                     'discount_id' => $priced['discount_id'],
                     'is_flash' => $priced['is_flash'],
+                    'ends_at' => $priced['ends_at'],
                     'qty_available' => (float) optional($preferred_row)->qty_available,
                     'locations' => $locations,
                 ];
@@ -631,8 +632,17 @@ class StorefrontController extends Controller
 
         $flashDiscounts = $resolver->getActiveFlashSales($business_id, $location_id, $business_location_ids);
         $deals = collect();
+        $sectionEntityNames = collect();
+        $sectionEndsAt = null;
 
         foreach ($flashDiscounts as $discount) {
+            $entityName = $resolver->resolveTargetEntityName($discount);
+            $sectionEntityNames->push($entityName);
+            $endsAt = optional($discount->ends_at)->toDateTimeString();
+            if ($endsAt && ($sectionEndsAt === null || $endsAt < $sectionEndsAt)) {
+                $sectionEndsAt = $endsAt;
+            }
+
             $variationCandidates = collect();
             // Prefer the discount's location for stock/pricing when set.
             $deal_location_id = ! empty($discount->location_id) ? (int) $discount->location_id : $location_id;
@@ -716,25 +726,20 @@ class StorefrontController extends Controller
                     ? min(100, (int) round(($sold / (float) $quota) * 100))
                     : min(95, max(5, 100 - (int) min(95, $stock)));
 
-                $isTargetedDeal = $discount->variations->isNotEmpty()
-                    || ! empty($discount->product_id)
-                    || ! empty($discount->category_id)
-                    || ! empty($discount->brand_id);
-
                 $deals->push([
                     'id' => $product->id,
                     'variation_id' => $variation->id,
                     'discount_id' => $discount->id,
-                    'name' => ($isTargetedDeal && $discount->banner_title)
-                        ? $discount->banner_title
-                        : $product->name,
+                    'name' => $product->name,
+                    'entity_name' => $entityName,
+                    'discount_name' => $discount->banner_title ?: $discount->name,
                     'brand' => optional($product->brand)->name,
                     'image_url' => $product->image_url,
                     'price' => round($final, 2),
                     'old_price' => $final < $base ? round($base, 2) : null,
                     'sold_pct' => $sold_pct,
                     'qty_left' => (int) round($qty_left),
-                    'ends_at' => optional($discount->ends_at)->toDateTimeString(),
+                    'ends_at' => $endsAt,
                     'is_flash' => true,
                 ]);
 
@@ -744,10 +749,16 @@ class StorefrontController extends Controller
             }
         }
 
+        $entityLabel = $sectionEntityNames->filter()->unique()->values();
+
         return response()->json([
             'success' => true,
             'business_id' => $business_id,
             'location_id' => $location_id,
+            'entity_name' => $entityLabel->count() === 1
+                ? $entityLabel->first()
+                : ($entityLabel->take(2)->implode('، ').($entityLabel->count() > 2 ? '…' : '')),
+            'ends_at' => $sectionEndsAt,
             'data' => $deals->values(),
         ]);
     }
@@ -1281,7 +1292,7 @@ class StorefrontController extends Controller
     /**
      * Resolve storefront sell price including automatic / flash discounts (not promo-code gated).
      *
-     * @return array{price: float, old_price: ?float, discount_id: ?int, is_flash: bool}
+     * @return array{price: float, old_price: ?float, discount_id: ?int, is_flash: bool, ends_at: ?string}
      */
     private function priceVariationForStorefront(Product $product, Variation $variation, int $business_id, int $location_id): array
     {
@@ -1309,11 +1320,17 @@ class StorefrontController extends Controller
                 'quantity' => 1,
             ]);
 
+            $endsAt = $priced['ends_at'] ?? null;
+            if ($endsAt instanceof \DateTimeInterface) {
+                $endsAt = $endsAt->format('Y-m-d H:i:s');
+            }
+
             return [
                 'price' => round((float) $priced['final_price_inc_tax'], 2),
                 'old_price' => ! empty($priced['old_price']) ? round((float) $priced['old_price'], 2) : null,
                 'discount_id' => $priced['discount_id'] ?? null,
                 'is_flash' => (bool) ($priced['is_flash'] ?? false),
+                'ends_at' => ! empty($priced['is_flash']) ? $endsAt : null,
             ];
         } catch (\Throwable $e) {
             return [
@@ -1321,6 +1338,7 @@ class StorefrontController extends Controller
                 'old_price' => null,
                 'discount_id' => null,
                 'is_flash' => false,
+                'ends_at' => null,
             ];
         }
     }

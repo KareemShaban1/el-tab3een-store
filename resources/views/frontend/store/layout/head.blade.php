@@ -2099,6 +2099,68 @@
 		gap: 11px
 	}
 
+	.flash-title-text {
+		display: flex;
+		flex-direction: column;
+		gap: 4px;
+		line-height: 1.2;
+	}
+
+	.flash-entity {
+		display: block;
+		font-size: .95rem;
+		font-weight: 600;
+		color: rgba(255, 255, 255, .82);
+	}
+
+	.flash-entity-chip {
+		display: inline-block;
+		margin-bottom: 8px;
+		padding: 3px 10px;
+		border-radius: 999px;
+		background: rgba(234, 84, 26, .18);
+		border: 1px solid rgba(234, 84, 26, .35);
+		color: #ffd7c2;
+		font-size: .72rem;
+		font-weight: 700;
+	}
+
+	.flash-card-timer {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 6px;
+		margin: 0 0 12px;
+	}
+
+	.flash-card-timer-label {
+		font-size: .68rem;
+		font-weight: 600;
+		color: rgba(255, 255, 255, .65);
+	}
+
+	.flash-card-timer-clock {
+		justify-content: center;
+		gap: 4px;
+	}
+
+	.flash-card-timer .t-block {
+		padding: 4px 7px;
+		min-width: 36px;
+	}
+
+	.flash-card-timer .t-num {
+		font-size: .95rem;
+	}
+
+	.flash-card-timer .t-lbl {
+		font-size: .52rem;
+	}
+
+	.flash-card-timer .t-sep {
+		font-size: .95rem;
+	}
+
 	.flash-icon {
 		font-size: 1.85rem;
 		animation: pulse 1.6s ease-in-out infinite
@@ -2154,8 +2216,16 @@
 
 	.flash-grid {
 		display: grid;
-		grid-template-columns: repeat(4, 1fr);
+		grid-template-columns: repeat(2, minmax(0, 1fr));
 		gap: 18px
+	}
+
+	.flash-grid.flash-grid--single {
+		grid-template-columns: 1fr;
+	}
+
+	.flash-grid.flash-grid--multi {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
 	}
 
 	.flash-card {
@@ -3331,8 +3401,13 @@
 			gap: 30px
 		}
 
-		.flash-grid {
-			grid-template-columns: repeat(2, 1fr)
+		.flash-grid,
+		.flash-grid.flash-grid--multi {
+			grid-template-columns: repeat(2, minmax(0, 1fr));
+		}
+
+		.flash-grid.flash-grid--single {
+			grid-template-columns: 1fr;
 		}
 
 		.hero-title {
@@ -3487,49 +3562,40 @@
 			justify-content: center;
 		}
 
+		.flash-title-text {
+			align-items: center;
+			text-align: center;
+		}
+
+		.flash-entity {
+			font-size: .82rem;
+		}
+
 		.flash-icon {
 			font-size: 1.35rem;
 		}
 
-		.flash-timer-wrap {
-			justify-content: center;
-			gap: 8px;
-		}
-
-		.flash-timer-label {
-			font-size: .75rem;
-			width: 100%;
-			text-align: center;
-		}
-
-		.timer {
-			justify-content: center;
-			gap: 5px;
-			width: 100%;
-		}
-
-		.t-block {
-			padding: 5px 8px;
-			min-width: 44px;
-			flex: 1;
-			max-width: 64px;
-		}
-
-		.t-num {
-			font-size: 1.05rem;
-		}
-
-		.t-lbl {
-			font-size: .55rem;
-		}
-
-		.t-sep {
-			font-size: 1.05rem;
-		}
-
-		.flash-grid {
+		.flash-grid,
+		.flash-grid.flash-grid--multi {
 			grid-template-columns: repeat(2, minmax(0, 1fr));
 			gap: 10px;
+		}
+
+		.flash-grid.flash-grid--single {
+			grid-template-columns: 1fr;
+		}
+
+		.flash-card-timer .t-block {
+			padding: 3px 5px;
+			min-width: 30px;
+		}
+
+		.flash-card-timer .t-num {
+			font-size: .82rem;
+		}
+
+		.flash-card-timer .t-lbl {
+			font-size: .48rem;
 		}
 
 		.flash-card {

@@ -252,6 +252,64 @@ window.__SSR_STORE_PRODUCTS__[{
 	color: #111827;
 }
 
+.product-flash-timer {
+	margin-top: 12px;
+	padding: 12px 14px;
+	border-radius: 12px;
+	background: linear-gradient(135deg, rgba(234, 84, 26, .1), rgba(61, 56, 104, .08));
+	border: 1px solid rgba(234, 84, 26, .22);
+}
+
+.product-flash-timer__label {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	font-size: .85rem;
+	font-weight: 700;
+	color: #3d3868;
+	margin-bottom: 10px;
+}
+
+.product-flash-timer__icon {
+	font-size: 1rem;
+}
+
+.product-flash-timer__clock {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+}
+
+.product-flash-timer .t-block {
+	background: #fff;
+	border: 1px solid #e5e7eb;
+	border-radius: 8px;
+	padding: 6px 10px;
+	min-width: 48px;
+	text-align: center;
+}
+
+.product-flash-timer .t-num {
+	display: block;
+	font-size: 1.1rem;
+	font-weight: 800;
+	color: #ea541a;
+	line-height: 1;
+}
+
+.product-flash-timer .t-lbl {
+	display: block;
+	margin-top: 2px;
+	font-size: .58rem;
+	color: #6b7280;
+}
+
+.product-flash-timer .t-sep {
+	color: #ea541a;
+	font-size: 1.1rem;
+	font-weight: 800;
+}
+
 .loc-block {
 	flex-direction: column;
 	align-items: stretch !important;
@@ -643,6 +701,8 @@ window.__SSR_STORE_PRODUCTS__[{
 									data-price="{{ $vPrice !== null ? (float) $vPrice : '' }}"
 									data-old-price="{{ !empty($v['old_price']) ? (float) $v['old_price'] : '' }}"
 									data-has-price="{{ $vPrice !== null ? '1' : '0' }}"
+									data-is-flash="{{ !empty($v['is_flash']) ? '1' : '0' }}"
+									data-ends-at="{{ !empty($v['is_flash']) && !empty($v['ends_at']) ? e($sfStr($v['ends_at'])) : '' }}"
 									@selected($index===0)>
 									{{ $label }}</option>
 								@endforeach
@@ -692,6 +752,19 @@ window.__SSR_STORE_PRODUCTS__[{
 							<span id="variant-price" class="detail-price">—</span>
 							<span id="variant-old-price" class="detail-old-price" style="display:none;margin-inline-start:8px;color:#9ca3af;text-decoration:line-through;font-size:.9rem;"></span>
 						</span>
+					</div>
+					<div id="product-flash-timer" class="product-flash-timer" style="display:none;" aria-live="polite">
+						<div class="product-flash-timer__label">
+							<span class="product-flash-timer__icon">⚡</span>
+							<span>ينتهي العرض خلال</span>
+						</div>
+						<div class="timer product-flash-timer__clock" data-ends-at="">
+							<div class="t-block"><span class="t-num" id="pd-t-h">00</span><span class="t-lbl">ساعة</span></div>
+							<span class="t-sep">:</span>
+							<div class="t-block"><span class="t-num" id="pd-t-m">00</span><span class="t-lbl">دقيقة</span></div>
+							<span class="t-sep">:</span>
+							<div class="t-block"><span class="t-num" id="pd-t-s">00</span><span class="t-lbl">ثانية</span></div>
+						</div>
 					</div>
 					<!-- <div class="detail-row loc-block" style="border-top: 1px solid #e5e7eb; padding-top: 10px; margin-top: 4px;">
                             <div class="loc-list-header" style="width:100%;">
@@ -863,6 +936,36 @@ window.__SSR_STORE_PRODUCTS__[{
 			rawPrice !== '';
 	}
 
+	function startProductFlashCountdown(endsAt) {
+		if (window.__productFlashTimer) {
+			clearTimeout(window.__productFlashTimer);
+			window.__productFlashTimer = null;
+		}
+		if (!endsAt) return;
+		var endMs = Date.parse(String(endsAt).trim().replace(' ', 'T'));
+		if (!Number.isFinite(endMs)) return;
+
+		function tick() {
+			var rem = Math.max(0, endMs - Date.now());
+			var h = Math.floor(rem / 3600000);
+			var m = Math.floor((rem % 3600000) / 60000);
+			var s = Math.floor((rem % 60000) / 1000);
+			var pad = function(n) {
+				return String(n).padStart(2, '0');
+			};
+			var th = document.getElementById('pd-t-h');
+			var tm = document.getElementById('pd-t-m');
+			var ts = document.getElementById('pd-t-s');
+			if (th) th.textContent = pad(h);
+			if (tm) tm.textContent = pad(m);
+			if (ts) ts.textContent = pad(s);
+			if (rem > 0) {
+				window.__productFlashTimer = setTimeout(tick, 1000);
+			}
+		}
+		tick();
+	}
+
 	function syncDetails() {
 		var opt = getSelectedOption();
 		if (!opt) return;
@@ -889,6 +992,24 @@ window.__SSR_STORE_PRODUCTS__[{
 			} else {
 				oldPriceEl.style.display = 'none';
 				oldPriceEl.textContent = '';
+			}
+		}
+
+		var flashWrap = document.getElementById('product-flash-timer');
+		var flashEndsAt = opt.getAttribute('data-ends-at') || '';
+		var isFlash = opt.getAttribute('data-is-flash') === '1' && flashEndsAt !== '';
+		if (flashWrap) {
+			if (isFlash) {
+				flashWrap.style.display = '';
+				var clock = flashWrap.querySelector('.product-flash-timer__clock');
+				if (clock) clock.setAttribute('data-ends-at', flashEndsAt);
+				startProductFlashCountdown(flashEndsAt);
+			} else {
+				flashWrap.style.display = 'none';
+				if (window.__productFlashTimer) {
+					clearTimeout(window.__productFlashTimer);
+					window.__productFlashTimer = null;
+				}
 			}
 		}
 

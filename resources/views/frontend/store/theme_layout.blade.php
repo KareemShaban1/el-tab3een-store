@@ -1864,29 +1864,68 @@
 		renderMobMenuCategories(categories);
 	}
 
-	function renderDynamicFlashDeals(deals) {
+	function renderDynamicFlashDeals(deals, meta = {}) {
 		const grid = $('dynamic-flash-grid');
 		if (!grid) return;
 		if (!deals.length) {
+			grid.classList.remove('flash-grid--single', 'flash-grid--multi');
 			grid.innerHTML = `<div class="flash-card"><div class="flash-name">لا توجد عروض حالياً</div></div>`;
 			return;
 		}
 
-		grid.innerHTML = deals.slice(0, 4).map(d => `
+		const entityEl = $('flash-entity-name');
+		const entityName = meta.entity_name || deals[0]?.entity_name || '';
+		if (entityEl) {
+			entityEl.textContent = entityName ? entityName : '';
+			entityEl.style.display = entityName ? '' : 'none';
+		}
+
+		const items = deals.slice(0, 4);
+		grid.classList.toggle('flash-grid--single', items.length === 1);
+		grid.classList.toggle('flash-grid--multi', items.length > 1);
+
+		grid.innerHTML = items.map((d, idx) => {
+			const timerId = `flash-card-timer-${d.discount_id || 'x'}-${d.variation_id || d.id}-${idx}`;
+			const endsAt = d.ends_at || '';
+			return `
 			<div class="flash-card" data-product-href="${storeProductShowUrl(d.id)}" role="link" tabindex="0">
 				<img class="flash-img" src="${d.image_url}" alt="${d.name}">
 				<div class="flash-name">${d.name}</div>
+				${d.entity_name && d.entity_name !== d.name ? `<div class="flash-entity-chip">${d.entity_name}</div>` : ''}
 				<div class="flash-prices">
 					<span class="flash-now">${fmt(Number(d.price || 0))}</span>
 					${d.old_price ? `<span class="flash-was">${fmt(Number(d.old_price))}</span>` : ''}
 				</div>
+				${endsAt ? `
+				<div class="flash-card-timer" data-ends-at="${endsAt}">
+					<span class="flash-card-timer-label">ينتهي خلال</span>
+					<div class="timer flash-card-timer-clock">
+						<div class="t-block"><span class="t-num" id="${timerId}-h">00</span><span class="t-lbl">س</span></div>
+						<span class="t-sep">:</span>
+						<div class="t-block"><span class="t-num" id="${timerId}-m">00</span><span class="t-lbl">د</span></div>
+						<span class="t-sep">:</span>
+						<div class="t-block"><span class="t-num" id="${timerId}-s">00</span><span class="t-lbl">ث</span></div>
+					</div>
+				</div>` : ''}
 				<div class="flash-bar-wrap">
 					<div class="flash-bar" style="width:${d.sold_pct}%"></div>
 				</div>
 				<div class="flash-sold">تم البيع ${d.sold_pct}% — باقي ${d.qty_left} قطعة!</div>
 				<button type="button" class="flash-btn" data-flash-id="${d.id}" data-flash-name="${d.name}" data-flash-price="${Number(d.price || 0)}" data-flash-variation-id="${d.variation_id}">🛒 أضف للسلة</button>
 			</div>
-		`).join('');
+		`}).join('');
+
+		$$('.flash-card-timer[data-ends-at]').forEach((timerWrap, idx) => {
+			const endsAt = timerWrap.dataset.endsAt;
+			const hEl = timerWrap.querySelector('.t-num');
+			if (!hEl || !hEl.id) return;
+			const baseId = hEl.id.replace(/-h$/, '');
+			startCountdown(endsAt, {
+				h: `${baseId}-h`,
+				m: `${baseId}-m`,
+				s: `${baseId}-s`
+			});
+		});
 
 		$$('.flash-card[data-product-href]').forEach(card => {
 			const goToProduct = () => {
@@ -1950,7 +1989,10 @@
 						variation_id: d.variation_id
 					};
 				});
-				renderDynamicFlashDeals(data.data || []);
+				renderDynamicFlashDeals(data.data || [], {
+					entity_name: data.entity_name || '',
+					ends_at: data.ends_at || ''
+				});
 			}
 		} catch (e) {
 			// no-op
@@ -2246,8 +2288,29 @@
 	}
 
 	/* ── Countdown ── */
-	function startCountdown() {
-		const end = Date.now() + 8 * 3600000 + 34 * 60000 + 22000;
+	const __countdownTimers = {};
+
+	function parseEndsAtMs(endsAt) {
+		if (!endsAt) return null;
+		if (typeof endsAt === 'number') return endsAt;
+		const normalized = String(endsAt).trim().replace(' ', 'T');
+		const ms = Date.parse(normalized);
+		return Number.isFinite(ms) ? ms : null;
+	}
+
+	function startCountdown(endsAt, ids = {
+		h: 't-h',
+		m: 't-m',
+		s: 't-s'
+	}) {
+		const key = [ids.h, ids.m, ids.s].join('|');
+		if (__countdownTimers[key]) {
+			clearTimeout(__countdownTimers[key]);
+			delete __countdownTimers[key];
+		}
+
+		const end = parseEndsAtMs(endsAt);
+		if (!end) return;
 
 		function tick() {
 			const rem = Math.max(0, end - Date.now());
@@ -2255,13 +2318,15 @@
 				m = Math.floor((rem % 3600000) / 60000),
 				s = Math.floor((rem % 60000) / 1000);
 			const p = n => String(n).padStart(2, '0');
-			const th = $('t-h'),
-				tm = $('t-m'),
-				ts = $('t-s');
+			const th = $(ids.h),
+				tm = $(ids.m),
+				ts = $(ids.s);
 			if (th) th.textContent = p(h);
 			if (tm) tm.textContent = p(m);
 			if (ts) ts.textContent = p(s);
-			if (rem > 0) setTimeout(tick, 1000);
+			if (rem > 0) {
+				__countdownTimers[key] = setTimeout(tick, 1000);
+			}
 		}
 		tick();
 	}
@@ -2734,7 +2799,6 @@
 		initStoreHeaderSearch();
 		initStorePageSearch();
 		initNewsletter();
-		startCountdown();
 		updateBadges();
 		renderCart();
 		document.querySelector('.cd-checkout')?.addEventListener('click', processCheckout);
@@ -2742,6 +2806,7 @@
 	});
 
 	/* Expose for inline usage */
+	window.startCountdown = startCountdown;
 	window.updateQty = updateQty;
 	window.removeFromCart = removeFromCart;
 	window.addToCart = addToCart;

@@ -169,10 +169,52 @@ class DiscountResolverService
                 $q->whereNull('flash_quota_qty')
                     ->orWhereColumn('flash_sold_qty', '<', 'flash_quota_qty');
             })
-            ->with(['variations', 'product.variations', 'category'])
+            ->with(['variations.product', 'product.variations', 'category', 'brand'])
             ->orderBy('sort_order')
             ->orderBy('priority', 'desc')
             ->get();
+    }
+
+    /**
+     * Human-readable target of a flash/discount rule (product, category, brand, or store-wide).
+     */
+    public function resolveTargetEntityName(Discount $discount): string
+    {
+        $discount->loadMissing(['product', 'category', 'brand', 'variations.product']);
+
+        if ($discount->variations->isNotEmpty()) {
+            $names = $discount->variations
+                ->map(fn ($variation) => optional($variation->product)->name)
+                ->filter()
+                ->unique()
+                ->values();
+
+            if ($names->count() === 1) {
+                return (string) $names->first();
+            }
+            if ($names->isNotEmpty()) {
+                return $names->take(2)->implode('، ').(
+                    $names->count() > 2 ? '…' : ''
+                );
+            }
+        }
+
+        if (! empty($discount->product_id) && $discount->product) {
+            return (string) $discount->product->name;
+        }
+
+        $parts = [];
+        if ($discount->brand) {
+            $parts[] = (string) $discount->brand->name;
+        }
+        if ($discount->category) {
+            $parts[] = (string) $discount->category->name;
+        }
+        if (! empty($parts)) {
+            return implode(' — ', $parts);
+        }
+
+        return (string) ($discount->banner_title ?: $discount->name ?: 'كل المنتجات');
     }
 
     public function applyDiscountToAmount(float $amount, ?string $type, float $discount_amount): float

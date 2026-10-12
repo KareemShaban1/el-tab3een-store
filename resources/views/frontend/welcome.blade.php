@@ -111,22 +111,9 @@
 			<div class="flash-head">
 				<div class="flash-title">
 					<span class="flash-icon">⚡</span>
-					عروض سريعة
-				</div>
-				<div class="flash-timer-wrap">
-					<span class="flash-timer-label">تنتهي خلال:</span>
-					<div class="timer">
-						<div class="t-block"><span class="t-num"
-								id="t-h">08</span><span
-								class="t-lbl">ساعة</span></div>
-						<span class="t-sep">:</span>
-						<div class="t-block"><span class="t-num"
-								id="t-m">34</span><span
-								class="t-lbl">دقيقة</span></div>
-						<span class="t-sep">:</span>
-						<div class="t-block"><span class="t-num"
-								id="t-s">22</span><span
-								class="t-lbl">ثانية</span></div>
+					<div class="flash-title-text">
+						<span>عروض سريعة</span>
+						<span class="flash-entity" id="flash-entity-name"></span>
 					</div>
 				</div>
 			</div>
