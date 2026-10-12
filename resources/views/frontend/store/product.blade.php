@@ -48,6 +48,9 @@ $initialVariationIdForCart = (int) ($firstVarForCart['variation_id'] ?? $product
 $initialPriceForCart = isset($firstVarForCart['price_inc_tax']) && $firstVarForCart['price_inc_tax'] !== null
 ? (float) $firstVarForCart['price_inc_tax']
 : null;
+$initialOldPrice = isset($firstVarForCart['old_price']) && $firstVarForCart['old_price'] !== null
+? (float) $firstVarForCart['old_price']
+: null;
 $initialHasPrice = $initialPriceForCart !== null;
 $hasInitialPrice = $initialHasPrice;
 @endphp
@@ -69,7 +72,7 @@ window.__SSR_STORE_PRODUCTS__[{
 		}
 	},
 	has_price: @json($initialHasPrice),
-	old: null,
+	old: @json(($initialOldPrice && $initialPriceForCart && $initialOldPrice > $initialPriceForCart) ? $initialOldPrice : null),
 	img: @json($sfStr($product['image_url'] ?? '')),
 	reviews: 'متوفر',
 	variation_id: {
@@ -638,6 +641,7 @@ window.__SSR_STORE_PRODUCTS__[{
 									data-sku="{{ e($sfStr($v['sku'] ?? '')) }}"
 									data-qty="{{ $qty }}"
 									data-price="{{ $vPrice !== null ? (float) $vPrice : '' }}"
+									data-old-price="{{ !empty($v['old_price']) ? (float) $v['old_price'] : '' }}"
 									data-has-price="{{ $vPrice !== null ? '1' : '0' }}"
 									@selected($index===0)>
 									{{ $label }}</option>
@@ -684,7 +688,10 @@ window.__SSR_STORE_PRODUCTS__[{
 					<div class="detail-row"
 						style="border-top: 1px solid #e5e7eb; padding-top: 10px; margin-top: 4px;">
 						<span class="detail-key">{{ __('lang_v1.price') }}</span>
-						<span id="variant-price" class="detail-price">—</span>
+						<span>
+							<span id="variant-price" class="detail-price">—</span>
+							<span id="variant-old-price" class="detail-old-price" style="display:none;margin-inline-start:8px;color:#9ca3af;text-decoration:line-through;font-size:.9rem;"></span>
+						</span>
 					</div>
 					<!-- <div class="detail-row loc-block" style="border-top: 1px solid #e5e7eb; padding-top: 10px; margin-top: 4px;">
                             <div class="loc-list-header" style="width:100%;">
@@ -804,6 +811,7 @@ window.__SSR_STORE_PRODUCTS__[{
 	var skuEl = document.getElementById('variant-sku');
 	var qtyTextEl = document.getElementById('variant-qty-text');
 	var priceEl = document.getElementById('variant-price');
+	var oldPriceEl = document.getElementById('variant-old-price');
 	var chipEl = document.getElementById('variant-stock-chip');
 	var locListEl = document.getElementById('variant-locations');
 	var emptyLocText = @json($tx('No location stock to show'));
@@ -872,6 +880,17 @@ window.__SSR_STORE_PRODUCTS__[{
 		skuEl.textContent = sku || '—';
 		qtyTextEl.textContent = formatNum(qtyAvail);
 		priceEl.textContent = hasPrice ? formatNum(price) : priceUnavailableText;
+		var oldPriceRaw = opt.getAttribute('data-old-price') || '';
+		var oldPrice = oldPriceRaw !== '' ? (parseFloat(oldPriceRaw) || 0) : 0;
+		if (oldPriceEl) {
+			if (hasPrice && oldPrice > price) {
+				oldPriceEl.style.display = '';
+				oldPriceEl.textContent = formatNum(oldPrice);
+			} else {
+				oldPriceEl.style.display = 'none';
+				oldPriceEl.textContent = '';
+			}
+		}
 
 		if (buyBtn) {
 			buyBtn.dataset.variationId = String(vid);

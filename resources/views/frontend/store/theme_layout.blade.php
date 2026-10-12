@@ -874,29 +874,36 @@
 			const defaultVariant = variations[0] || null;
 			const defaultPrice = Number(defaultVariant ? defaultVariant.price_inc_tax : (p
 				.min_price || p.price || 0));
+			const defaultOld = defaultVariant && defaultVariant.old_price
+				? Number(defaultVariant.old_price)
+				: (p.old_price ? Number(p.old_price) : null);
+			const saleBadge = (defaultOld && defaultOld > defaultPrice) || p.is_flash
+				? '<span class="badge-sale" style="background:var(--accent);color:#fff;padding:2px 8px;border-radius:6px;font-size:.7rem;font-weight:800;">عرض</span>'
+				: '';
 			PRODUCTS[p.id] = {
 				name: p.name,
 				brand: p.brand || '',
 				category: p.category || '',
 				unit: '',
 				price: defaultPrice,
-				old: null,
+				old: defaultOld && defaultOld > defaultPrice ? defaultOld : null,
 				img: p.image_url,
-				// stars: '⭐⭐⭐⭐⭐',
-				// reviews: 'متوفر',
 				variation_id: defaultVariant ? Number(defaultVariant
 					.variation_id) : (p.variation_id || p
 					.id),
 				variations
 			};
 			const variantsOptions = variations.map(v =>
-				`<option value="${Number(v.variation_id)}" data-price="${Number(v.price_inc_tax)}">${(v.name || 'Default')} - ${fmt(Number(v.price_inc_tax))}</option>`
+				`<option value="${Number(v.variation_id)}" data-price="${Number(v.price_inc_tax)}" data-old-price="${v.old_price ? Number(v.old_price) : ''}">${(v.name || 'Default')} - ${fmt(Number(v.price_inc_tax))}</option>`
 			).join('');
+			const oldHtml = defaultOld && defaultOld > defaultPrice
+				? `<span class="price-was" id="prod-old-${p.id}" style="color:var(--light);text-decoration:line-through;font-size:.85rem;margin-inline-start:6px;">${fmt(defaultOld)}</span>`
+				: `<span class="price-was" id="prod-old-${p.id}" style="display:none;color:var(--light);text-decoration:line-through;font-size:.85rem;margin-inline-start:6px;"></span>`;
 			return `
 			<div class="prod-card">
 				<div class="prod-img-wrap">
 					<img class="prod-img" src="${p.image_url}" alt="${p.name}">
-					<div class="prod-badges">${idx < 2 ? '<span class="badge-new">جديد</span>' : ''}</div>
+					<div class="prod-badges">${saleBadge}${idx < 2 && !saleBadge ? '<span class="badge-new">جديد</span>' : ''}</div>
 					<div class="prod-actions">
 						<button class="pa-cart" data-id="${p.id}" data-name="${p.name}" data-price="${defaultPrice}" data-variation-id="${defaultVariant ? Number(defaultVariant.variation_id) : (p.variation_id || p.id)}">
 							<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
@@ -911,9 +918,8 @@
 				<div class="prod-info">
 					<div class="prod-brand">${p.brand || 'Brand'}</div>
 					<div class="prod-name"><a href="${storeProductShowUrl(p.id)}" title="عرض تفاصيل المنتج">${p.name}</a></div>
-					 <!-- <div class="stars-row"><span class="stars">⭐⭐⭐⭐⭐</span><span class="rev-count">(متوفر)</span></div> -->
 					${variations.length ? `<div class="prod-variant-wrap"><select class="prod-variant" data-id="${p.id}">${variantsOptions}</select></div>` : ''}
-					<div class="price-row"><span class="price-now" id="prod-price-${p.id}">${fmt(defaultPrice)}</span></div>
+					<div class="price-row"><span class="price-now" id="prod-price-${p.id}">${fmt(defaultPrice)}</span>${oldHtml}</div>
 				</div>
 			</div>`;
 		}).join('');
@@ -985,6 +991,23 @@
 						0);
 				}
 				const priceEl = $(`prod-price-${productId}`);
+				const oldEl = $(`prod-old-${productId}`);
+				const selectedOld = selectedOption?.dataset.oldPrice
+					? Number(selectedOption.dataset.oldPrice)
+					: null;
+				if (oldEl) {
+					if (selectedOld && selectedPrice !== null && selectedOld > selectedPrice) {
+						oldEl.style.display = '';
+						oldEl.textContent = fmt(selectedOld);
+					} else {
+						oldEl.style.display = 'none';
+						oldEl.textContent = '';
+					}
+				}
+				if (PRODUCTS[productId]) {
+					PRODUCTS[productId].price = selectedPrice;
+					PRODUCTS[productId].old = (selectedOld && selectedPrice !== null && selectedOld > selectedPrice) ? selectedOld : null;
+				}
 				if (priceEl) {
 					priceEl.textContent = selectedHasPrice &&
 						selectedPrice !== null ?
@@ -1695,7 +1718,8 @@
 		(items || []).forEach((p) => {
 			const variations = Array.isArray(p.variations) ? p.variations : [];
 			const def = variations[0];
-			const price = def ? Number(def.price_inc_tax) : Number(p.min_price || 0);
+			const price = def ? Number(def.price_inc_tax) : Number(p.min_price || p.price || 0);
+			const old = def && def.old_price ? Number(def.old_price) : (p.old_price ? Number(p.old_price) : null);
 			const vid = def ? Number(def.variation_id) : Number(p.variation_id || p.id);
 			PRODUCTS[p.id] = {
 				name: p.name,
@@ -1703,10 +1727,8 @@
 				category: p.category || '',
 				unit: '',
 				price,
-				old: null,
+				old: old && old > price ? old : null,
 				img: p.image_url,
-				// stars: '⭐⭐⭐⭐⭐',
-				// reviews: 'متوفر',
 				variation_id: vid,
 				variations,
 			};
@@ -1758,18 +1780,22 @@
 							p.variations : [];
 						const def = variations[0];
 						const price = Number(def ? def.price_inc_tax : p
-							.min_price || 0);
+							.min_price || p.price || 0);
+						const old = def && def.old_price ? Number(def.old_price) : (p.old_price ? Number(p.old_price) : null);
 						const img = String(p.image_url || '').replace(
 							/"/g, '');
 						const name = megaEsc(p.name || '');
 						const pid = Number(p.id);
 						const productSource = String(p.source || source || '');
 						const href = productSource === 'servo' ? storeTab3eenProductShowUrl(pid) : storeProductShowUrl(pid);
+						const priceHtml = old && old > price
+							? `<span class="mega-pprice">${fmt(price)}</span> <span style="text-decoration:line-through;color:var(--light);font-size:.75rem;">${fmt(old)}</span>`
+							: `<span class="mega-pprice">${fmt(price)}</span>`;
 						return `<a href="${href}" class="mega-item mega-item--product">
 						<div class="mega-pthumb"><img src="${img}" alt=""></div>
 						<div class="mega-pmeta">
 							<span class="mega-pname">${name}</span>
-							<span class="mega-pprice">${fmt(price)}</span>
+							${priceHtml}
 						</div>
 					</a>`;
 					})
@@ -2064,7 +2090,8 @@
 				const skuAttr = modalEsc(v.sku || '');
 				const nm = modalEsc(v.name || 'Default');
 				const q = Number(v.qty_available || 0);
-				return `<option value="${vid}" data-price="${pr}" data-sku="${skuAttr}" data-qty="${q}">${nm} — ${fmt(pr)}</option>`;
+				const oldPr = v.old_price ? Number(v.old_price) : '';
+				return `<option value="${vid}" data-price="${pr}" data-old-price="${oldPr}" data-sku="${skuAttr}" data-qty="${q}">${nm} — ${fmt(pr)}</option>`;
 			})
 			.join('');
 
@@ -2074,6 +2101,8 @@
 		const unitLine = p.unit ?
 			`<div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;">الوحدة: ${modalEsc(p.unit)}</div>` :
 			'';
+		const quickNow = Number(defaultVariant.price_inc_tax || p.price);
+		const quickOld = defaultVariant.old_price ? Number(defaultVariant.old_price) : (p.old || null);
 
 		modalBody.innerHTML = `
     <img src="${imgSrc}" style="border-radius:12px;width:100%;aspect-ratio:1;object-fit:contain;background:var(--bg-soft);padding:16px;" alt="${modalEsc(p.name)}">
@@ -2085,8 +2114,8 @@
       ${variants.length ? `<select id="quick-variant" style="width:100%;padding:9px 10px;border:1px solid var(--border);border-radius:8px;font-size:.85rem;">${variantOptions}</select>` : '<p style="margin:0;font-size:.85rem;color:var(--muted);">لا توجد خيارات متوفرة حالياً.</p>'}
       <div id="quick-meta-row" style="font-size:.8rem;color:var(--muted);display:flex;flex-wrap:wrap;gap:10px;"></div>
       <div style="display:flex;align-items:baseline;gap:10px;">
-        <span id="quick-price" style="font-size:1.7rem;font-weight:900;color:var(--accent);">${fmt(Number(defaultVariant.price_inc_tax || p.price))}</span>
-        ${p.old ? `<span style="color:var(--light);text-decoration:line-through;font-size:.9rem;">${fmt(p.old)}</span>` : ''}
+        <span id="quick-price" style="font-size:1.7rem;font-weight:900;color:var(--accent);">${fmt(quickNow)}</span>
+        <span id="quick-old-price" style="color:var(--light);text-decoration:line-through;font-size:.9rem;${quickOld && quickOld > quickNow ? '' : 'display:none;'}">${quickOld && quickOld > quickNow ? fmt(quickOld) : ''}</span>
       </div>
       <button type="button" id="quick-add-btn" style="width:100%;padding:13px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-weight:700;font-size:.95rem;cursor:pointer;font-family:var(--font);margin-top:4px;transition:var(--t);">
         🛒 أضف للسلة
@@ -2116,7 +2145,18 @@
 		quickVariant?.addEventListener('change', () => {
 			const option = quickVariant.options[quickVariant.selectedIndex];
 			const price = +(option?.dataset.price || 0);
+			const oldPrice = option?.dataset.oldPrice ? +(option.dataset.oldPrice) : 0;
+			const quickOldEl = $('quick-old-price');
 			if (quickPrice) quickPrice.textContent = fmt(price);
+			if (quickOldEl) {
+				if (oldPrice > price) {
+					quickOldEl.style.display = '';
+					quickOldEl.textContent = fmt(oldPrice);
+				} else {
+					quickOldEl.style.display = 'none';
+					quickOldEl.textContent = '';
+				}
+			}
 			syncQuickMeta();
 		});
 		syncQuickMeta();

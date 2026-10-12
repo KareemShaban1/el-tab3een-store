@@ -131,10 +131,15 @@ class StorefrontController extends Controller
             ])
             ->limit(24)
             ->get()
-            ->map(function ($product) {
+            ->map(function ($product) use ($business_id, $location_id) {
                 $first_variation = $product->variations->first(function ($variation) {
                     return (float) optional($variation->variation_location_details->first())->qty_available > 0;
                 });
+
+                $base = (float) optional($first_variation)->sell_price_inc_tax;
+                $priced = $first_variation
+                    ? $this->priceVariationForStorefront($product, $first_variation, $business_id, $location_id)
+                    : ['price' => $base, 'old_price' => null, 'discount_id' => null, 'is_flash' => false];
 
                 return [
                     'id' => $product->id,
@@ -142,7 +147,11 @@ class StorefrontController extends Controller
                     'image_url' => $product->image_url,
                     'brand' => optional($product->brand)->name,
                     'category' => optional($product->category)->name,
-                    'price' => optional($first_variation)->sell_price_inc_tax,
+                    'variation_id' => optional($first_variation)->id,
+                    'price' => $priced['price'],
+                    'old_price' => $priced['old_price'],
+                    'discount_id' => $priced['discount_id'],
+                    'is_flash' => $priced['is_flash'],
                 ];
             });
 
@@ -222,7 +231,7 @@ class StorefrontController extends Controller
         $products = $query->paginate(20);
 
 
-        $items = $products->getCollection()->map(function ($product) use ($business_location_ids, $location_id) {
+        $items = $products->getCollection()->map(function ($product) use ($business_id, $business_location_ids, $location_id) {
             $variations = Variation::where('product_id', $product->id)
                 ->with(['variation_location_details' => function ($q) use ($business_location_ids) {
                     $q->whereIn('location_id', $business_location_ids)->where('qty_available', '>', 0);
@@ -232,15 +241,54 @@ class StorefrontController extends Controller
                 return (float) $v->variation_location_details->sum('qty_available') > 0;
             })->values();
 
-            $primary_variation = $in_stock_variations->first(function ($v) use ($location_id) {
-                return $v->variation_location_details->contains(function ($row) use ($location_id) {
-                    return (int) $row->location_id === (int) $location_id && (float) $row->qty_available > 0;
-                });
-            }) ?? $in_stock_variations->first();
+            $priced_variations = $in_stock_variations->map(function ($v) use ($product, $business_id, $location_id) {
+                $locations = $v->variation_location_details
+                    ->filter(function ($row) {
+                        return (float) ($row->qty_available ?? 0) > 0;
+                    })
+                    ->map(function ($row) use ($location_id) {
+                        $lid = (int) $row->location_id;
 
-            $in_stock = $in_stock_variations->sum(function ($v) {
-                return (float) $v->variation_location_details->sum('qty_available');
+                        return [
+                            'location_id' => $lid,
+                            'qty_available' => (float) $row->qty_available,
+                            'is_checkout_location' => $lid === (int) $location_id,
+                        ];
+                    })
+                    ->sortByDesc(function ($locRow) {
+                        return $locRow['is_checkout_location'] ? 1 : 0;
+                    })
+                    ->values()
+                    ->all();
+
+                $priced = $this->priceVariationForStorefront($product, $v, $business_id, $location_id);
+
+                return [
+                    'variation_id' => $v->id,
+                    'name' => $v->name,
+                    'sku' => $v->sub_sku,
+                    'price_inc_tax' => $priced['price'],
+                    'old_price' => $priced['old_price'],
+                    'discount_id' => $priced['discount_id'],
+                    'is_flash' => $priced['is_flash'],
+                    'qty_available' => (float) $v->variation_location_details->sum('qty_available'),
+                    'locations' => $locations,
+                ];
+            })->values();
+
+            $primary_variation = $priced_variations->first(function ($v) use ($location_id) {
+                return collect($v['locations'] ?? [])->contains(function ($row) use ($location_id) {
+                    return (int) ($row['location_id'] ?? 0) === (int) $location_id && (float) ($row['qty_available'] ?? 0) > 0;
+                });
+            }) ?? $priced_variations->first();
+
+            $in_stock = $priced_variations->sum(function ($v) {
+                return (float) ($v['qty_available'] ?? 0);
             });
+
+            $min_price = $priced_variations->min('price_inc_tax');
+            $max_price = $priced_variations->max('price_inc_tax');
+            $old_for_primary = $primary_variation['old_price'] ?? null;
 
             return [
                 'id' => $product->id,
@@ -249,38 +297,14 @@ class StorefrontController extends Controller
                 'brand' => optional($product->brand)->name,
                 'category' => optional($product->category)->name,
                 'in_stock_qty' => $in_stock,
-                'variation_id' => optional($primary_variation)->id,
-                'min_price' => optional($in_stock_variations->sortBy('sell_price_inc_tax')->first())->sell_price_inc_tax,
-                'max_price' => optional($in_stock_variations->sortByDesc('sell_price_inc_tax')->first())->sell_price_inc_tax,
-                'variations' => $in_stock_variations->map(function ($v) use ($location_id) {
-                    $locations = $v->variation_location_details
-                        ->filter(function ($row) {
-                            return (float) ($row->qty_available ?? 0) > 0;
-                        })
-                        ->map(function ($row) use ($location_id) {
-                            $lid = (int) $row->location_id;
-
-                            return [
-                                'location_id' => $lid,
-                                'qty_available' => (float) $row->qty_available,
-                                'is_checkout_location' => $lid === (int) $location_id,
-                            ];
-                        })
-                        ->sortByDesc(function ($locRow) {
-                            return $locRow['is_checkout_location'] ? 1 : 0;
-                        })
-                        ->values()
-                        ->all();
-
-                    return [
-                        'variation_id' => $v->id,
-                        'name' => $v->name,
-                        'sku' => $v->sub_sku,
-                        'price_inc_tax' => (float) $v->sell_price_inc_tax,
-                        'qty_available' => (float) $v->variation_location_details->sum('qty_available'),
-                        'locations' => $locations,
-                    ];
-                })->values(),
+                'variation_id' => $primary_variation['variation_id'] ?? null,
+                'price' => $primary_variation['price_inc_tax'] ?? $min_price,
+                'old_price' => $old_for_primary,
+                'discount_id' => $primary_variation['discount_id'] ?? null,
+                'is_flash' => (bool) ($primary_variation['is_flash'] ?? false),
+                'min_price' => $min_price,
+                'max_price' => $max_price,
+                'variations' => $priced_variations,
             ];
         })
             ->filter(function ($item) {
@@ -396,7 +420,7 @@ class StorefrontController extends Controller
             ->filter(function ($variation) {
                 return (float) $variation->variation_location_details->sum('qty_available') > 0;
             })
-            ->map(function ($variation) use ($location_id, $location_records) {
+            ->map(function ($variation) use ($product, $business_id, $location_id, $location_records) {
                 $sku = $variation->sub_sku;
                 $name = $variation->name;
                 $sku = is_scalar($sku) ? (string) $sku : '';
@@ -445,12 +469,16 @@ class StorefrontController extends Controller
                     ->values()
                     ->all();
 
+                $priced = $this->priceVariationForStorefront($product, $variation, $business_id, $location_id);
 
                 return [
                     'variation_id' => $variation->id,
                     'sku' => $sku,
                     'name' => $name,
-                    'price_inc_tax' => $variation->sell_price_inc_tax,
+                    'price_inc_tax' => $priced['price'],
+                    'old_price' => $priced['old_price'],
+                    'discount_id' => $priced['discount_id'],
+                    'is_flash' => $priced['is_flash'],
                     'qty_available' => (float) optional($preferred_row)->qty_available,
                     'locations' => $locations,
                 ];
@@ -1203,6 +1231,53 @@ class StorefrontController extends Controller
         }
 
         return (int) \App\BusinessLocation::where('business_id', $business_id)->where('is_active', 1)->value('id');
+    }
+
+    /**
+     * Resolve storefront sell price including automatic / flash discounts (not promo-code gated).
+     *
+     * @return array{price: float, old_price: ?float, discount_id: ?int, is_flash: bool}
+     */
+    private function priceVariationForStorefront(Product $product, Variation $variation, int $business_id, int $location_id): array
+    {
+        $base = (float) $variation->sell_price_inc_tax;
+        $customer_group_id = null;
+        try {
+            $customer = auth('customer')->user();
+            if ($customer) {
+                $customer_group_id = $customer->customer_group_id ?? null;
+            }
+        } catch (\Throwable $e) {
+            // guest / guard not configured
+        }
+
+        try {
+            $resolver = app(\App\Services\Pricing\DiscountResolverService::class);
+            $priced = $resolver->getCatalogPrice([
+                'business_id' => $business_id,
+                'location_id' => $location_id,
+                'variation_id' => $variation->id,
+                'product' => $product,
+                'customer_group_id' => $customer_group_id,
+                'channel' => 'ecommerce',
+                'base_price_inc_tax' => $base,
+                'quantity' => 1,
+            ]);
+
+            return [
+                'price' => round((float) $priced['final_price_inc_tax'], 2),
+                'old_price' => ! empty($priced['old_price']) ? round((float) $priced['old_price'], 2) : null,
+                'discount_id' => $priced['discount_id'] ?? null,
+                'is_flash' => (bool) ($priced['is_flash'] ?? false),
+            ];
+        } catch (\Throwable $e) {
+            return [
+                'price' => round($base, 2),
+                'old_price' => null,
+                'discount_id' => null,
+                'is_flash' => false,
+            ];
+        }
     }
 
     private function formatHeroStat(int $value): string
