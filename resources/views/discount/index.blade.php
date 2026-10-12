@@ -152,13 +152,34 @@
                 minimumInputLength: 1,
                 closeOnSelect: false
             });
+            if ($('#product_id').length && !$('#product_id').hasClass('select2-hidden-accessible')) {
+                $('#product_id').select2({
+                    width: '100%',
+                    allowClear: true,
+                    placeholder: '@lang("messages.please_select")'
+                });
+            }
         });
 
         $(document).on('change', '#variation_ids', function() {
-            if ($(this).val().length) {
+            if ($(this).val() && $(this).val().length) {
                 $('#brand_input').addClass('hide');
                 $('#category_input').addClass('hide');
+                $('#product_input').addClass('hide');
+                $('#product_id').val(null).trigger('change');
             } else {
+                $('#brand_input').removeClass('hide');
+                $('#category_input').removeClass('hide');
+                $('#product_input').removeClass('hide');
+            }
+        });
+
+        $(document).on('change', '#product_id', function() {
+            if ($(this).val()) {
+                $('#variation_ids').val(null).trigger('change');
+                $('#brand_input').addClass('hide');
+                $('#category_input').addClass('hide');
+            } else if (!$('#variation_ids').val() || !$('#variation_ids').val().length) {
                 $('#brand_input').removeClass('hide');
                 $('#category_input').removeClass('hide');
             }

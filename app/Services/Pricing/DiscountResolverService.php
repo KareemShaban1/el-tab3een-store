@@ -55,18 +55,31 @@ class DiscountResolverService
             ->where('is_active', 1)
             ->where('requires_promo_code', 0)
             ->where('starts_at', '<=', $now)
-            ->where('ends_at', '>=', $now)
-            ->where(function ($q) use ($location_id) {
+            ->where('ends_at', '>=', $now);
+
+        if ($channel === 'ecommerce') {
+            $query->where('apply_in_ecommerce', 1);
+            // Storefront may resolve a different default location than the discount's location.
+            $query->where(function ($q) use ($business_id, $location_id) {
+                $q->whereNull('location_id');
+                if (! empty($location_id)) {
+                    $q->orWhere('location_id', $location_id);
+                }
+                $q->orWhereIn('location_id', function ($sub) use ($business_id) {
+                    $sub->select('id')
+                        ->from('business_locations')
+                        ->where('business_id', $business_id)
+                        ->where('is_active', 1);
+                });
+            });
+        } else {
+            $query->where('apply_in_pos', 1);
+            $query->where(function ($q) use ($location_id) {
                 $q->whereNull('location_id');
                 if (! empty($location_id)) {
                     $q->orWhere('location_id', $location_id);
                 }
             });
-
-        if ($channel === 'ecommerce') {
-            $query->where('apply_in_ecommerce', 1);
-        } else {
-            $query->where('apply_in_pos', 1);
         }
 
         $this->applyCustomerGroupFilter($query, $customer_group_id);
@@ -125,9 +138,15 @@ class DiscountResolverService
     /**
      * Active flash-sale discounts for storefront listing.
      */
-    public function getActiveFlashSales(int $business_id, ?int $location_id = null): Collection
+    public function getActiveFlashSales(int $business_id, ?int $location_id = null, $allowed_location_ids = null): Collection
     {
         $now = Carbon::now()->toDateTimeString();
+        $allowed_location_ids = collect($allowed_location_ids ?? [])
+            ->filter(fn ($id) => ! empty($id))
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values()
+            ->all();
 
         return Discount::where('business_id', $business_id)
             ->where('is_active', 1)
@@ -136,10 +155,14 @@ class DiscountResolverService
             ->where('apply_in_ecommerce', 1)
             ->where('starts_at', '<=', $now)
             ->where('ends_at', '>=', $now)
-            ->where(function ($q) use ($location_id) {
+            ->where(function ($q) use ($location_id, $allowed_location_ids) {
                 $q->whereNull('location_id');
                 if (! empty($location_id)) {
                     $q->orWhere('location_id', $location_id);
+                }
+                // Include flash sales tied to other active store locations (not only default).
+                if (! empty($allowed_location_ids)) {
+                    $q->orWhereIn('location_id', $allowed_location_ids);
                 }
             })
             ->where(function ($q) {
@@ -282,8 +305,6 @@ class DiscountResolverService
                     if (! empty($sub_category_id)) {
                         $target->orWhere('sub_category_id', $sub_category_id);
                         // Parent category discount with include_sub_categories
-                        $parent = Category::find($sub_category_id);
-                        // also match discount.category_id = product.category_id with include flag
                         $target->orWhere(function ($t) use ($category_id) {
                             if (! empty($category_id)) {
                                 $t->where('category_id', $category_id)
@@ -291,6 +312,13 @@ class DiscountResolverService
                             }
                         });
                     }
+
+                    // Store-wide: no brand / category / sub-category on the discount
+                    $target->orWhere(function ($t) {
+                        $t->whereNull('brand_id')
+                            ->whereNull('category_id')
+                            ->whereNull('sub_category_id');
+                    });
                 });
             });
         });
