@@ -104,6 +104,35 @@
 	</div>
 </section>
 
+	<!-- ===================== FLASH DEALS ===================== -->
+	<section class="flash-section section">
+		<div class="container">
+			<div class="flash-head">
+				<div class="flash-title">
+					<span class="flash-icon">⚡</span>
+					عروض سريعة
+				</div>
+				<div class="flash-timer-wrap">
+					<span class="flash-timer-label">تنتهي خلال:</span>
+					<div class="timer">
+						<div class="t-block"><span class="t-num"
+								id="t-h">08</span><span
+								class="t-lbl">ساعة</span></div>
+						<span class="t-sep">:</span>
+						<div class="t-block"><span class="t-num"
+								id="t-m">34</span><span
+								class="t-lbl">دقيقة</span></div>
+						<span class="t-sep">:</span>
+						<div class="t-block"><span class="t-num"
+								id="t-s">22</span><span
+								class="t-lbl">ثانية</span></div>
+					</div>
+				</div>
+			</div>
+			<div class="flash-grid" id="dynamic-flash-grid"></div>
+		</div>
+	</section>
+
 <!-- ===================== CATEGORIES ===================== -->
 @php
 $servoCategoriesForGrid = collect($tab3eenCatalog ?? [])->map(function ($category) {
@@ -452,36 +481,6 @@ if ($subId <= 0 || $subName==='' ) { return []; } return [[ 'id'=> $subId,
 	});
 	</script>
 	@endif
-
-	<!-- ===================== FLASH DEALS ===================== -->
-	<section class="flash-section section">
-		<div class="container">
-			<div class="flash-head">
-				<div class="flash-title">
-					<span class="flash-icon">⚡</span>
-					عروض سريعة
-				</div>
-				<div style="display:flex;align-items:center;gap:14px;">
-					<span style="color:rgba(255,255,255,.6);font-size:.85rem;">تنتهي
-						خلال:</span>
-					<div class="timer">
-						<div class="t-block"><span class="t-num"
-								id="t-h">08</span><span
-								class="t-lbl">ساعة</span></div>
-						<span class="t-sep">:</span>
-						<div class="t-block"><span class="t-num"
-								id="t-m">34</span><span
-								class="t-lbl">دقيقة</span></div>
-						<span class="t-sep">:</span>
-						<div class="t-block"><span class="t-num"
-								id="t-s">22</span><span
-								class="t-lbl">ثانية</span></div>
-					</div>
-				</div>
-			</div>
-			<div class="flash-grid" id="dynamic-flash-grid"></div>
-		</div>
-	</section>
 
 	<!-- ===================== BRANDS ===================== -->
 	<section class="brands-section section-sm">

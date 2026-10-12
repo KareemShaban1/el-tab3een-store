@@ -1,49 +1,50 @@
 <head>
- <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="csrf-token" content="{{ csrf_token() }}">
-    @php
-        $seoPageTitle = $title ?? 'El Tab3een Store';
-        $seoDesc = ! empty($metaDescription) ? e(strip_tags((string) $metaDescription)) : null;
-        $seoKeys = ! empty($metaKeywords) ? e(strip_tags((string) $metaKeywords)) : null;
-        $seoImage = ! empty($seoOgImage) ? e((string) $seoOgImage) : null;
-        $seoRobotsContent = ! empty($seoRobots) ? e(strip_tags((string) $seoRobots)) : null;
-        $seoCanonicalUrl = ! empty($seoCanonical) ? e((string) $seoCanonical) : e(url()->current());
-    @endphp
-    <title>{{ $seoPageTitle }}</title>
-    @if ($seoDesc)
-    <meta name="description" content="{{ $seoDesc }}">
-    @endif
-    @if ($seoKeys)
-    <meta name="keywords" content="{{ $seoKeys }}">
-    @endif
-    @if ($seoRobotsContent)
-    <meta name="robots" content="{{ $seoRobotsContent }}">
-    @endif
-    <link rel="canonical" href="{{ $seoCanonicalUrl }}">
-    <meta property="og:type" content="website">
-    <meta property="og:title" content="{{ e(strip_tags((string) $seoPageTitle)) }}">
-    @if ($seoDesc)
-    <meta property="og:description" content="{{ $seoDesc }}">
-    @endif
-    @if ($seoImage)
-    <meta property="og:image" content="{{ $seoImage }}">
-    @endif
-    <meta property="og:url" content="{{ $seoCanonicalUrl }}">
-    <meta name="twitter:card" content="{{ $seoImage ? 'summary_large_image' : 'summary' }}">
-    <meta name="twitter:title" content="{{ e(strip_tags((string) $seoPageTitle)) }}">
-    @if ($seoDesc)
-    <meta name="twitter:description" content="{{ $seoDesc }}">
-    @endif
-    @if ($seoImage)
-    <meta name="twitter:image" content="{{ $seoImage }}">
-    @endif
-    @stack('meta')
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-<style>
-			/* ============================================================
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<meta name="csrf-token" content="{{ csrf_token() }}">
+	@php
+	$seoPageTitle = $title ?? 'El Tab3een Store';
+	$seoDesc = ! empty($metaDescription) ? e(strip_tags((string) $metaDescription)) : null;
+	$seoKeys = ! empty($metaKeywords) ? e(strip_tags((string) $metaKeywords)) : null;
+	$seoImage = ! empty($seoOgImage) ? e((string) $seoOgImage) : null;
+	$seoRobotsContent = ! empty($seoRobots) ? e(strip_tags((string) $seoRobots)) : null;
+	$seoCanonicalUrl = ! empty($seoCanonical) ? e((string) $seoCanonical) : e(url()->current());
+	@endphp
+	<title>{{ $seoPageTitle }}</title>
+	@if ($seoDesc)
+	<meta name="description" content="{{ $seoDesc }}">
+	@endif
+	@if ($seoKeys)
+	<meta name="keywords" content="{{ $seoKeys }}">
+	@endif
+	@if ($seoRobotsContent)
+	<meta name="robots" content="{{ $seoRobotsContent }}">
+	@endif
+	<link rel="canonical" href="{{ $seoCanonicalUrl }}">
+	<meta property="og:type" content="website">
+	<meta property="og:title" content="{{ e(strip_tags((string) $seoPageTitle)) }}">
+	@if ($seoDesc)
+	<meta property="og:description" content="{{ $seoDesc }}">
+	@endif
+	@if ($seoImage)
+	<meta property="og:image" content="{{ $seoImage }}">
+	@endif
+	<meta property="og:url" content="{{ $seoCanonicalUrl }}">
+	<meta name="twitter:card" content="{{ $seoImage ? 'summary_large_image' : 'summary' }}">
+	<meta name="twitter:title" content="{{ e(strip_tags((string) $seoPageTitle)) }}">
+	@if ($seoDesc)
+	<meta name="twitter:description" content="{{ $seoDesc }}">
+	@endif
+	@if ($seoImage)
+	<meta name="twitter:image" content="{{ $seoImage }}">
+	@endif
+	@stack('meta')
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800;900&display=swap"
+		rel="stylesheet">
+	<style>
+	/* ============================================================
 		DESIGN SYSTEM
 		============================================================ */
 	:root {
@@ -234,47 +235,119 @@
 		gap: 9px
 	}
 
-/* auth theme layout */
+	/* auth theme layout */
 	.auth-card {
-            max-width: 620px;
-            margin: 0 auto;
-            background: #fff;
-            border: 1px solid var(--border);
-            border-radius: var(--r);
-            box-shadow: var(--shadow-md);
-            padding: 24px;
-        }
-        .auth-title { margin: 0 0 8px; color: var(--primary); font-size: 28px; }
-        .auth-sub { margin: 0 0 18px; color: var(--muted); font-size: 14px; }
-        label { display: block; font-weight: 700; margin-bottom: 6px; }
-        input {
-            width: 100%;
-            border: 1px solid var(--border);
-            border-radius: var(--r-sm);
-            padding: 11px 12px;
-            margin-bottom: 14px;
-            font-size: 14px;
-        }
-        .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-        .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
-        .alert {
-            padding: 10px 12px;
-            border-radius: 8px;
-            margin-bottom: 12px;
-            font-size: 14px;
-        }
-        .alert.success { background: #dcfce7; color: #166534; }
-        .alert.error { background: #fee2e2; color: #991b1b; }
-        .auth-validation-summary { border: 1px solid #fecaca; }
-        .auth-validation-summary__title { font-weight: 800; margin-bottom: 6px; }
-        .auth-validation-summary__hint { margin: 0 0 8px; opacity: .95; font-size: 13px; line-height: 1.45; }
-        .auth-validation-summary__list { margin: 0; padding-inline-start: 1.1rem; line-height: 1.55; font-size: 13px; }
-        .auth-field-error { margin: -8px 0 14px; font-size: 13px; color: #991b1b; font-weight: 600; line-height: 1.4; }
-        input.auth-input-error { border-color: #dc2626; box-shadow: 0 0 0 1px rgba(220, 38, 38, 0.15); }
-        @media (max-width: 700px) {
-            .row { grid-template-columns: 1fr; }
-            .auth-title { font-size: 23px; }
-        }
+		max-width: 620px;
+		margin: 0 auto;
+		background: #fff;
+		border: 1px solid var(--border);
+		border-radius: var(--r);
+		box-shadow: var(--shadow-md);
+		padding: 24px;
+	}
+
+	.auth-title {
+		margin: 0 0 8px;
+		color: var(--primary);
+		font-size: 28px;
+	}
+
+	.auth-sub {
+		margin: 0 0 18px;
+		color: var(--muted);
+		font-size: 14px;
+	}
+
+	label {
+		display: block;
+		font-weight: 700;
+		margin-bottom: 6px;
+	}
+
+	input {
+		width: 100%;
+		border: 1px solid var(--border);
+		border-radius: var(--r-sm);
+		padding: 11px 12px;
+		margin-bottom: 14px;
+		font-size: 14px;
+	}
+
+	.row {
+		display: grid;
+		grid-template-columns: 1fr 1fr;
+		gap: 12px;
+	}
+
+	.actions {
+		display: flex;
+		gap: 8px;
+		flex-wrap: wrap;
+		margin-top: 6px;
+	}
+
+	.alert {
+		padding: 10px 12px;
+		border-radius: 8px;
+		margin-bottom: 12px;
+		font-size: 14px;
+	}
+
+	.alert.success {
+		background: #dcfce7;
+		color: #166534;
+	}
+
+	.alert.error {
+		background: #fee2e2;
+		color: #991b1b;
+	}
+
+	.auth-validation-summary {
+		border: 1px solid #fecaca;
+	}
+
+	.auth-validation-summary__title {
+		font-weight: 800;
+		margin-bottom: 6px;
+	}
+
+	.auth-validation-summary__hint {
+		margin: 0 0 8px;
+		opacity: .95;
+		font-size: 13px;
+		line-height: 1.45;
+	}
+
+	.auth-validation-summary__list {
+		margin: 0;
+		padding-inline-start: 1.1rem;
+		line-height: 1.55;
+		font-size: 13px;
+	}
+
+	.auth-field-error {
+		margin: -8px 0 14px;
+		font-size: 13px;
+		color: #991b1b;
+		font-weight: 600;
+		line-height: 1.4;
+	}
+
+	input.auth-input-error {
+		border-color: #dc2626;
+		box-shadow: 0 0 0 1px rgba(220, 38, 38, 0.15);
+	}
+
+	@media (max-width: 700px) {
+		.row {
+			grid-template-columns: 1fr;
+		}
+
+		.auth-title {
+			font-size: 23px;
+		}
+	}
 
 
 	/* ============================================================
@@ -337,6 +410,13 @@
 		align-items: center;
 		gap: 11px;
 		flex-shrink: 0
+	}
+
+	.logo-img {
+		width: 110px;
+		height: 80px;
+		object-fit: contain;
+		display: block;
 	}
 
 	.logo-icon {
@@ -407,7 +487,7 @@
 		border: none;
 		font-size: .93rem;
 		color: var(--text);
-                    margin-bottom: 0 !important;
+		margin-bottom: 0 !important;
 	}
 
 	.search-input::placeholder {
@@ -423,7 +503,7 @@
 		transition: var(--t);
 		display: flex;
 		align-items: center;
-                    border-radius: 40px;
+		border-radius: 40px;
 	}
 
 	.search-btn:hover {
@@ -593,7 +673,9 @@
 		transform: translateY(0);
 	}
 
-	@media (hover: none), (pointer: coarse) {
+	@media (hover: none),
+	(pointer: coarse) {
+
 		/* Touch devices: rely on click toggle, not hover */
 		.account-dropdown:hover .account-menu {
 			opacity: 0;
@@ -945,6 +1027,7 @@
 			transform: translateX(18px) translateY(6px);
 			filter: blur(1.5px);
 		}
+
 		100% {
 			opacity: 1;
 			transform: none;
@@ -982,6 +1065,7 @@
 	}
 
 	@media (prefers-reduced-motion: reduce) {
+
 		.mega-sub-list,
 		.mega-chevron {
 			transition: none;
@@ -1084,8 +1168,8 @@
    ============================================================ */
 	.hero {
 		background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary) 55%, #3d3868 100%);
-    overflow: hidden;
-    position: relative;
+		overflow: hidden;
+		position: relative;
 	}
 
 	.hero::before {
@@ -1362,7 +1446,9 @@
 		box-shadow: var(--shadow-lg)
 	}
 
-	@media (hover: none), (pointer: coarse) {
+	@media (hover: none),
+	(pointer: coarse) {
+
 		.cat-card:hover,
 		.cat-card:active {
 			transform: none;
@@ -1687,10 +1773,12 @@
 			transform: translateY(18px) scale(.94);
 			filter: blur(2px);
 		}
+
 		60% {
 			opacity: 1;
 			filter: blur(0);
 		}
+
 		100% {
 			opacity: 1;
 			transform: translateY(0) scale(1);
@@ -1705,6 +1793,7 @@
 	}
 
 	@media (prefers-reduced-motion: reduce) {
+
 		.cats-grid .cat-card--has-subs,
 		.cats-grid .cat-card--has-subs.is-open .cat-icon,
 		.cats-grid .cat-subs.is-mounted {
@@ -1984,7 +2073,21 @@
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
+		gap: 16px;
+		flex-wrap: wrap;
 		margin-bottom: 30px
+	}
+
+	.flash-timer-wrap {
+		display: flex;
+		align-items: center;
+		gap: 14px;
+		flex-wrap: wrap;
+	}
+
+	.flash-timer-label {
+		color: rgba(255, 255, 255, .6);
+		font-size: .85rem;
 	}
 
 	.flash-title {
@@ -3158,6 +3261,7 @@
 			transform: translateX(18px) translateY(6px);
 			filter: blur(1.5px);
 		}
+
 		100% {
 			opacity: 1;
 			transform: none;
@@ -3166,6 +3270,7 @@
 	}
 
 	@media (prefers-reduced-motion: reduce) {
+
 		.mm-sub-list,
 		.mm-chevron {
 			transition: none;
@@ -3270,6 +3375,12 @@
 			min-width: 0;
 		}
 
+		.logo-img {
+			width: 110px;
+			height: 55px;
+			object-fit: cover;
+		}
+
 		.header-actions {
 			order: 3;
 			width: auto;
@@ -3313,11 +3424,13 @@
 		.hero-inner {
 			grid-template-columns: 1fr;
 			text-align: center;
-			padding: 44px 0 36px
+			padding: 18px 0 14px;
+			gap: 12px;
 		}
 
 		.hero-dots-wrap {
-			margin-top: -20px;
+			margin-top: -6px;
+			padding-bottom: 10px;
 			text-align: center;
 		}
 
@@ -3325,13 +3438,131 @@
 			display: none
 		}
 
+		.hero-badge {
+			margin-bottom: 8px;
+			padding: 4px 10px;
+			font-size: .72rem;
+		}
+
 		.hero-title {
-			font-size: 1.9rem
+			font-size: 1.35rem;
+			line-height: 1.25;
+			margin-bottom: 8px;
+		}
+
+		.hero-desc {
+			font-size: .86rem;
+			line-height: 1.55;
+			margin-bottom: 12px;
+			max-width: none;
+		}
+
+		.hero-actions {
+			gap: 8px;
+		}
+
+		.hero-actions .btn {
+			padding: 9px 16px;
+			font-size: .85rem;
 		}
 
 		.hero-actions,
 		.hero-stats {
 			justify-content: center
+		}
+
+		.flash-section.section {
+			padding: 22px 0;
+		}
+
+		.flash-head {
+			flex-direction: column;
+			align-items: stretch;
+			gap: 12px;
+			margin-bottom: 16px;
+		}
+
+		.flash-title {
+			font-size: 1.2rem;
+			justify-content: center;
+		}
+
+		.flash-icon {
+			font-size: 1.35rem;
+		}
+
+		.flash-timer-wrap {
+			justify-content: center;
+			gap: 8px;
+		}
+
+		.flash-timer-label {
+			font-size: .75rem;
+			width: 100%;
+			text-align: center;
+		}
+
+		.timer {
+			justify-content: center;
+			gap: 5px;
+			width: 100%;
+		}
+
+		.t-block {
+			padding: 5px 8px;
+			min-width: 44px;
+			flex: 1;
+			max-width: 64px;
+		}
+
+		.t-num {
+			font-size: 1.05rem;
+		}
+
+		.t-lbl {
+			font-size: .55rem;
+		}
+
+		.t-sep {
+			font-size: 1.05rem;
+		}
+
+		.flash-grid {
+			grid-template-columns: repeat(2, minmax(0, 1fr));
+			gap: 10px;
+		}
+
+		.flash-card {
+			padding: 12px 10px;
+		}
+
+		.flash-img {
+			height: 88px;
+			margin-bottom: 8px;
+		}
+
+		.flash-name {
+			font-size: .78rem;
+			margin-bottom: 6px;
+			min-height: 2.6em;
+		}
+
+		.flash-now {
+			font-size: .95rem;
+		}
+
+		.flash-was {
+			font-size: .72rem;
+		}
+
+		.flash-sold {
+			font-size: .62rem;
+		}
+
+		.flash-btn {
+			padding: 8px 6px;
+			font-size: .74rem;
+			margin-top: 8px;
 		}
 
 		.cats-scroll {
@@ -3452,10 +3683,12 @@
 				transform: translateX(22px) translateY(8px) scale(.94);
 				filter: blur(2px);
 			}
+
 			60% {
 				opacity: 1;
 				filter: blur(0);
 			}
+
 			100% {
 				opacity: 1;
 				transform: translateX(0) translateY(0) scale(1);
@@ -3465,10 +3698,6 @@
 
 		.products-grid {
 			grid-template-columns: repeat(2, 1fr)
-		}
-
-		.flash-grid {
-			grid-template-columns: 1fr
 		}
 
 		.testi-grid {
@@ -3516,6 +3745,31 @@
 			padding: 0 8px;
 		}
 
+		.hero-inner {
+			padding: 14px 10px 10px;
+		}
+
+		.hero-title {
+			font-size: 1.2rem;
+		}
+
+		.hero-desc {
+			font-size: .8rem;
+			margin-bottom: 10px;
+			display: -webkit-box;
+			-webkit-line-clamp: 2;
+			-webkit-box-orient: vertical;
+			overflow: hidden;
+		}
+
+		.flash-section.section {
+			padding: 16px 0;
+		}
+
+		.flash-img {
+			height: 72px;
+		}
+
 		.site-header .container {
 			padding-inline: 10px;
 		}
@@ -3545,14 +3799,14 @@
 		}
 
 		.header-search {
-			margin-top:10px;
+			margin-top: 10px;
 			border-width: 1px;
 		}
 
 		.search-input {
 			padding: 10px 12px;
 			font-size: .84rem;
-			margin:0 auto;
+			margin: 0 auto;
 		}
 
 		.search-btn {
@@ -3707,5 +3961,5 @@
 	}
 	</style>
 
-@stack('styles')
+	@stack('styles')
 </head>

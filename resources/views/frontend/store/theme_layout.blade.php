@@ -71,8 +71,7 @@
 
 				<!-- Logo -->
 				<a href="{{ route('welcome') }}" class="logo">
-					<img src="{{ asset('img/logo.png') }}" alt="logo" class="logo-img"
-						style="width: 110px; height: 80px;">
+					<img src="{{ asset('img/logo.png') }}" alt="logo" class="logo-img">
 					<!-- <div>
 						<div class="logo-name">
 							{{ $appearance['brand_name'] ?? 'التابعين' }}
@@ -1874,7 +1873,7 @@
 		}
 
 		grid.innerHTML = deals.slice(0, 4).map(d => `
-			<div class="flash-card">
+			<div class="flash-card" data-product-href="${storeProductShowUrl(d.id)}" role="link" tabindex="0">
 				<img class="flash-img" src="${d.image_url}" alt="${d.name}">
 				<div class="flash-name">${d.name}</div>
 				<div class="flash-prices">
@@ -1885,12 +1884,31 @@
 					<div class="flash-bar" style="width:${d.sold_pct}%"></div>
 				</div>
 				<div class="flash-sold">تم البيع ${d.sold_pct}% — باقي ${d.qty_left} قطعة!</div>
-				<button class="flash-btn" data-flash-id="${d.id}" data-flash-name="${d.name}" data-flash-price="${Number(d.price || 0)}" data-flash-variation-id="${d.variation_id}">🛒 أضف للسلة</button>
+				<button type="button" class="flash-btn" data-flash-id="${d.id}" data-flash-name="${d.name}" data-flash-price="${Number(d.price || 0)}" data-flash-variation-id="${d.variation_id}">🛒 أضف للسلة</button>
 			</div>
 		`).join('');
 
+		$$('.flash-card[data-product-href]').forEach(card => {
+			const goToProduct = () => {
+				const href = card.dataset.productHref;
+				if (href) window.location.href = href;
+			};
+			card.addEventListener('click', (e) => {
+				if (e.target.closest('.flash-btn')) return;
+				goToProduct();
+			});
+			card.addEventListener('keydown', (e) => {
+				if (e.key === 'Enter' || e.key === ' ') {
+					e.preventDefault();
+					goToProduct();
+				}
+			});
+		});
+
 		$$('.flash-btn').forEach(btn => {
-			btn.onclick = () => {
+			btn.onclick = (e) => {
+				e.preventDefault();
+				e.stopPropagation();
 				const id = +btn.dataset.flashId;
 				const name = btn.dataset.flashName;
 				const price = +btn.dataset.flashPrice;
