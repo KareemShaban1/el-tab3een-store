@@ -2279,13 +2279,13 @@
 
 	.flash-now {
 		color: var(--accent);
-		font-size: 1.15rem;
+		font-size: 2rem;
 		font-weight: 800
 	}
 
 	.flash-was {
 		color: rgba(255, 255, 255, .45);
-		font-size: .82rem;
+		font-size: 1.5rem;
 		text-decoration: line-through
 	}
 
