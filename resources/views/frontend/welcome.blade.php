@@ -105,21 +105,21 @@
 	</div>
 </section>
 @else
-	<!-- ===================== FLASH DEALS ===================== -->
-	<section class="flash-section section">
-		<div class="container">
-			<div class="flash-head">
-				<div class="flash-title">
-					<span class="flash-icon">⚡</span>
-					<div class="flash-title-text">
-						<span>عروض سريعة</span>
-						<span class="flash-entity" id="flash-entity-name"></span>
-					</div>
+<!-- ===================== FLASH DEALS ===================== -->
+<section class="flash-section section">
+	<div class="container">
+		<div class="flash-head">
+			<div class="flash-title">
+				<span class="flash-icon">⚡</span>
+				<div class="flash-title-text">
+					<span>عروض سريعة</span>
+					<!-- <span class="flash-entity" id="flash-entity-name"></span> -->
 				</div>
 			</div>
-			<div class="flash-grid" id="dynamic-flash-grid"></div>
 		</div>
-	</section>
+		<div class="flash-grid" id="dynamic-flash-grid"></div>
+	</div>
+</section>
 @endif
 
 <!-- ===================== CATEGORIES ===================== -->

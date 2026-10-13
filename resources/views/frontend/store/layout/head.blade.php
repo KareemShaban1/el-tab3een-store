@@ -2244,11 +2244,17 @@
 	}
 
 	.flash-img {
-		height: 130px;
-		width: auto;
+		height: 200px;
+		width: 100%;
+		max-width: 240px;
 		object-fit: contain;
 		margin: 0 auto 14px;
 		display: block
+	}
+
+	.flash-grid.flash-grid--single .flash-img {
+		height: 260px;
+		max-width: 320px;
 	}
 
 	.flash-name {
@@ -3603,8 +3609,14 @@
 		}
 
 		.flash-img {
-			height: 88px;
+			height: 140px;
+			max-width: 180px;
 			margin-bottom: 8px;
+		}
+
+		.flash-grid.flash-grid--single .flash-img {
+			height: 180px;
+			max-width: 220px;
 		}
 
 		.flash-name {
@@ -3833,7 +3845,13 @@
 		}
 
 		.flash-img {
-			height: 72px;
+			height: 120px;
+			max-width: 160px;
+		}
+
+		.flash-grid.flash-grid--single .flash-img {
+			height: 160px;
+			max-width: 200px;
 		}
 
 		.site-header .container {
