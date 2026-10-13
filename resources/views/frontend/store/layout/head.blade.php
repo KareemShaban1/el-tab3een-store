@@ -3626,11 +3626,11 @@
 		}
 
 		.flash-now {
-			font-size: 1.5rem;
+			font-size: 1rem;
 		}
 
 		.flash-was {
-			font-size: 1.2rem;
+			font-size: 0.8rem;
 		}
 
 		.flash-sold {
