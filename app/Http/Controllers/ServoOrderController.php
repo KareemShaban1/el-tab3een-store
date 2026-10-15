@@ -140,11 +140,20 @@ class ServoOrderController extends Controller
         $formatted_servo_items = $this->servoOrderUtil->formatItems($log->items ?? []);
         $formatted_local_items = $this->servoOrderUtil->formatLocalItems($log->transaction);
         $servo_total = collect($formatted_servo_items)->sum(fn (array $item) => (float) ($item['line_total'] ?? 0));
-        $local_total = $log->transaction ? (float) $log->transaction->final_total : 0;
         $has_local_items = count($formatted_local_items) > 0;
         $has_servo_items = count($formatted_servo_items) > 0;
         $is_mixed_order = $has_local_items && $has_servo_items;
-        $grand_total = ($has_local_items ? $local_total : 0) + ($servo_total > 0 ? $servo_total : 0);
+
+        $transaction_shipping = $log->transaction ? (float) ($log->transaction->shipping_charges ?? 0) : 0;
+        $log_shipping = (float) ($log->shipping_charges ?? 0);
+        // Prefer transaction shipping (charged once); fall back to log for older servo-only rows.
+        $shipping_charges = $log->transaction ? $transaction_shipping : $log_shipping;
+        $local_products_total = 0.0;
+        if ($log->transaction) {
+            $local_products_total = max(0, (float) $log->transaction->final_total - $transaction_shipping);
+        }
+        $local_total = $log->transaction ? (float) $log->transaction->final_total : 0;
+        $grand_total = $local_products_total + ($servo_total > 0 ? $servo_total : 0) + $shipping_charges;
 
         return view('servo_orders.show', compact(
             'log',
@@ -152,6 +161,7 @@ class ServoOrderController extends Controller
             'formatted_local_items',
             'servo_total',
             'local_total',
+            'shipping_charges',
             'grand_total',
             'has_local_items',
             'has_servo_items',

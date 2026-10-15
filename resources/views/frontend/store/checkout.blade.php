@@ -336,70 +336,15 @@ textarea.checkout-input-error {
 					</div>
 				</div>
 
+				@if(empty($locations_fees_enabled))
 				<div class="row">
-					@if(!empty($locations_fees_enabled))
-					<input type="hidden"
-						name="addresses[shipping_address][shipping_state]"
-						id="checkout-shipping-state-hidden"
-						value="{{ old('addresses.shipping_address.shipping_state') }}">
-					<input type="hidden" name="addresses[shipping_address][shipping_city]"
-						id="checkout-shipping-city-hidden"
-						value="{{ old('addresses.shipping_address.shipping_city') }}">
-					<input type="hidden" name="addresses[shipping_address][shipping_area]"
-						id="checkout-shipping-area-hidden"
-						value="{{ old('addresses.shipping_address.shipping_area') }}">
-					<input type="hidden"
-						name="addresses[shipping_address][lf_governorate_id]"
-						id="checkout-lf-governorate-id"
-						value="{{ old('addresses.shipping_address.lf_governorate_id') }}">
-					<input type="hidden" name="addresses[shipping_address][lf_city_id]"
-						id="checkout-lf-city-id"
-						value="{{ old('addresses.shipping_address.lf_city_id') }}">
-					<input type="hidden" name="addresses[shipping_address][lf_area_id]"
-						id="checkout-lf-area-id"
-						value="{{ old('addresses.shipping_address.lf_area_id') }}">
-
-					<div>
-						<label for="checkout-lf-governorate">المحافظة *</label>
-						<select id="checkout-lf-governorate"
-							class="checkout-location-select @error('addresses.shipping_address.lf_governorate_id') checkout-input-error @enderror"
-							aria-invalid="{{ $errors->has('addresses.shipping_address.lf_governorate_id') ? 'true' : 'false' }}">
-							<option value="">
-								{{ __('locations_fees.select_governorate') }}
-							</option>
-							@foreach ($lf_governorates as $governorate)
-							<option value="{{ $governorate->id }}"
-								@selected((string)
-								old('addresses.shipping_address.lf_governorate_id')===(string)
-								$governorate->
-								id)>{{ $governorate->name }}</option>
-							@endforeach
-						</select>
-						@error('addresses.shipping_address.lf_governorate_id')
-						<p class="checkout-field-error">{{ $message }}</p>
-						@enderror
-					</div>
-					<div>
-						<label for="checkout-lf-city">المدينة *</label>
-						<select id="checkout-lf-city" disabled
-							class="checkout-location-select @error('addresses.shipping_address.lf_city_id') checkout-input-error @enderror"
-							aria-invalid="{{ $errors->has('addresses.shipping_address.lf_city_id') ? 'true' : 'false' }}">
-							<option value="">
-								{{ __('locations_fees.select_city') }}
-							</option>
-						</select>
-						@error('addresses.shipping_address.lf_city_id')
-						<p class="checkout-field-error">{{ $message }}</p>
-						@enderror
-					</div>
-					@else
 					<div>
 						<label for="checkout-shipping-state">المحافظة</label>
 						<input id="checkout-shipping-state" type="text"
 							name="addresses[shipping_address][shipping_state]"
 							value="{{ old('addresses.shipping_address.shipping_state', $customer->state) }}"
 							class="@error('addresses.shipping_address.shipping_state') checkout-input-error @enderror"
-							@ariaInvalid('addresses.shipping_address.shipping_state')>
+							aria-invalid="{{ $errors->has('addresses.shipping_address.shipping_state') ? 'true' : 'false' }}">
 						@error('addresses.shipping_address.shipping_state')
 						<p class="checkout-field-error">{{ $message }}</p>
 						@enderror
@@ -415,28 +360,91 @@ textarea.checkout-input-error {
 						<p class="checkout-field-error">{{ $message }}</p>
 						@enderror
 					</div>
-					@endif
+				</div>
+				@endif
 
+				<label for="checkout-shipping-line1">العنوان *</label>
+				<input id="checkout-shipping-line1" type="text"
+					name="addresses[shipping_address][shipping_address_line_1]"
+					value="{{ old('addresses.shipping_address.shipping_address_line_1') }}"
+					class="@error('addresses.shipping_address.shipping_address_line_1') checkout-input-error @enderror"
+					aria-invalid="{{ $errors->has('addresses.shipping_address.shipping_address_line_1') ? 'true' : 'false' }}">
+				@error('addresses.shipping_address.shipping_address_line_1')
+				<p class="checkout-field-error">{{ $message }}</p>
+				@enderror
+			</div>
+
+			@if(!empty($locations_fees_enabled))
+			<div id="checkout-locations-fees-wrap" style="margin-top:14px;">
+				<h4 style="margin:0 0 10px;font-size:1rem;">موقع التوصيل *</h4>
+				<p class="muted" style="margin:0 0 12px;">اختر المحافظة والمدينة والمنطقة لحساب رسوم التوصيل.</p>
+
+				<input type="hidden"
+					name="addresses[shipping_address][shipping_state]"
+					id="checkout-shipping-state-hidden"
+					value="{{ old('addresses.shipping_address.shipping_state') }}">
+				<input type="hidden" name="addresses[shipping_address][shipping_city]"
+					id="checkout-shipping-city-hidden"
+					value="{{ old('addresses.shipping_address.shipping_city') }}">
+				<input type="hidden" name="addresses[shipping_address][shipping_area]"
+					id="checkout-shipping-area-hidden"
+					value="{{ old('addresses.shipping_address.shipping_area') }}">
+				<input type="hidden"
+					name="addresses[shipping_address][lf_governorate_id]"
+					id="checkout-lf-governorate-id"
+					value="{{ old('addresses.shipping_address.lf_governorate_id') }}">
+				<input type="hidden" name="addresses[shipping_address][lf_city_id]"
+					id="checkout-lf-city-id"
+					value="{{ old('addresses.shipping_address.lf_city_id') }}">
+				<input type="hidden" name="addresses[shipping_address][lf_area_id]"
+					id="checkout-lf-area-id"
+					value="{{ old('addresses.shipping_address.lf_area_id') }}">
+
+				<div class="row">
+					<div>
+						<label for="checkout-lf-governorate">المحافظة *</label>
+						<select id="checkout-lf-governorate"
+							class="checkout-location-select @error('addresses.shipping_address.lf_governorate_id') checkout-input-error @enderror"
+							aria-invalid="{{ $errors->has('addresses.shipping_address.lf_governorate_id') ? 'true' : 'false' }}">
+							<option value="">{{ __('locations_fees.select_governorate') }}</option>
+							@foreach ($lf_governorates as $governorate)
+							<option value="{{ $governorate->id }}"
+								@selected((string) old('addresses.shipping_address.lf_governorate_id') === (string) $governorate->id)>
+								{{ $governorate->name }}
+							</option>
+							@endforeach
+						</select>
+						@error('addresses.shipping_address.lf_governorate_id')
+						<p class="checkout-field-error">{{ $message }}</p>
+						@enderror
+					</div>
+					<div>
+						<label for="checkout-lf-city">المدينة *</label>
+						<select id="checkout-lf-city" disabled
+							class="checkout-location-select @error('addresses.shipping_address.lf_city_id') checkout-input-error @enderror"
+							aria-invalid="{{ $errors->has('addresses.shipping_address.lf_city_id') ? 'true' : 'false' }}">
+							<option value="">{{ __('locations_fees.select_city') }}</option>
+						</select>
+						@error('addresses.shipping_address.lf_city_id')
+						<p class="checkout-field-error">{{ $message }}</p>
+						@enderror
+					</div>
 				</div>
 
-				@if(!empty($locations_fees_enabled))
 				<div id="checkout-area-row" style="display:none;">
 					<div>
 						<label for="checkout-lf-area">المنطقة *</label>
 						<select id="checkout-lf-area" disabled
 							class="checkout-location-select @error('addresses.shipping_address.lf_area_id') checkout-input-error @enderror"
 							aria-invalid="{{ $errors->has('addresses.shipping_address.lf_area_id') ? 'true' : 'false' }}">
-							<option value="">
-								{{ __('locations_fees.select_area') }}
-							</option>
+							<option value="">{{ __('locations_fees.select_area') }}</option>
 						</select>
 						@error('addresses.shipping_address.lf_area_id')
 						<p class="checkout-field-error">{{ $message }}</p>
 						@enderror
 					</div>
 					<div id="checkout-custom-area-wrap" style="display:none;">
-						<label for="checkout-lf-custom-area">{{ __('locations_fees.custom_area') }}
-							*</label>
+						<label for="checkout-lf-custom-area">{{ __('locations_fees.custom_area') }} *</label>
 						<input id="checkout-lf-custom-area" type="text"
 							name="addresses[shipping_address][lf_custom_area]"
 							value="{{ old('addresses.shipping_address.lf_custom_area') }}"
@@ -448,36 +456,8 @@ textarea.checkout-input-error {
 						@enderror
 					</div>
 				</div>
-
-				@endif
-				<label for="checkout-shipping-line1">العنوان *</label>
-				<input id="checkout-shipping-line1" type="text"
-					name="addresses[shipping_address][shipping_address_line_1]"
-					value="{{ old('addresses.shipping_address.shipping_address_line_1') }}"
-					class="@error('addresses.shipping_address.shipping_address_line_1') checkout-input-error @enderror"
-					aria-invalid="{{ $errors->has('addresses.shipping_address.shipping_address_line_1') ? 'true' : 'false' }}">
-				@error('addresses.shipping_address.shipping_address_line_1')
-				<p class="checkout-field-error">{{ $message }}</p>
-				@enderror
-
-
-				<!-- <div class="row">
-                    <div>
-                        <label for="checkout-shipping-country">الدولة</label>
-                        <input id="checkout-shipping-country" type="text" name="addresses[shipping_address][shipping_country]" value="{{ old('addresses.shipping_address.shipping_country', $customer->country) }}" class="@error('addresses.shipping_address.shipping_country') checkout-input-error @enderror" aria-invalid="{{ $errors->has('addresses.shipping_address.shipping_country') ? 'true' : 'false' }}">
-                        @error('addresses.shipping_address.shipping_country')
-                            <p class="checkout-field-error">{{ $message }}</p>
-                        @enderror
-                    </div>
-                    <div>
-                        <label for="checkout-shipping-zip">الرمز البريدي</label>
-                        <input id="checkout-shipping-zip" type="text" name="addresses[shipping_address][shipping_zip_code]" value="{{ old('addresses.shipping_address.shipping_zip_code', $customer->zip_code) }}" class="@error('addresses.shipping_address.shipping_zip_code') checkout-input-error @enderror" aria-invalid="{{ $errors->has('addresses.shipping_address.shipping_zip_code') ? 'true' : 'false' }}">
-                        @error('addresses.shipping_address.shipping_zip_code')
-                            <p class="checkout-field-error">{{ $message }}</p>
-                        @enderror
-                    </div>
-                </div> -->
 			</div>
+			@endif
 		</div>
 
 		<div class="card">
@@ -597,13 +577,13 @@ document.getElementById('checkout-apply-promo')?.addEventListener('click', async
 			window.__checkoutPromoSavings = Number(data.savings || 0);
 			if (msg) msg.textContent = data.msg || @json(__('lang_v1.promo_code_applied'));
 			if (typeof window.updateCheckoutOrderSummary === 'function') {
-				window.updateCheckoutOrderSummary(window.__lfLastDeliveryFee);
+				window.updateCheckoutOrderSummary(window.__checkoutDeliveryFee ?? null);
 			}
 		} else {
 			window.__checkoutPromoSavings = 0;
 			if (msg) msg.textContent = data.msg || @json(__('lang_v1.promo_code_invalid'));
 			if (typeof window.updateCheckoutOrderSummary === 'function') {
-				window.updateCheckoutOrderSummary(window.__lfLastDeliveryFee);
+				window.updateCheckoutOrderSummary(window.__checkoutDeliveryFee ?? null);
 			}
 		}
 	} catch (err) {
@@ -625,11 +605,6 @@ document.getElementById('checkout-apply-promo')?.addEventListener('click', async
 		if (newAddressWrap) {
 			newAddressWrap.style.display = selected === 'new' ? 'block' : 'none';
 		}
-		@if(!empty($locations_fees_enabled))
-		if (selected === 'new' && typeof window.__lfCheckoutInit === 'function') {
-			window.__lfCheckoutInit();
-		}
-		@endif
 	}
 
 	function readCart() {
@@ -797,10 +772,7 @@ document.getElementById('checkout-apply-promo')?.addEventListener('click', async
 	});
 
 	@if(!empty($locations_fees_enabled))
-	window.__lfCheckoutInit = initLocationsFeesCheckout;
-	if (document.querySelector('input[name="shipping_address_option"]:checked')?.value === 'new') {
-		initLocationsFeesCheckout();
-	}
+	initLocationsFeesCheckout();
 	@endif
 })();
 
@@ -854,11 +826,13 @@ function initLocationsFeesCheckout() {
 
 	function resetFee() {
 		window.__checkoutDeliveryFee = null;
+		window.__lfLastDeliveryFee = null;
 		updateCheckoutOrderSummary(null);
 	}
 
 	function setDeliveryFee(amount) {
 		window.__checkoutDeliveryFee = Number(amount || 0);
+		window.__lfLastDeliveryFee = window.__checkoutDeliveryFee;
 		updateCheckoutOrderSummary(window.__checkoutDeliveryFee);
 	}
 
@@ -992,7 +966,11 @@ function initLocationsFeesCheckout() {
 		(result.data || []).forEach((item) => {
 			const opt = document.createElement('option');
 			opt.value = String(item.id);
-			opt.textContent = item.name;
+			opt.dataset.name = item.name || '';
+			const feeLabel = Number.isFinite(Number(item.delivery_cost))
+				? ` — ${checkoutFormatMoney(Number(item.delivery_cost))}`
+				: '';
+			opt.textContent = `${item.name}${feeLabel}`;
 			if (String(selectedAreaId) === String(item.id)) {
 				opt.selected = true;
 			}
@@ -1043,8 +1021,8 @@ function initLocationsFeesCheckout() {
 		if (!isOther && customAreaInput) customAreaInput.value = '';
 		hiddenAreaId.value = isOther ? '' : this.value;
 		if (hiddenArea && !isOther) {
-			hiddenArea.value = this.options[this.selectedIndex]?.text ||
-				'';
+			const selectedOpt = this.options[this.selectedIndex];
+			hiddenArea.value = selectedOpt?.dataset?.name || selectedOpt?.text || '';
 		}
 		await updateFee();
 	});

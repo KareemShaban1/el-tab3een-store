@@ -94,6 +94,12 @@
                         <th>@lang('lang_v1.total_items')</th>
                         <td>{{ $total_items_count }}</td>
                     </tr>
+                    @if (($shipping_charges ?? 0) > 0)
+                        <tr>
+                            <th>@lang('locations_fees.delivery_fee')</th>
+                            <td>@format_currency($shipping_charges)</td>
+                        </tr>
+                    @endif
                     @if ($grand_total > 0)
                         <tr>
                             <th>@lang('lang_v1.order_total')</th>

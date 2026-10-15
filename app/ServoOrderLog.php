@@ -12,6 +12,8 @@ class ServoOrderLog extends Model
         'items' => 'array',
         'request_payload' => 'array',
         'response_payload' => 'array',
+        'order_addresses' => 'array',
+        'shipping_charges' => 'float',
     ];
 
     public function transaction()

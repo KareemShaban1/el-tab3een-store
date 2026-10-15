@@ -142,17 +142,41 @@ class StoreCheckoutController extends Controller
                 $resolved_addresses,
                 $delivery_fee
             );
+        } elseif ($has_servo) {
+            // Servo-only checkout: still create a sell so delivery fee is booked on a transaction.
+            $local_result = $this->createDeliveryFeeSellTransaction(
+                $customer,
+                $customer_contact,
+                $business_id,
+                $location_id,
+                $resolved_addresses,
+                $delivery_fee,
+                $validated['idempotency_key'] ?? null
+            );
         }
 
         if ($has_servo) {
-            $servo_result = $this->recordServoOrderAttempt(
-                $servo_products,
-                $customer_contact,
-                $business_id,
-                $servo_client_name,
-                isset($local_result['transaction']) ? $local_result['transaction']->id : null,
-                $validated['idempotency_key'] ?? null
-            );
+            // Mixed: still attempt Servo even if local sell failed.
+            // Servo-only: require the delivery-fee sell to succeed first.
+            $should_place_servo = $has_local || ($local_result['success'] ?? false);
+            if ($should_place_servo) {
+                $servo_result = $this->recordServoOrderAttempt(
+                    $servo_products,
+                    $customer_contact,
+                    $business_id,
+                    $servo_client_name,
+                    isset($local_result['transaction']) ? $local_result['transaction']->id : null,
+                    $validated['idempotency_key'] ?? null,
+                    $delivery_fee,
+                    $resolved_addresses
+                );
+            } else {
+                $servo_result = [
+                    'success' => false,
+                    'error' => collect($local_result['errors'] ?? [])->first()
+                        ?: __('messages.something_went_wrong'),
+                ];
+            }
         }
 
         return $this->buildCheckoutOutcomeResponse(
@@ -431,6 +455,7 @@ class StoreCheckoutController extends Controller
             // Ensure ecommerce-only status is persisted even if util ignores unknown keys.
             $transaction->ecommerce_order_status = 'pending';
             $transaction->sub_status = 'ecommerce_new';
+            $transaction->ref_no = $order_data['ref_no'];
             $transaction->save();
             $this->transactionUtil->createOrUpdateSellLines($transaction, $order_data['products'], $location_id, false, null, [], false);
 
@@ -484,7 +509,102 @@ class StoreCheckoutController extends Controller
     }
 
     /**
+     * Book delivery fee on a sell transaction when the cart has only partner (Servo) products.
+     *
+     * @return array{success: bool, transaction?: Transaction, errors?: array<int, string>, already_processed?: bool}
+     */
+    private function createDeliveryFeeSellTransaction(
+        Contact $customer,
+        Contact $customer_contact,
+        int $business_id,
+        int $location_id,
+        array $resolved_addresses,
+        float $delivery_fee,
+        ?string $idempotency_key
+    ): array {
+        if (! empty($idempotency_key)) {
+            $existing = Transaction::where('business_id', $business_id)
+                ->where('contact_id', $customer->id)
+                ->where('type', 'sell')
+                ->where('source', 'ecommerce')
+                ->where('ref_no', $idempotency_key)
+                ->first();
+
+            if ($existing) {
+                return [
+                    'success' => true,
+                    'transaction' => $existing,
+                    'already_processed' => true,
+                ];
+            }
+        }
+
+        $business = Business::findOrFail($business_id);
+        $user_id = $business->owner_id;
+        $fee = max(0, (float) $delivery_fee);
+
+        try {
+            DB::beginTransaction();
+
+            $order_data = [
+                'business_id' => $business_id,
+                'location_id' => $location_id,
+                'contact_id' => $customer->id,
+                'final_total' => $fee,
+                'shipping_charges' => $fee,
+                'created_by' => $user_id,
+                'status' => 'final',
+                'sub_status' => 'ecommerce_new',
+                'ecommerce_order_status' => 'pending',
+                'shipping_status' => 'ordered',
+                'payment_status' => 'due',
+                'additional_notes' => __('locations_fees.delivery_fee'),
+                'transaction_date' => now(),
+                'customer_group_id' => $customer_contact->customer_group_id,
+                'tax_rate_id' => null,
+                'sale_note' => null,
+                'commission_agent' => null,
+                'order_addresses' => json_encode($resolved_addresses),
+                'products' => [],
+                'is_created_from_api' => 1,
+                'is_direct_sale' => 1,
+                'source' => 'ecommerce',
+                'ref_no' => $idempotency_key ?? ('ecom_'.uniqid()),
+                'discount_type' => 'fixed',
+                'discount_amount' => 0,
+            ];
+
+            $invoice_total = [
+                'total_before_tax' => $fee,
+                'tax' => 0,
+            ];
+
+            $transaction = $this->transactionUtil->createSellTransaction($business_id, $order_data, $invoice_total, $user_id, false);
+            $transaction->ecommerce_order_status = 'pending';
+            $transaction->sub_status = 'ecommerce_new';
+            $transaction->ref_no = $order_data['ref_no'];
+            $transaction->save();
+
+            DB::commit();
+
+            return [
+                'success' => true,
+                'transaction' => $transaction,
+            ];
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::emergency('File:'.$e->getFile().' Line:'.$e->getLine().' Message:'.$e->getMessage());
+
+            return [
+                'success' => false,
+                'errors' => [__('messages.something_went_wrong')],
+            ];
+        }
+    }
+
+    /**
      * @param  array<int, array<string, mixed>>  $servo_products
+     * @param  array<string, mixed>  $resolved_addresses
      * @return array{success: bool, servo_reference?: string|null, error?: string}
      */
     private function recordServoOrderAttempt(
@@ -493,7 +613,9 @@ class StoreCheckoutController extends Controller
         int $business_id,
         string $client_name,
         ?int $transaction_id,
-        ?string $idempotency_key
+        ?string $idempotency_key,
+        float $delivery_fee = 0.0,
+        array $resolved_addresses = []
     ): array {
         if ($transaction_id !== null) {
             $existing = ServoOrderLog::where('transaction_id', $transaction_id)->first();
@@ -517,6 +639,9 @@ class StoreCheckoutController extends Controller
             ];
         }
 
+        $shipping_charges = max(0, (float) $delivery_fee);
+        $order_addresses = ! empty($resolved_addresses) ? $resolved_addresses : null;
+
         try {
             $items = $this->servoOrderUtil->normalizeAndEnrichItems($servo_products);
         } catch (ValidationException $e) {
@@ -528,6 +653,8 @@ class StoreCheckoutController extends Controller
                 'transaction_id' => $transaction_id,
                 'idempotency_key' => $idempotency_key,
                 'client_name' => $client_name,
+                'shipping_charges' => $shipping_charges,
+                'order_addresses' => $order_addresses,
                 'items' => $servo_products,
                 'status' => 'failed',
                 'error_message' => $error_message,
@@ -551,6 +678,8 @@ class StoreCheckoutController extends Controller
             'transaction_id' => $transaction_id,
             'idempotency_key' => $idempotency_key,
             'client_name' => $client_name,
+            'shipping_charges' => $shipping_charges,
+            'order_addresses' => $order_addresses,
             'items' => $items,
             'status' => 'pending',
         ]);
@@ -680,7 +809,8 @@ class StoreCheckoutController extends Controller
         int $business_id,
         string $customer_name
     ) {
-        $local_ok = ! $has_local || ($local_result['success'] ?? false);
+        // local_result may be a product sell or a delivery-fee-only sell (servo-only carts).
+        $local_ok = $local_result === null || ($local_result['success'] ?? false);
         $servo_ok = ! $has_servo || ($servo_result['success'] ?? false);
         $transaction = $local_result['transaction'] ?? null;
 
@@ -733,7 +863,7 @@ class StoreCheckoutController extends Controller
     ) {
         $messages = [];
 
-        if ($has_local && ! ($local_result['success'] ?? false)) {
+        if ($local_result !== null && ! ($local_result['success'] ?? false)) {
             $messages = array_merge($messages, $local_result['errors'] ?? [__('messages.something_went_wrong')]);
         }
 
@@ -1291,7 +1421,10 @@ class StoreCheckoutController extends Controller
     {
         $option = $validated['shipping_address_option'] ?? null;
         $provided = $validated['addresses']['shipping_address'] ?? [];
-        $locations_fees_enabled = \Illuminate\Support\Facades\Schema::hasTable('lf_governorates');
+        $locations_fees_enabled = Schema::hasTable('lf_governorates');
+        $location_meta = $locations_fees_enabled
+            ? $this->resolveLocationsFeesMeta($provided, $business_id, $delivery_fee)
+            : [];
 
         if ($option === 'new' || (! empty($provided) && empty($option))) {
             $name = trim((string) ($provided['shipping_name'] ?? ''));
@@ -1303,67 +1436,13 @@ class StoreCheckoutController extends Controller
                 ]);
             }
 
-            $shipping_state = (string) ($provided['shipping_state'] ?? '');
-            $shipping_city = (string) ($provided['shipping_city'] ?? '');
-            $shipping_area = (string) ($provided['shipping_area'] ?? '');
-            $location_meta = [];
-
-            if ($locations_fees_enabled) {
-                $governorate_id = (int) ($provided['lf_governorate_id'] ?? 0);
-                $city_id = (int) ($provided['lf_city_id'] ?? 0);
-                $area_id = ! empty($provided['lf_area_id']) ? (int) $provided['lf_area_id'] : null;
-                $custom_area = trim((string) ($provided['lf_custom_area'] ?? ''));
-
-                if ($governorate_id <= 0 || $city_id <= 0) {
-                    throw ValidationException::withMessages([
-                        'addresses.shipping_address.lf_governorate_id' => __('locations_fees.location_required'),
-                    ]);
-                }
-
-                if (empty($area_id) && $custom_area === '') {
-                    throw ValidationException::withMessages([
-                        'addresses.shipping_address.lf_area_id' => __('locations_fees.location_required'),
-                    ]);
-                }
-
-                $locationsFeesUtil = app(LocationsFeesUtil::class);
-
-                try {
-                    $resolved_fee = $locationsFeesUtil->resolveDeliveryFee(
-                        $business_id,
-                        $governorate_id,
-                        $city_id,
-                        $area_id,
-                        $custom_area
-                    );
-                } catch (\InvalidArgumentException $e) {
-                    throw ValidationException::withMessages([
-                        'addresses.shipping_address.lf_governorate_id' => $e->getMessage(),
-                    ]);
-                }
-
-                $delivery_fee = (float) $resolved_fee['fee'];
-                $shipping_state = $resolved_fee['governorate_name'];
-                $shipping_city = $resolved_fee['city_name'];
-                $shipping_area = (string) ($resolved_fee['area_name'] ?? $custom_area);
-
-                $location_meta = [
-                    'lf_governorate_id' => $governorate_id,
-                    'lf_city_id' => $city_id,
-                    'lf_area_id' => $area_id,
-                    'lf_custom_area' => $custom_area !== '' ? $custom_area : null,
-                    'delivery_fee' => $delivery_fee,
-                    'delivery_fee_source' => $resolved_fee['fee_source'],
-                ];
-            }
-
             return [
                 'shipping_address' => array_merge([
                     'shipping_name' => $name,
                     'shipping_address_line_1' => $line1,
-                    'shipping_city' => $shipping_city,
-                    'shipping_state' => $shipping_state,
-                    'shipping_area' => $shipping_area,
+                    'shipping_city' => (string) ($location_meta['shipping_city'] ?? $provided['shipping_city'] ?? ''),
+                    'shipping_state' => (string) ($location_meta['shipping_state'] ?? $provided['shipping_state'] ?? ''),
+                    'shipping_area' => (string) ($location_meta['shipping_area'] ?? $provided['shipping_area'] ?? ''),
                     'shipping_country' => (string) ($provided['shipping_country'] ?? ''),
                     'shipping_zip_code' => (string) ($provided['shipping_zip_code'] ?? ''),
                     'shipping_mobile' => (string) ($provided['shipping_mobile'] ?? ''),
@@ -1379,16 +1458,69 @@ class StoreCheckoutController extends Controller
         }
 
         return [
-            'shipping_address' => [
+            'shipping_address' => array_merge([
                 'shipping_name' => (string) ($customer_contact->name ?? ''),
                 'shipping_address_line_1' => (string) ($customer_contact->shipping_address ?? ''),
-                'shipping_city' => (string) ($customer_contact->city ?? ''),
-                'shipping_state' => (string) ($customer_contact->state ?? ''),
+                'shipping_city' => (string) ($location_meta['shipping_city'] ?? $customer_contact->city ?? ''),
+                'shipping_state' => (string) ($location_meta['shipping_state'] ?? $customer_contact->state ?? ''),
                 'shipping_country' => (string) ($customer_contact->country ?? ''),
                 'shipping_zip_code' => (string) ($customer_contact->zip_code ?? ''),
                 'shipping_mobile' => (string) ($customer_contact->mobile ?? ''),
-                'shipping_area' => '',
-            ],
+                'shipping_area' => (string) ($location_meta['shipping_area'] ?? ''),
+            ], $location_meta),
+        ];
+    }
+
+    /**
+     * Resolve area-based delivery fee from the Locations Fees module.
+     *
+     * @return array<string, mixed>
+     */
+    private function resolveLocationsFeesMeta(array $provided, int $business_id, float &$delivery_fee): array
+    {
+        $governorate_id = (int) ($provided['lf_governorate_id'] ?? 0);
+        $city_id = (int) ($provided['lf_city_id'] ?? 0);
+        $area_id = ! empty($provided['lf_area_id']) ? (int) $provided['lf_area_id'] : null;
+        $custom_area = trim((string) ($provided['lf_custom_area'] ?? ''));
+
+        if ($governorate_id <= 0 || $city_id <= 0) {
+            throw ValidationException::withMessages([
+                'addresses.shipping_address.lf_governorate_id' => __('locations_fees.location_required'),
+            ]);
+        }
+
+        if (empty($area_id) && $custom_area === '') {
+            throw ValidationException::withMessages([
+                'addresses.shipping_address.lf_area_id' => __('locations_fees.location_required'),
+            ]);
+        }
+
+        try {
+            $resolved_fee = app(LocationsFeesUtil::class)->resolveDeliveryFee(
+                $business_id,
+                $governorate_id,
+                $city_id,
+                $area_id,
+                $custom_area
+            );
+        } catch (\InvalidArgumentException $e) {
+            throw ValidationException::withMessages([
+                'addresses.shipping_address.lf_governorate_id' => $e->getMessage(),
+            ]);
+        }
+
+        $delivery_fee = (float) $resolved_fee['fee'];
+
+        return [
+            'shipping_state' => $resolved_fee['governorate_name'],
+            'shipping_city' => $resolved_fee['city_name'],
+            'shipping_area' => (string) ($resolved_fee['area_name'] ?? $custom_area),
+            'lf_governorate_id' => $governorate_id,
+            'lf_city_id' => $city_id,
+            'lf_area_id' => $area_id,
+            'lf_custom_area' => $custom_area !== '' ? $custom_area : null,
+            'delivery_fee' => $delivery_fee,
+            'delivery_fee_source' => $resolved_fee['fee_source'],
         ];
     }
 }

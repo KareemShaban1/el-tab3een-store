@@ -56,6 +56,30 @@
         'servoOrders' => collect([$servoOrder]),
     ])
 
+    @php
+        $partnerTotal = collect($servoItems ?? [])->sum(fn (array $item) => (float) ($item['line_total'] ?? 0));
+        $deliveryFee = (float) ($servoOrder->shipping_charges ?? 0);
+        $servoGrandTotal = $partnerTotal + $deliveryFee;
+    @endphp
+    @if ($deliveryFee > 0 || $servoGrandTotal > 0)
+    <div class="card">
+        <table class="items-table">
+            <tbody>
+                @if ($deliveryFee > 0)
+                <tr>
+                    <td>{{ __('locations_fees.delivery_fee') }}</td>
+                    <td class="txt-right">{{ number_format($deliveryFee, 2) }}</td>
+                </tr>
+                @endif
+                <tr>
+                    <td><strong>{{ __('lang_v1.grand_total') }}</strong></td>
+                    <td class="txt-right"><strong>{{ number_format($servoGrandTotal, 2) }}</strong></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    @endif
+
     <div class="card">
         <div class="card-actions">
             <a href="{{ route('store.account.orders') }}" class="btn-soft">{{ __('lang_v1.back_to_orders') }}</a>

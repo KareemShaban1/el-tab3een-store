@@ -235,10 +235,21 @@ class StoreAccountController extends Controller
         $partnerItems = $this->formatServoItems($this->collectServoRawItems($linkedServo));
         $servoItemsCount = count($partnerItems);
         $hasServo = $servoItemsCount > 0;
+        $hasLocalProducts = $localItemsCount > 0;
         $partnerTotal = collect($partnerItems)->sum(fn (array $item) => (float) ($item['line_total'] ?? 0));
+        $entryType = match (true) {
+            $hasLocalProducts && $hasServo => 'mixed',
+            $hasServo => 'servo',
+            default => 'local',
+        };
+        $typeLabel = match ($entryType) {
+            'mixed' => __('storefront.orders.type_mixed'),
+            'servo' => __('storefront.orders.type_partner'),
+            default => __('storefront.orders.type_local'),
+        };
 
         return (object) [
-            'entry_type' => $hasServo ? 'mixed' : 'local',
+            'entry_type' => $entryType,
             'sort_at' => $order->transaction_date,
             'display_id' => $order->invoice_no ?: '#'.$order->id,
             'detail_url' => route('store.account.orders.show', $order->id),
@@ -252,9 +263,7 @@ class StoreAccountController extends Controller
             'partner_items' => $partnerItems,
             'payment_status' => (string) ($order->payment_status ?: 'pending'),
             'shipping_status' => (string) ($order->shipping_status ?: 'pending'),
-            'type_label' => $hasServo
-                ? __('storefront.orders.type_mixed')
-                : __('storefront.orders.type_local'),
+            'type_label' => $typeLabel,
             'servo_reference' => $linkedServo->first()?->servo_reference,
             'partner_status' => $hasServo ? 'success' : null,
         ];
@@ -265,6 +274,8 @@ class StoreAccountController extends Controller
         $items = is_array($servoOrder->items) ? $servoOrder->items : [];
         $partnerItems = $this->formatServoItems($items);
         $partnerTotal = collect($partnerItems)->sum(fn (array $item) => (float) ($item['line_total'] ?? 0));
+        $shippingCharges = (float) ($servoOrder->shipping_charges ?? 0);
+        $orderTotal = $partnerTotal + $shippingCharges;
 
         return (object) [
             'entry_type' => 'servo',
@@ -274,7 +285,7 @@ class StoreAccountController extends Controller
             'status' => 'success',
             'status_label' => __('storefront.orders.status_success'),
             'date' => $servoOrder->created_at,
-            'total' => $partnerTotal > 0 ? $partnerTotal : null,
+            'total' => $orderTotal > 0 ? $orderTotal : null,
             'items_count' => count($partnerItems),
             'local_items_count' => 0,
             'partner_items_count' => count($partnerItems),

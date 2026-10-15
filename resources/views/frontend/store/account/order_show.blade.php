@@ -177,6 +177,7 @@ $shippingAddress = $order->shipping_address(true);
 $servoItems = $servoItems ?? [];
 $hasPartnerItems = ! empty($servoItems);
 $partnerTotal = collect($servoItems)->sum(fn (array $item) => (float) ($item['line_total'] ?? 0));
+$deliveryFee = (float) ($order->shipping_charges ?? 0);
 $displayGrandTotal = (float) $order->final_total + ($partnerTotal > 0 ? $partnerTotal : 0);
 @endphp
 
@@ -285,6 +286,12 @@ $displayGrandTotal = (float) $order->final_total + ($partnerTotal > 0 ? $partner
 				@endforeach
 			</tbody>
 			<tfoot>
+				@if ($deliveryFee > 0)
+				<tr>
+					<td colspan="3" class="txt-right">{{ __('locations_fees.delivery_fee') }}</td>
+					<td class="txt-right">{{ number_format($deliveryFee, 2) }}</td>
+				</tr>
+				@endif
 				<tr>
 					<td colspan="3" class="txt-right"><strong>
 							{{ __('lang_v1.grand_total') }}</strong></td>
