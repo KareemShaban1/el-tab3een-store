@@ -212,10 +212,21 @@ class Tab3eenCatalogService
      */
     private function normalizeCategories(array $categories): array
     {
+        // Servo nests products under brand/subcategory rows and stamps the row with the
+        // subcategory's parent category_id. Products may carry a different category_id
+        // (e.g. tablet 142 inside Xiaomi mobiles 139). Split by each product's category.
         $normalized = collect($categories)
-            ->map(function ($category) {
+            ->flatMap(function ($category) {
+                $rowId = (int) ($category['id'] ?? $category['category_id'] ?? $category['sub_category_id'] ?? 0);
+                $rowCategoryId = ! empty($category['category_id']) ? (int) $category['category_id'] : null;
+                $rowSubCategoryId = ! empty($category['sub_category_id']) ? (int) $category['sub_category_id'] : null;
+                [$rowCategoryName, $rowSubCategoryName] = $this->categoryLabelParts($category, true);
+                $categoryImage = $this->resolveCategoryImage($category);
+                $rowImage = (string) ($category['image'] ?? '');
+                $sortOrder = (int) ($category['sort_order'] ?? 0);
+
                 $products = collect($category['products'] ?? [])
-                    ->map(function ($product) {
+                    ->map(function ($product) use ($rowCategoryId, $rowCategoryName, $rowSubCategoryId, $rowSubCategoryName) {
                         $variations = collect($product['variations'] ?? [])
                             ->map(function ($variation) {
                                 $price = $variation['price'] ?? null;
@@ -241,6 +252,22 @@ class Tab3eenCatalogService
                             ->values()
                             ->all();
 
+                        $productCategoryId = ! empty($product['category_id'])
+                            ? (int) $product['category_id']
+                            : $rowCategoryId;
+                        $productCategoryName = trim((string) ($product['category_name'] ?? ''));
+                        if ($productCategoryName === '') {
+                            $productCategoryName = $rowCategoryName;
+                        }
+
+                        $productSubCategoryId = ! empty($product['sub_category_id'])
+                            ? (int) $product['sub_category_id']
+                            : $rowSubCategoryId;
+                        $productSubCategoryName = trim((string) ($product['sub_category_name'] ?? ''));
+                        if ($productSubCategoryName === '') {
+                            $productSubCategoryName = $rowSubCategoryName;
+                        }
+
                         return [
                             'id' => (int) ($product['id'] ?? 0),
                             'name' => (string) ($product['name'] ?? ''),
@@ -251,30 +278,75 @@ class Tab3eenCatalogService
                             'default_price' => $defaultVariation['price'] ?? null,
                             'has_price' => $defaultVariation !== null && $defaultVariation['price'] !== null,
                             'variations' => $variations,
+                            '_category_id' => $productCategoryId,
+                            '_category_name' => $productCategoryName,
+                            '_sub_category_id' => $productSubCategoryId,
+                            '_sub_category_name' => $productSubCategoryName,
                         ];
                     })
                     ->filter(fn ($product) => $product['id'] > 0
                         && $product['default_price'] !== null
                         && ! empty($product['variations']))
-                    ->values()
-                    ->all();
+                    ->values();
 
-                [$categoryName, $subCategoryName] = $this->categoryLabelParts($category, true);
-                $displayName = $categoryName !== '' ? $categoryName : $subCategoryName;
-                $categoryImage = $this->resolveCategoryImage($category);
+                return $products
+                    ->groupBy(function ($product) use ($rowId) {
+                        $cid = (int) ($product['_category_id'] ?? 0);
 
-                return [
-                    'id' => (int) ($category['id'] ?? $category['category_id'] ?? $category['sub_category_id'] ?? 0),
-                    'category_id' => ! empty($category['category_id']) ? (int) $category['category_id'] : null,
-                    'sub_category_id' => ! empty($category['sub_category_id']) ? (int) $category['sub_category_id'] : null,
-                    'category_name' => $categoryName,
-                    'sub_category_name' => $subCategoryName,
-                    'name' => $displayName,
-                    'category_image' => $categoryImage,
-                    'image' => (string) ($category['image'] ?? ''),
-                    'sort_order' => (int) ($category['sort_order'] ?? 0),
-                    'products' => $products,
-                ];
+                        return $cid > 0 ? 'category-'.$cid : 'row-'.$rowId;
+                    })
+                    ->map(function ($productGroup) use (
+                        $rowId,
+                        $rowCategoryId,
+                        $rowCategoryName,
+                        $rowSubCategoryId,
+                        $rowSubCategoryName,
+                        $categoryImage,
+                        $rowImage,
+                        $sortOrder
+                    ) {
+                        $first = $productGroup->first();
+                        $categoryId = (int) ($first['_category_id'] ?? $rowCategoryId ?? 0);
+                        $categoryName = trim((string) ($first['_category_name'] ?? ''));
+                        if ($categoryName === '') {
+                            $categoryName = $rowCategoryName;
+                        }
+                        $subCategoryId = (int) ($first['_sub_category_id'] ?? $rowSubCategoryId ?? 0);
+                        $subCategoryName = trim((string) ($first['_sub_category_name'] ?? ''));
+                        if ($subCategoryName === '') {
+                            $subCategoryName = $rowSubCategoryName;
+                        }
+                        $displayName = $categoryName !== '' ? $categoryName : $subCategoryName;
+                        $useRowCategoryImage = $categoryId > 0 && $categoryId === (int) $rowCategoryId;
+
+                        $cleanProducts = $productGroup
+                            ->map(function ($product) {
+                                unset(
+                                    $product['_category_id'],
+                                    $product['_category_name'],
+                                    $product['_sub_category_id'],
+                                    $product['_sub_category_name']
+                                );
+
+                                return $product;
+                            })
+                            ->values()
+                            ->all();
+
+                        return [
+                            'id' => $rowId,
+                            'category_id' => $categoryId > 0 ? $categoryId : null,
+                            'sub_category_id' => $subCategoryId > 0 ? $subCategoryId : null,
+                            'category_name' => $categoryName,
+                            'sub_category_name' => $subCategoryName,
+                            'name' => $displayName,
+                            'category_image' => $useRowCategoryImage ? $categoryImage : '',
+                            'image' => $rowImage,
+                            'sort_order' => $sortOrder,
+                            'products' => $cleanProducts,
+                        ];
+                    })
+                    ->values();
             })
             ->filter(fn ($category) => ! empty($category['products']))
             ->values();

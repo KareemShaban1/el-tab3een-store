@@ -837,13 +837,24 @@ class StorefrontController extends Controller
             ->values();
 
         if ($subCategoryId) {
-            $matchedSub = collect($fullCatalog)
+            // Same brand/sub_category_id can appear under multiple parent categories
+            // (e.g. Xiaomi phones 139 vs Xiaomi tablet 142). Prefer the selected parent.
+            $subsWithParent = collect($fullCatalog)
                 ->flatMap(fn ($category) => collect($category['sub_categories'] ?? [])->map(function ($sub) use ($category) {
-                    $sub['parent_id'] = (int) ($category['id'] ?? 0);
+                    $sub['parent_id'] = (int) ($category['id'] ?? $category['category_id'] ?? 0);
 
                     return $sub;
-                }))
-                ->first(fn ($sub) => (int) ($sub['id'] ?? 0) === $subCategoryId);
+                }));
+            $matchedSub = null;
+            if ($categoryId) {
+                $matchedSub = $subsWithParent->first(function ($sub) use ($subCategoryId, $categoryId) {
+                    return (int) ($sub['id'] ?? 0) === $subCategoryId
+                        && (int) ($sub['parent_id'] ?? 0) === $categoryId;
+                });
+            }
+            if (! $matchedSub) {
+                $matchedSub = $subsWithParent->first(fn ($sub) => (int) ($sub['id'] ?? 0) === $subCategoryId);
+            }
             $productIds = collect(is_array($matchedSub) ? ($matchedSub['product_ids'] ?? []) : [])
                 ->map(fn ($id) => (int) $id)
                 ->all();

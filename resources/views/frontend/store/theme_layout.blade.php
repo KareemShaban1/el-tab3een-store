@@ -1171,26 +1171,33 @@
 
 	function normalizeServoCategoriesForGrid(catalog) {
 		const groups = new Map();
-		(catalog || []).forEach((c) => {
-			const products = Array.isArray(c.products) ? c.products : [];
+
+		function upsertCategoryGroup(c, products, categoryId, categoryName) {
 			const count = products.length || Number(c.count || 0);
 			if (count <= 0) return;
-			const categoryId = Number(c.category_id || 0);
 			const key = categoryId > 0 ? 'category-' + categoryId : 'row-' + Number(c.id ||
 				c.sub_category_id || 0);
-			const incomingSubs = subsFromServoRow(c);
+			const rowForSubs = {
+				...c,
+				category_id: categoryId > 0 ? categoryId : c.category_id,
+				category_name: categoryName || c.category_name,
+				products,
+			};
+			const incomingSubs = subsFromServoRow(rowForSubs);
 			const aggregatedSubs = Array.isArray(c.sub_categories) && c.sub_categories
 				.length > 0;
 			const existing = groups.get(key);
 			const sortOrder = Number(c.sort_order ?? c.order ?? 0);
-			const categoryImage = servoMainCategoryImage(c);
+			const matchesRowCategory = categoryId > 0 && categoryId === Number(c.category_id || 0);
+			const categoryImage = matchesRowCategory || aggregatedSubs ? servoMainCategoryImage(c) : '';
+			const displayName = String(categoryName || '').trim() || servoCategoryDisplayName(rowForSubs);
 			if (!existing) {
 				groups.set(key, {
 					id: categoryId > 0 ? categoryId :
 						Number(c.id || c
 							.sub_category_id ||
 							0),
-					name: servoCategoryDisplayName(c),
+					name: displayName,
 					count,
 					order: sortOrder,
 					category_image: categoryImage,
@@ -1198,6 +1205,7 @@
 						.image || ''),
 					source: 'servo',
 					sub_categories: incomingSubs,
+					_productIds: products.map((p) => Number(p.id)).filter((id) => id > 0),
 				});
 				return;
 			}
@@ -1212,8 +1220,44 @@
 			if (!existing.image_url) {
 				existing.image_url = categoryImage || String(c.image_url || c.image || '');
 			}
+			if (!existing.name && displayName) {
+				existing.name = displayName;
+			}
 			existing.sub_categories = mergeServoSubCategories(existing.sub_categories,
 				incomingSubs, !aggregatedSubs);
+		}
+
+		(catalog || []).forEach((c) => {
+			const products = Array.isArray(c.products) ? c.products : [];
+			const count = products.length || Number(c.count || 0);
+			if (count <= 0) return;
+
+			// Already regrouped by store/SSR — trust row category_id.
+			if (Array.isArray(c.sub_categories) && c.sub_categories.length > 0) {
+				upsertCategoryGroup(c, products, Number(c.category_id || 0), c.category_name || c.name);
+				return;
+			}
+
+			// Raw Servo rows: split products by each product's category_id.
+			if (products.length > 0) {
+				const buckets = new Map();
+				products.forEach((p) => {
+					const pcid = Number(p.category_id || c.category_id || 0);
+					const key = pcid > 0 ? String(pcid) : 'row';
+					if (!buckets.has(key)) buckets.set(key, []);
+					buckets.get(key).push(p);
+				});
+				buckets.forEach((bucketProducts, bucketKey) => {
+					const categoryId = Number(bucketKey) || Number(c.category_id || 0);
+					const first = bucketProducts[0] || {};
+					const categoryName = String(first.category_name || c.category_name || c.name || '')
+						.trim();
+					upsertCategoryGroup(c, bucketProducts, categoryId, categoryName);
+				});
+				return;
+			}
+
+			upsertCategoryGroup(c, products, Number(c.category_id || 0), c.category_name || c.name);
 		});
 
 		return [...groups.values()]
