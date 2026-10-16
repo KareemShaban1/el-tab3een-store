@@ -25,6 +25,6 @@ return [
     'invalid_governorate' => 'المحافظة المحددة غير صالحة.',
     'invalid_city' => 'المدينة المحددة غير صالحة.',
     'invalid_area' => 'المنطقة المحددة غير صالحة.',
-    'location_required' => 'يرجى اختيار المحافظة والمدينة والمنطقة.',
+    'location_required' => 'يرجى اختيار المحافظة والمدينة.',
     'custom_area_required' => 'يرجى إدخال اسم منطقتك.',
 ];

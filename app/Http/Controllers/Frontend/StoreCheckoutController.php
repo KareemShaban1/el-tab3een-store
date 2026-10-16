@@ -58,10 +58,13 @@ class StoreCheckoutController extends Controller
                 ->first();
         }
 
-        $locations_fees_enabled = \Illuminate\Support\Facades\Schema::hasTable('lf_governorates');
+        $locations_fees_enabled = Schema::hasTable('lf_governorates');
         $lf_governorates = $locations_fees_enabled
             ? Governorate::forBusiness($business_id)->active()->orderBy('name')->get(['id', 'name'])
             : collect();
+        $lf_previous_location = $locations_fees_enabled
+            ? app(LocationsFeesUtil::class)->resolvePreviousCustomerLocation($business_id, $customer)
+            : null;
 
         return view('frontend.store.checkout')->with([
             'variation' => $variation,
@@ -70,6 +73,7 @@ class StoreCheckoutController extends Controller
             'customer' => $customer,
             'locations_fees_enabled' => $locations_fees_enabled,
             'lf_governorates' => $lf_governorates,
+            'lf_previous_location' => $lf_previous_location,
         ]);
     }
 
@@ -1423,7 +1427,7 @@ class StoreCheckoutController extends Controller
         $provided = $validated['addresses']['shipping_address'] ?? [];
         $locations_fees_enabled = Schema::hasTable('lf_governorates');
         $location_meta = $locations_fees_enabled
-            ? $this->resolveLocationsFeesMeta($provided, $business_id, $delivery_fee)
+            ? $this->resolveLocationsFeesMeta($provided, $business_id, $delivery_fee, $customer_contact)
             : [];
 
         if ($option === 'new' || (! empty($provided) && empty($option))) {
@@ -1472,26 +1476,34 @@ class StoreCheckoutController extends Controller
     }
 
     /**
-     * Resolve area-based delivery fee from the Locations Fees module.
+     * Resolve delivery fee from the Locations Fees module.
+     * Uses area fee when selected; otherwise falls back to city fee.
+     * Falls back to the customer's previous location when IDs are missing.
      *
      * @return array<string, mixed>
      */
-    private function resolveLocationsFeesMeta(array $provided, int $business_id, float &$delivery_fee): array
+    private function resolveLocationsFeesMeta(array $provided, int $business_id, float &$delivery_fee, ?Contact $customer_contact = null): array
     {
         $governorate_id = (int) ($provided['lf_governorate_id'] ?? 0);
         $city_id = (int) ($provided['lf_city_id'] ?? 0);
         $area_id = ! empty($provided['lf_area_id']) ? (int) $provided['lf_area_id'] : null;
         $custom_area = trim((string) ($provided['lf_custom_area'] ?? ''));
 
+        if (($governorate_id <= 0 || $city_id <= 0) && $customer_contact) {
+            $previous = app(LocationsFeesUtil::class)->resolvePreviousCustomerLocation($business_id, $customer_contact);
+            if (! empty($previous)) {
+                $governorate_id = (int) $previous['lf_governorate_id'];
+                $city_id = (int) $previous['lf_city_id'];
+                $area_id = ! empty($previous['lf_area_id']) ? (int) $previous['lf_area_id'] : null;
+                if ($custom_area === '' && ! empty($previous['lf_custom_area'])) {
+                    $custom_area = (string) $previous['lf_custom_area'];
+                }
+            }
+        }
+
         if ($governorate_id <= 0 || $city_id <= 0) {
             throw ValidationException::withMessages([
                 'addresses.shipping_address.lf_governorate_id' => __('locations_fees.location_required'),
-            ]);
-        }
-
-        if (empty($area_id) && $custom_area === '') {
-            throw ValidationException::withMessages([
-                'addresses.shipping_address.lf_area_id' => __('locations_fees.location_required'),
             ]);
         }
 

@@ -25,6 +25,6 @@ return [
     'invalid_governorate' => 'Invalid governorate selected.',
     'invalid_city' => 'Invalid city selected.',
     'invalid_area' => 'Invalid area selected.',
-    'location_required' => 'Please select governorate, city, and area.',
+    'location_required' => 'Please select governorate and city.',
     'custom_area_required' => 'Please enter your area name.',
 ];
