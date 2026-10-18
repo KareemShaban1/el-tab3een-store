@@ -155,6 +155,11 @@ class ManufacturingUtil extends Util
         $query = Transaction::where('business_id', $business_id)
                     ->where('type', 'production_purchase')
                     ->where('mfg_is_final', 1)
+                    // Exclude carton→bottle unpacking; it is stock conversion, not production.
+                    ->where(function ($q) {
+                        $q->whereNull('mfg_stage')
+                            ->orWhere('mfg_stage', '!=', 'packaging_transform');
+                    })
                     ->select(
                         'final_total',
                         DB::raw('SUM(final_total - ((final_total * 100) / (mfg_production_cost + 100) ) ) as total_production_cost')
@@ -205,8 +210,18 @@ class ManufacturingUtil extends Util
         $query = TransactionSellLinesPurchaseLines::join('purchase_lines as pl', 'pl.id', '=', 'transaction_sell_lines_purchase_lines.purchase_line_id')
                             ->join('transaction_sell_lines as tsl', 'tsl.id', '=', 'transaction_sell_lines_purchase_lines.sell_line_id')
                                 ->join('transactions as t', 'pl.transaction_id', '=', 't.id')
+                                ->join('transactions as sell_t', 'sell_t.id', '=', 'tsl.transaction_id')
                                 ->where('t.business_id', $business_id)
                                 ->where('t.type', 'production_purchase')
+                                // Exclude carton→bottle unpacking from manufactured "sold" totals.
+                                ->where(function ($q) {
+                                    $q->whereNull('t.mfg_stage')
+                                        ->orWhere('t.mfg_stage', '!=', 'packaging_transform');
+                                })
+                                ->where(function ($q) {
+                                    $q->whereNull('sell_t.mfg_stage')
+                                        ->orWhere('sell_t.mfg_stage', '!=', 'packaging_transform');
+                                })
                                 ->select(DB::raw('SUM((tsl.quantity - tsl.quantity_returned) * tsl.unit_price_inc_tax) as total_sold'));
 
         //Check for permitted locations of a user
@@ -216,11 +231,11 @@ class ManufacturingUtil extends Util
         }
 
         if (!empty($start_date) && !empty($end_date)) {
-            $query->whereBetween(DB::raw('date(transaction_date)'), [$start_date, $end_date]);
+            $query->whereBetween(DB::raw('date(t.transaction_date)'), [$start_date, $end_date]);
         }
 
         if (empty($start_date) && !empty($end_date)) {
-            $query->whereDate('transaction_date', '<=', $end_date);
+            $query->whereDate('t.transaction_date', '<=', $end_date);
         }
 
         //Filter by the location

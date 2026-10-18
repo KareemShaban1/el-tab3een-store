@@ -261,7 +261,12 @@ class DataController extends Controller
         ) {
         $query = Transaction::where('business_id', $business_id)
                             ->where('type', 'production_purchase')
-                            ->where('mfg_is_final', 1);
+                            ->where('mfg_is_final', 1)
+                            // Exclude carton→bottle unpacking from profit/loss production cost.
+                            ->where(function ($q) {
+                                $q->whereNull('mfg_stage')
+                                    ->orWhere('mfg_stage', '!=', 'packaging_transform');
+                            });
         
         //Check for permitted locations of a user
         $permitted_locations = auth()->user()->permitted_locations();
