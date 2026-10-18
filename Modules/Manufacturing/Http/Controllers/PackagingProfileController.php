@@ -95,6 +95,7 @@ class PackagingProfileController extends Controller
                 'name' => 'required',
                 'bulk_variation_id' => 'required|integer',
                 'output_variation_id' => 'required|integer|different:bulk_variation_id',
+                'unit_variation_id' => 'nullable|integer|different:bulk_variation_id|different:output_variation_id',
                 'container_type' => 'required|in:bottle,bag',
                 'units_per_carton' => 'nullable|integer|min:1|required_if:uses_carton,1',
                 'bulk_qty_per_container' => 'required|numeric|min:0.0001',
@@ -109,6 +110,7 @@ class PackagingProfileController extends Controller
                 'name' => $request->input('name'),
                 'bulk_variation_id' => $request->input('bulk_variation_id'),
                 'output_variation_id' => $request->input('output_variation_id'),
+                'unit_variation_id' => $uses_carton ? ($request->input('unit_variation_id') ?: null) : null,
                 'container_type' => $request->input('container_type'),
                 'container_volume' => $request->input('container_volume'),
                 'uses_carton' => $uses_carton,
@@ -139,7 +141,7 @@ class PackagingProfileController extends Controller
         $this->authorizePackaging($business_id);
 
         $profile = MfgPackagingProfile::where('business_id', $business_id)
-            ->with(['materials.variation.product', 'materials.variation.product_variation', 'bulkVariation.product', 'outputVariation.product'])
+            ->with(['materials.variation.product', 'materials.variation.product_variation', 'bulkVariation.product', 'outputVariation.product', 'unitVariation.product'])
             ->findOrFail($id);
 
         return view('manufacturing::packaging_profile.show')->with(compact('profile'));
@@ -151,7 +153,7 @@ class PackagingProfileController extends Controller
         $this->authorizePackaging($business_id, true);
 
         $profile = MfgPackagingProfile::where('business_id', $business_id)
-            ->with(['materials.variation.product', 'materials.variation.product_variation', 'bulkVariation.product', 'bulkVariation.product_variation', 'outputVariation.product', 'outputVariation.product_variation'])
+            ->with(['materials.variation.product', 'materials.variation.product_variation', 'bulkVariation.product', 'bulkVariation.product_variation', 'outputVariation.product', 'outputVariation.product_variation', 'unitVariation.product', 'unitVariation.product_variation'])
             ->findOrFail($id);
 
         return view('manufacturing::packaging_profile.edit')->with(compact('profile'));
@@ -167,6 +169,7 @@ class PackagingProfileController extends Controller
                 'name' => 'required',
                 'bulk_variation_id' => 'required|integer',
                 'output_variation_id' => 'required|integer|different:bulk_variation_id',
+                'unit_variation_id' => 'nullable|integer|different:bulk_variation_id|different:output_variation_id',
                 'container_type' => 'required|in:bottle,bag',
                 'units_per_carton' => 'nullable|integer|min:1|required_if:uses_carton,1',
                 'bulk_qty_per_container' => 'required|numeric|min:0.0001',
@@ -181,6 +184,7 @@ class PackagingProfileController extends Controller
                 'name' => $request->input('name'),
                 'bulk_variation_id' => $request->input('bulk_variation_id'),
                 'output_variation_id' => $request->input('output_variation_id'),
+                'unit_variation_id' => $uses_carton ? ($request->input('unit_variation_id') ?: null) : null,
                 'container_type' => $request->input('container_type'),
                 'container_volume' => $request->input('container_volume'),
                 'uses_carton' => $uses_carton,

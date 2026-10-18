@@ -75,8 +75,10 @@
         function toggleCartonProfileFields() {
             var enabled = usesCarton();
             $('.units-per-carton-wrap').toggle(enabled);
+            $('.unit-product-wrap').toggle(enabled);
             if (!enabled) {
                 $('#units_per_carton').val('');
+                $('#unit_variation_id').val(null).trigger('change');
             } else if (!$('#units_per_carton').val()) {
                 $('#units_per_carton').val(12);
             }

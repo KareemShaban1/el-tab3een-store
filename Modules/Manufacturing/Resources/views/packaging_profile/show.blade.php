@@ -13,6 +13,9 @@
             <div class="col-sm-6">
                 <p><strong>@lang('manufacturing::lang.bulk_product'):</strong> {{ \Modules\Manufacturing\Entities\MfgPackagingProfile::variationLabel($profile->bulkVariation) }}</p>
                 <p><strong>@lang('manufacturing::lang.output_product'):</strong> {{ \Modules\Manufacturing\Entities\MfgPackagingProfile::variationLabel($profile->outputVariation) }}</p>
+                @if($profile->usesCarton() && !empty($profile->unitVariation))
+                    <p><strong>@lang('manufacturing::lang.unit_product'):</strong> {{ \Modules\Manufacturing\Entities\MfgPackagingProfile::variationLabel($profile->unitVariation) }}</p>
+                @endif
                 <p><strong>@lang('manufacturing::lang.container_type'):</strong> @lang('manufacturing::lang.' . $profile->container_type)</p>
             </div>
             <div class="col-sm-6">

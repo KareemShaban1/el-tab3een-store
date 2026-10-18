@@ -211,11 +211,15 @@ class PackagingUtil extends ManufacturingUtil
         $profile->load([
             'bulkVariation.product.unit',
             'outputVariation.product.unit',
+            'unitVariation.product.unit',
             'materials.variation.product.unit',
         ]);
 
         $bulk_stock = $this->getAvailableStock($profile->bulk_variation_id, $location_id);
         $output_stock = $this->getAvailableStock($profile->output_variation_id, $location_id);
+        $unit_stock = ! empty($profile->unit_variation_id)
+            ? $this->getAvailableStock($profile->unit_variation_id, $location_id)
+            : 0;
 
         $calc = null;
         if (! is_null($containers_count) && $containers_count !== '') {
@@ -230,8 +234,75 @@ class PackagingUtil extends ManufacturingUtil
             'profile' => $profile,
             'bulk_stock' => $bulk_stock,
             'output_stock' => $output_stock,
+            'unit_stock' => $unit_stock,
             'bulk_label' => MfgPackagingProfile::variationLabel($profile->bulkVariation),
             'output_label' => MfgPackagingProfile::variationLabel($profile->outputVariation),
+            'unit_label' => ! empty($profile->unitVariation)
+                ? MfgPackagingProfile::variationLabel($profile->unitVariation)
+                : '',
+            'calculation' => $calc,
+        ];
+    }
+
+    /**
+     * Calculate carton → unit (bottle/bag) transformation quantities.
+     */
+    public function calculateTransformation(MfgPackagingProfile $profile, $carton_qty)
+    {
+        $carton_qty = (float) $carton_qty;
+        $units_per_carton = (int) $profile->units_per_carton;
+
+        return [
+            'carton_qty' => $carton_qty,
+            'units_per_carton' => $units_per_carton,
+            'unit_qty' => $carton_qty * $units_per_carton,
+            'carton_variation_id' => $profile->output_variation_id,
+            'unit_variation_id' => $profile->unit_variation_id,
+            'container_type' => $profile->container_type,
+        ];
+    }
+
+    public function validateTransformationInput(MfgPackagingProfile $profile, $carton_qty)
+    {
+        $errors = [];
+        $carton_qty = (float) $carton_qty;
+
+        if (! $profile->canTransformCartonToUnit()) {
+            $errors[] = __('manufacturing::lang.profile_not_ready_for_transformation');
+        }
+
+        if ($carton_qty <= 0) {
+            $errors[] = __('manufacturing::lang.carton_qty_must_be_greater_than_zero');
+        }
+
+        if (floor($carton_qty) != $carton_qty) {
+            $errors[] = __('manufacturing::lang.carton_qty_must_be_whole_number');
+        }
+
+        return $errors;
+    }
+
+    public function getTransformationDetailsForLocation(MfgPackagingProfile $profile, $location_id, $carton_qty = null)
+    {
+        $profile->load([
+            'outputVariation.product.unit',
+            'unitVariation.product.unit',
+        ]);
+
+        $carton_stock = $this->getAvailableStock($profile->output_variation_id, $location_id);
+        $unit_stock = $this->getAvailableStock($profile->unit_variation_id, $location_id);
+        $calc = null;
+
+        if (! is_null($carton_qty) && $carton_qty !== '') {
+            $calc = $this->calculateTransformation($profile, $carton_qty);
+        }
+
+        return [
+            'profile' => $profile,
+            'carton_stock' => $carton_stock,
+            'unit_stock' => $unit_stock,
+            'carton_label' => MfgPackagingProfile::variationLabel($profile->outputVariation),
+            'unit_label' => MfgPackagingProfile::variationLabel($profile->unitVariation),
             'calculation' => $calc,
         ];
     }

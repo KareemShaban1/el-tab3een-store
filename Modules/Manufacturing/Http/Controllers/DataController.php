@@ -180,6 +180,12 @@ class DataController extends Controller
                                     __('manufacturing::lang.packaging_production'),
                                     ['icon' => '', 'active' => request()->segment(2) == 'packaging-production']
                                 );
+
+                                $sub->url(
+                                    action([\Modules\Manufacturing\Http\Controllers\PackagingTransformationController::class, 'index']),
+                                    __('manufacturing::lang.transformations'),
+                                    ['icon' => '', 'active' => request()->segment(2) == 'packaging-transformation']
+                                );
                             }
 
                             $sub->url(

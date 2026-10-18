@@ -34,15 +34,46 @@ class MfgPackagingProfile extends Model
         return $this->belongsTo(\App\Variation::class, 'output_variation_id');
     }
 
+    /**
+     * Sellable unit product (bottle/bag) used when unpacking cartons.
+     */
+    public function unitVariation()
+    {
+        return $this->belongsTo(\App\Variation::class, 'unit_variation_id');
+    }
+
     public function materials()
     {
         return $this->hasMany(MfgPackagingMaterial::class, 'packaging_profile_id');
+    }
+
+    public function canTransformCartonToUnit(): bool
+    {
+        return $this->usesCarton()
+            && ! empty($this->unit_variation_id)
+            && (int) $this->units_per_carton > 0
+            && ! empty($this->output_variation_id)
+            && (int) $this->unit_variation_id !== (int) $this->output_variation_id;
     }
 
     public static function forDropdown($business_id)
     {
         return static::where('business_id', $business_id)
             ->where('is_active', 1)
+            ->orderBy('name')
+            ->pluck('name', 'id');
+    }
+
+    /**
+     * Profiles that support carton → bottle/bag transformation.
+     */
+    public static function forTransformDropdown($business_id)
+    {
+        return static::where('business_id', $business_id)
+            ->where('is_active', 1)
+            ->where('uses_carton', 1)
+            ->whereNotNull('unit_variation_id')
+            ->where('units_per_carton', '>', 0)
             ->orderBy('name')
             ->pluck('name', 'id');
     }

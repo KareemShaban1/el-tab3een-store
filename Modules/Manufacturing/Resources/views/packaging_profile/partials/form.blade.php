@@ -28,6 +28,18 @@
             ) !!}
         </div>
     </div>
+    <div class="col-sm-4 unit-product-wrap">
+        <div class="form-group">
+            {!! Form::label('unit_variation_id', __('manufacturing::lang.unit_product') . ':') !!}
+            {!! Form::select(
+                'unit_variation_id',
+                !empty($profile) && !empty($profile->unitVariation) ? [$profile->unit_variation_id => \Modules\Manufacturing\Entities\MfgPackagingProfile::variationLabel($profile->unitVariation)] : [],
+                !empty($profile) ? $profile->unit_variation_id : null,
+                ['class' => 'form-control product_variation select2', 'placeholder' => __('messages.please_select'), 'id' => 'unit_variation_id', 'style' => 'width:100%']
+            ) !!}
+            <p class="help-block">@lang('manufacturing::lang.unit_product_help')</p>
+        </div>
+    </div>
     <div class="col-sm-3">
         <div class="form-group">
             {!! Form::label('container_type', __('manufacturing::lang.container_type') . ':*') !!}
