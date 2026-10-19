@@ -173,4 +173,5 @@ return[
 "used_packaging_materials_help" => "اختر منتجات مواد التعبئة المستخدمة أو التالفة في هذا الإنتاج. عند الإنهاء سيتم خصم كمياتها من المخزون وحفظها مع الإنتاج.",
 "packaging_material" => "مادة التعبئة",
 "packaging_materials_cost" => "تكلفة مواد التعبئة",
+"add_packaging_material" => "إضافة مادة تعبئة",
 ];

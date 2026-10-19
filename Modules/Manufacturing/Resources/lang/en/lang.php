@@ -177,4 +177,5 @@ return [
     'used_packaging_materials_help' => 'Select packaging material products used or wasted in this production. On finalize, their stock will be reduced and quantities will be saved with the production.',
     'packaging_material' => 'Packaging Material',
     'packaging_materials_cost' => 'Packaging Materials Cost',
+    'add_packaging_material' => 'Add Packaging Material',
 ];
