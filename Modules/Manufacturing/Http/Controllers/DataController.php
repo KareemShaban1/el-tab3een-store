@@ -121,6 +121,12 @@ class DataController extends Controller
             return;
         }
 
+        if (request()->boolean('only_packaging_materials')) {
+            $data['query']->where('products.product_usage_type', 'packaging_material');
+
+            return;
+        }
+
         if (request()->boolean('include_packaging_materials')) {
             return;
         }

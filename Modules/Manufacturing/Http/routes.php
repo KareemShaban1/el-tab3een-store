@@ -13,6 +13,7 @@ Route::group(['middleware' => ['web', 'authh', 'SetSessionData', 'auth', 'langua
     Route::get('/add-ingredient', 'RecipeController@addIngredients');
     Route::resource('/recipe', 'RecipeController', ['except' => ['edit', 'update']]);
     Route::resource('/production', 'ProductionController');
+    Route::get('/production-packaging-material-row', 'ProductionController@getPackagingMaterialRow');
     Route::resource('/settings', 'SettingsController', ['only' => ['index', 'store']]);
 
     Route::resource('/packaging-profile', 'PackagingProfileController');

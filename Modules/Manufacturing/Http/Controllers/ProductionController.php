@@ -16,7 +16,9 @@ use DB;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Routing\Controller;
+use Modules\Manufacturing\Entities\MfgProductionPackagingUsage;
 use Modules\Manufacturing\Entities\MfgRecipe;
+use Modules\Manufacturing\Support\PackagingFeature;
 use Modules\Manufacturing\Utils\ManufacturingUtil;
 use Yajra\DataTables\Facades\DataTables;
 
@@ -139,9 +141,10 @@ class ProductionController extends Controller
         $business_locations = BusinessLocation::forDropdown($business_id);
 
         $recipe_dropdown = MfgRecipe::forDropdown($business_id);
+        $show_packaging_materials = PackagingFeature::isEnabledForBusiness($business_id);
 
         return view('manufacturing::production.create')
-                ->with(compact('business_locations', 'recipe_dropdown'));
+                ->with(compact('business_locations', 'recipe_dropdown', 'show_packaging_materials'));
     }
 
     /**
@@ -305,12 +308,17 @@ class ProductionController extends Controller
                     ];
             }
 
+            $packaging_sell_lines = $this->buildPackagingMaterialSellLines($request->input('packaging_materials', []));
+            $sell_lines = array_merge($sell_lines, $packaging_sell_lines);
+
             //Create Sell Transfer transaction
             $production_sell = Transaction::create($transaction_sell_data);
 
             if (!empty($sell_lines)) {
                 $this->transactionUtil->createOrUpdateSellLines($production_sell, $sell_lines, $transaction_sell_data['location_id'], null, null, ['mfg_waste_percent' => 'mfg_waste_percent']);
             }
+
+            $this->syncPackagingMaterialUsages($transaction->id, $production_sell->id, $packaging_sell_lines);
 
             if ($production_sell->status == 'final') {
                 foreach ($sell_lines as $sell_line) {
@@ -390,7 +398,9 @@ class ProductionController extends Controller
         $actual_quantity = $quantity * $base_unit_multiplier;
 
         $ingredients = [];
+        $packaging_materials = [];
         $total_ingredients_price = 0;
+        $total_packaging_price = 0;
         //Format sell lines
         foreach ($production_sell->sell_lines as $sell_line) {
             $variation = $sell_line->variations;
@@ -398,6 +408,19 @@ class ProductionController extends Controller
             $unit = empty($sell_line->sub_unit) ? $variation->product->unit->short_name : $sell_line->sub_unit->short_name;
 
             $line_total_price = $variation->dpp_inc_tax * $sell_line->quantity;
+
+            if ($this->isPackagingMaterialSellLine($sell_line)) {
+                $total_packaging_price += $line_total_price;
+                $packaging_materials[] = [
+                    'full_name' => $variation->full_name,
+                    'quantity' => $sell_line_qty,
+                    'unit' => $unit,
+                    'unit_price' => $variation->dpp_inc_tax,
+                    'total_price' => $line_total_price,
+                ];
+                continue;
+            }
+
             $total_ingredients_price += $line_total_price;
 
             $waste_percent = !empty($sell_line->mfg_waste_percent) ? $sell_line->mfg_waste_percent : 0;
@@ -430,7 +453,7 @@ class ProductionController extends Controller
             
         }
 
-        return view('manufacturing::production.show')->with(compact('production_purchase', 'production_sell', 'purchase_line', 'ingredients', 'unit_name', 'quantity', 'quantity_wasted', 'actual_quantity', 'total_production_cost'));
+        return view('manufacturing::production.show')->with(compact('production_purchase', 'production_sell', 'purchase_line', 'ingredients', 'packaging_materials', 'total_packaging_price', 'unit_name', 'quantity', 'quantity_wasted', 'actual_quantity', 'total_production_cost'));
     }
 
     /**
@@ -483,9 +506,20 @@ class ProductionController extends Controller
         $sub_unit_id = $purchase_line->sub_unit_id;
 
         $ingredients = [];
+        $packaging_materials = [];
         $total_ingredients_price = 0;
         foreach ($production_sell->sell_lines as $sell_line) {
             $variation = $sell_line->variations;
+
+            if ($this->isPackagingMaterialSellLine($sell_line)) {
+                $packaging_materials[] = [
+                    'variation_id' => $variation->id,
+                    'full_name' => $variation->full_name,
+                    'quantity' => $sell_line->quantity,
+                    'unit_price' => $variation->dpp_inc_tax,
+                ];
+                continue;
+            }
 
             $line_sub_units = $this->moduleUtil->getSubUnits($business_id, $variation->product->unit->id);
             $is_line_sub_unit = false;
@@ -555,8 +589,9 @@ class ProductionController extends Controller
         $pos_settings = empty($business_details->pos_settings) ? $this->businessUtil->defaultPosSettings() : json_decode($business_details->pos_settings, true);
 
         $manufacturing_settings = $this->mfgUtil->getSettings($business_id);
+        $show_packaging_materials = PackagingFeature::isEnabledForBusiness($business_id);
 
-        return view('manufacturing::production.edit')->with(compact('production_purchase', 'production_sell', 'business_locations', 'recipe_dropdown', 'ingredients', 'business_details', 'pos_settings', 'sub_units', 'quantity', 'quantity_wasted', 'actual_quantity', 'recipe', 'unit_name', 'sub_unit_id', 'total_production_cost', 'manufacturing_settings'));
+        return view('manufacturing::production.edit')->with(compact('production_purchase', 'production_sell', 'business_locations', 'recipe_dropdown', 'ingredients', 'packaging_materials', 'business_details', 'pos_settings', 'sub_units', 'quantity', 'quantity_wasted', 'actual_quantity', 'recipe', 'unit_name', 'sub_unit_id', 'total_production_cost', 'manufacturing_settings', 'show_packaging_materials'));
     }
 
     /**
@@ -690,6 +725,10 @@ class ProductionController extends Controller
             $ingredient_quantities = $request->input('ingredients');
 
             foreach ($production_sell->sell_lines as $sell_line) {
+                if ($this->isPackagingMaterialSellLine($sell_line)) {
+                    continue;
+                }
+
                 $variation = $sell_line->variations;
 
                 $line_sub_unit_id = !empty($ingredient_quantities[$sell_line->id]['sub_unit_id']) ?
@@ -718,9 +757,14 @@ class ProductionController extends Controller
                 ];
             }
 
+            $packaging_sell_lines = $this->buildPackagingMaterialSellLines($request->input('packaging_materials', []));
+            $sell_lines = array_merge($sell_lines, $packaging_sell_lines);
+
             if (!empty($sell_lines)) {
                 $this->transactionUtil->createOrUpdateSellLines($production_sell, $sell_lines, $transaction->location_id, false, 'draft', ['mfg_waste_percent' => 'mfg_waste_percent']);
             }
+
+            $this->syncPackagingMaterialUsages($transaction->id, $production_sell->id, $packaging_sell_lines);
 
             if ($transaction_sell_data['status'] == 'final') {
                 foreach ($sell_lines as $sell_line) {
@@ -874,6 +918,7 @@ class ProductionController extends Controller
                     $production_sell->delete();
                 }
 
+                MfgProductionPackagingUsage::where('production_purchase_id', $transaction->id)->delete();
                 PurchaseLine::where('transaction_id', $transaction->id)->delete();
                 $transaction->delete();
 
@@ -894,6 +939,121 @@ class ProductionController extends Controller
             }
 
             return $output;
+        }
+    }
+
+    /**
+     * AJAX row HTML for packaging materials used/wasted on production.
+     */
+    public function getPackagingMaterialRow(Request $request)
+    {
+        $business_id = $request->session()->get('user.business_id');
+        if (!(auth()->user()->can('superadmin') || $this->moduleUtil->hasThePermissionInSubscription($business_id, 'manufacturing_module')) || !auth()->user()->can('manufacturing.access_production')) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        $row_index = (int) $request->input('row_index', 0);
+        $material = null;
+        $variation_id = $request->input('variation_id');
+
+        if (! empty($variation_id)) {
+            $variation = Variation::with('product')->find($variation_id);
+            if (! empty($variation)) {
+                if ($request->boolean('json')) {
+                    return response()->json([
+                        'variation_id' => $variation->id,
+                        'unit_price' => (float) $variation->dpp_inc_tax,
+                        'full_name' => $variation->full_name,
+                    ]);
+                }
+
+                $material = (object) [
+                    'variation_id' => $variation->id,
+                    'full_name' => $variation->full_name,
+                    'quantity' => 1,
+                    'unit_price' => $variation->dpp_inc_tax,
+                ];
+            }
+        }
+
+        return view('manufacturing::production.partials.packaging_material_row')
+            ->with(compact('row_index', 'material'))
+            ->render();
+    }
+
+    protected function isPackagingMaterialSellLine($sell_line): bool
+    {
+        return ! empty($sell_line->sell_line_note) && $sell_line->sell_line_note === 'mfg_packaging_material';
+    }
+
+    /**
+     * Build production_sell lines for packaging materials entered on the form.
+     */
+    protected function buildPackagingMaterialSellLines(array $materials): array
+    {
+        $sell_lines = [];
+
+        foreach ($materials as $material) {
+            if (empty($material['variation_id'])) {
+                continue;
+            }
+
+            $qty = $this->productUtil->num_uf($material['quantity'] ?? 0);
+            if ($qty <= 0) {
+                continue;
+            }
+
+            $variation = Variation::with('product')->find($material['variation_id']);
+            if (empty($variation) || empty($variation->product)) {
+                continue;
+            }
+
+            $unit_price = (float) $variation->dpp_inc_tax;
+
+            $sell_lines[] = [
+                'product_id' => $variation->product_id,
+                'variation_id' => $variation->id,
+                'quantity' => $qty,
+                'item_tax' => 0,
+                'tax_id' => null,
+                'unit_price' => $unit_price,
+                'unit_price_inc_tax' => $unit_price,
+                'enable_stock' => $variation->product->enable_stock,
+                'product_unit_id' => $variation->product->unit_id,
+                'sub_unit_id' => null,
+                'base_unit_multiplier' => 1,
+                'mfg_waste_percent' => 0,
+                'sell_line_note' => 'mfg_packaging_material',
+            ];
+        }
+
+        return $sell_lines;
+    }
+
+    /**
+     * Persist packaging material usages linked to a production for display/history.
+     */
+    protected function syncPackagingMaterialUsages($production_purchase_id, $production_sell_id, array $packaging_sell_lines)
+    {
+        MfgProductionPackagingUsage::where('production_purchase_id', $production_purchase_id)->delete();
+
+        if (empty($packaging_sell_lines)) {
+            return;
+        }
+
+        $sell_lines = Transaction::find($production_sell_id)
+            ->sell_lines()
+            ->where('sell_line_note', 'mfg_packaging_material')
+            ->get();
+
+        foreach ($sell_lines as $sell_line) {
+            MfgProductionPackagingUsage::create([
+                'production_purchase_id' => $production_purchase_id,
+                'variation_id' => $sell_line->variation_id,
+                'quantity' => $sell_line->quantity,
+                'unit_price' => $sell_line->unit_price_inc_tax,
+                'sell_line_id' => $sell_line->id,
+            ]);
         }
     }
 

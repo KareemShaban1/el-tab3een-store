@@ -171,4 +171,10 @@ return [
     'insufficient_carton_stock_for_transformation' => 'Insufficient carton stock for this transformation.',
     'stock_available_for_transformation' => 'Stock is available for this transformation.',
     'no_transformable_profiles' => 'No packaging profiles are ready for transformation. Edit a carton profile and set the Unit Product (Bottle).',
+
+    // Packaging materials used during cooking production
+    'used_packaging_materials' => 'Used / Wasted Packaging Materials',
+    'used_packaging_materials_help' => 'Select packaging material products used or wasted in this production. On finalize, their stock will be reduced and quantities will be saved with the production.',
+    'packaging_material' => 'Packaging Material',
+    'packaging_materials_cost' => 'Packaging Materials Cost',
 ];

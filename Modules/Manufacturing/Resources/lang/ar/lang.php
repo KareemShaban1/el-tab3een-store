@@ -167,4 +167,10 @@ return[
 "insufficient_carton_stock_for_transformation" => "مخزون الكراتين غير كافٍ لهذا التحويل.",
 "stock_available_for_transformation" => "المخزون متاح لهذا التحويل.",
 "no_transformable_profiles" => "لا توجد ملفات تعبئة جاهزة للتحويل. عدّل ملف كرتون وحدّد منتج الوحدة (الزجاجة).",
+
+// مواد التعبئة المستخدمة أثناء إنتاج الطبخ
+"used_packaging_materials" => "مواد التعبئة المستخدمة / التالفة",
+"used_packaging_materials_help" => "اختر منتجات مواد التعبئة المستخدمة أو التالفة في هذا الإنتاج. عند الإنهاء سيتم خصم كمياتها من المخزون وحفظها مع الإنتاج.",
+"packaging_material" => "مادة التعبئة",
+"packaging_materials_cost" => "تكلفة مواد التعبئة",
 ];

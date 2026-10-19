@@ -130,6 +130,12 @@
                                 <td colspan="4" class="text-right"><strong>@lang('manufacturing::lang.ingredients_cost')</strong></td>
                                 <td><span class="display_currency" data-currency_symbol="true">{{$total_ingredient_price}}</span></td>
                             </tr>
+                            @if(!empty($packaging_materials))
+                                <tr>
+                                    <td colspan="4" class="text-right"><strong>@lang('manufacturing::lang.packaging_materials_cost')</strong></td>
+                                    <td><span class="display_currency" data-currency_symbol="true">{{$total_packaging_price}}</span></td>
+                                </tr>
+                            @endif
                             <tr>
                                 <td colspan="4" class="text-right"><strong>{{__('manufacturing::lang.production_cost')}}:</strong></td>
                                 <td><span class="display_currency" data-currency_symbol="true">{{$total_production_cost}}</span> </td>
@@ -140,6 +146,39 @@
                     </table>
                 </div>
             </div>
+            @if(!empty($packaging_materials))
+                <div class="row">
+                    <div class="col-md-12">
+                        <h4>@lang('manufacturing::lang.used_packaging_materials')</h4>
+                    </div>
+                    <div class="col-md-12">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>@lang('manufacturing::lang.packaging_material')</th>
+                                    <th>@lang('lang_v1.quantity')</th>
+                                    <th>@lang('manufacturing::lang.total_price')</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($packaging_materials as $material)
+                                    <tr>
+                                        <td>{{ $material['full_name'] }}</td>
+                                        <td>{{ @format_quantity($material['quantity']) }} {{ $material['unit'] }}</td>
+                                        <td><span class="display_currency" data-currency_symbol="true">{{ $material['total_price'] }}</span></td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                            <tfoot>
+                                <tr class="bg-gray">
+                                    <td colspan="2" class="text-right"><strong>@lang('sale.total')</strong></td>
+                                    <td><strong><span class="display_currency" data-currency_symbol="true">{{ $total_packaging_price }}</span></strong></td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+            @endif
         </div>
 
         <div class="modal-footer">
