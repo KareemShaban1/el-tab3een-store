@@ -2235,7 +2235,8 @@
 		padding: 20px;
 		text-align: center;
 		transition: var(--t);
-		cursor: pointer
+		cursor: pointer;
+		position: relative
 	}
 
 	.flash-card:hover {

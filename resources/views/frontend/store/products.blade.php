@@ -51,6 +51,10 @@ if ($sPmax <= $sPmin) { $sPmax=$sPmin + 1; } $sliderRngLo=$sPmin; $sliderRngHi=$
 	$vars = collect($item['variations'] ?? []);
 	$def = $vars->first();
 	$price = $def ? (float) ($def['price_inc_tax'] ?? 0) : (float) ($item['min_price'] ?? 0);
+	$oldRaw = ($def && isset($def['old_price']) && $def['old_price'] !== null)
+	? (float) $def['old_price']
+	: ((isset($item['old_price']) && $item['old_price'] !== null) ? (float) $item['old_price'] : null);
+	$old = ($oldRaw !== null && $oldRaw > $price) ? $oldRaw : null;
 	$vid = $def ? (int) ($def['variation_id'] ?? 0) : (int) ($item['variation_id'] ?? $id);
 
 	return [
@@ -60,7 +64,7 @@ if ($sPmax <= $sPmin) { $sPmax=$sPmin + 1; } $sliderRngLo=$sPmin; $sliderRngHi=$
 	'category' => (string) ($item['category'] ?? ''),
 	'unit' => '',
 	'price' => $price,
-	'old' => null,
+	'old' => $old,
 	'img' => (string) ($item['image_url'] ?? ''),
 	// 'stars' => '⭐⭐⭐⭐⭐',
 	'reviews' => 'متوفر',
@@ -895,6 +899,12 @@ if ($sPmax <= $sPmin) { $sPmax=$sPmin + 1; } $sliderRngLo=$sPmin; $sliderRngHi=$
 					$defVar = $vars->first();
 					$defaultPrice = $defVar ? (float) ($defVar['price_inc_tax'] ?? 0) :
 					(float) ($item['min_price'] ?? 0);
+					$defaultOld = ($defVar && isset($defVar['old_price']) && $defVar['old_price'] !== null)
+					? (float) $defVar['old_price']
+					: ((isset($item['old_price']) && $item['old_price'] !== null) ? (float) $item['old_price'] : null);
+					$discountPct = ($defaultOld !== null && $defaultOld > $defaultPrice && $defaultOld > 0)
+					? max(1, (int) round((($defaultOld - $defaultPrice) / $defaultOld) * 100))
+					: 0;
 					$defVid = $defVar ? (int) ($defVar['variation_id'] ?? 0) : (int)
 					($item['variation_id'] ?? $item['id']);
 					$isServoItem = ($item['source'] ?? null) === 'servo';
@@ -911,9 +921,12 @@ if ($sPmax <= $sPmin) { $sPmax=$sPmin + 1; } $sliderRngLo=$sPmin; $sliderRngHi=$
 									alt="{{ $item['name'] }}">
 							</a>
 							<div class="prod-badges">
-								@if($idx < 2) <span class="badge-new">
-									جديد</span>
-									@endif
+								<span class="badge-disc"
+									id="prod-disc-{{ (int) $item['id'] }}"
+									@if($discountPct < 1) style="display:none" @endif>@if($discountPct > 0)-{{ $discountPct }}%@endif</span>
+								@if($idx < 2 && $discountPct < 1)
+								<span class="badge-new">جديد</span>
+								@endif
 							</div>
 						</div>
 						<div class="prod-info">
@@ -930,7 +943,8 @@ if ($sPmax <= $sPmin) { $sPmax=$sPmin + 1; } $sliderRngLo=$sPmin; $sliderRngHi=$
 									data-id="{{ (int) $item['id'] }}">
 									@foreach($vars as $v)
 									<option value="{{ (int) ($v['variation_id'] ?? 0) }}"
-										data-price="{{ (float) ($v['price_inc_tax'] ?? 0) }}">
+										data-price="{{ (float) ($v['price_inc_tax'] ?? 0) }}"
+										data-old-price="{{ !empty($v['old_price']) ? (float) $v['old_price'] : '' }}">
 										{{ $v['name'] ?: 'Default' }}
 										—
 										{{ number_format((float) ($v['price_inc_tax'] ?? 0), 2) }}
@@ -963,6 +977,9 @@ if ($sPmax <= $sPmin) { $sPmax=$sPmin + 1; } $sliderRngLo=$sPmin; $sliderRngHi=$
 								<span class="price-now"
 									id="prod-price-{{ (int) $item['id'] }}">{{ number_format($defaultPrice, 2) }}
 									ج.م</span>
+								<span class="price-was"
+									id="prod-old-{{ (int) $item['id'] }}"
+									@if($discountPct < 1) style="display:none" @endif>@if($discountPct > 0){{ number_format($defaultOld, 2) }} ج.م@endif</span>
 							</div>
 						</div>
 					</div>
@@ -1734,6 +1751,13 @@ if ($sPmax <= $sPmin) { $sPmax=$sPmin + 1; } $sliderRngLo=$sPmin; $sliderRngHi=$
 			}) + ' ج.م';
 		}
 
+		function storeDiscountPercent(oldPrice, price) {
+			const oldN = Number(oldPrice);
+			const priceN = Number(price);
+			if (!oldN || Number.isNaN(priceN) || oldN <= priceN) return 0;
+			return Math.max(1, Math.round(((oldN - priceN) / oldN) * 100));
+		}
+
 		function syncProductsFromGridItems(items) {
 			if (typeof PRODUCTS === 'undefined') return;
 			(items || []).forEach((p) => {
@@ -1743,13 +1767,16 @@ if ($sPmax <= $sPmin) { $sPmax=$sPmin + 1; } $sliderRngLo=$sPmin; $sliderRngHi=$
 				const defaultPrice = Number(defaultVariant ? defaultVariant
 					.price_inc_tax : (p.min_price || p
 						.price || 0));
+				const defaultOld = defaultVariant && defaultVariant.old_price ?
+					Number(defaultVariant.old_price) :
+					(p.old_price ? Number(p.old_price) : null);
 				PRODUCTS[p.id] = {
 					name: p.name,
 					brand: p.brand || '',
 					category: p.category || '',
 					unit: '',
 					price: defaultPrice,
-					old: null,
+					old: defaultOld && defaultOld > defaultPrice ? defaultOld : null,
 					img: p.image_url,
 					// stars: '⭐⭐⭐⭐⭐',
 					reviews: 'متوفر',
@@ -1779,6 +1806,10 @@ if ($sPmax <= $sPmin) { $sPmax=$sPmin + 1; } $sliderRngLo=$sPmin; $sliderRngHi=$
 				const defaultPrice = Number(defaultVariant ? defaultVariant
 					.price_inc_tax : (p.min_price || p
 						.price || 0));
+				const defaultOld = defaultVariant && defaultVariant.old_price ?
+					Number(defaultVariant.old_price) :
+					(p.old_price ? Number(p.old_price) : null);
+				const discountPct = storeDiscountPercent(defaultOld, defaultPrice);
 				const defVid = defaultVariant ? Number(defaultVariant
 					.variation_id) : Number(p
 					.variation_id || p.id);
@@ -1796,7 +1827,8 @@ if ($sPmax <= $sPmin) { $sPmax=$sPmin + 1; } $sliderRngLo=$sPmin; $sliderRngHi=$
 					const vn = escHtml(v.name ||
 						'Default'
 						);
-					return `<option value="${vid}" data-price="${pr}">${vn} — ${fmtStorePrice(pr)}</option>`;
+					const oldPr = v.old_price ? Number(v.old_price) : '';
+					return `<option value="${vid}" data-price="${pr}" data-old-price="${oldPr}">${vn} — ${fmtStorePrice(pr)}</option>`;
 				}).join('');
 				const variantBlock = variations.length ?
 					`<div class="prod-variant-wrap"><select class="prod-variant" data-id="${pid}">${variantsOptions}</select></div>` :
@@ -1808,7 +1840,7 @@ if ($sPmax <= $sPmin) { $sPmax=$sPmin + 1; } $sliderRngLo=$sPmin; $sliderRngHi=$
                         <a href="${showUrl}" class="prod-img-link" title="عرض تفاصيل المنتج">
                             <img class="prod-img" src="${src}" alt="${nm}">
                         </a>
-                        <div class="prod-badges">${idx < 2 ? '<span class="badge-new">جديد</span>' : ''}</div>
+                        <div class="prod-badges"><span class="badge-disc" id="prod-disc-${pid}"${discountPct > 0 ? '' : ' style="display:none;"'}>${discountPct > 0 ? '-' + discountPct + '%' : ''}</span>${idx < 2 && discountPct < 1 ? '<span class="badge-new">جديد</span>' : ''}</div>
                     </div>
                     <div class="prod-info">
                         <div class="prod-brand">${brand}</div>
@@ -1822,7 +1854,7 @@ if ($sPmax <= $sPmin) { $sPmax=$sPmin + 1; } $sliderRngLo=$sPmin; $sliderRngHi=$
                             </svg>
                             أضف للسلة
                         </button>
-                        <div class="price-row"><span class="price-now" id="prod-price-${pid}">${fmtStorePrice(defaultPrice)}</span></div>
+                        <div class="price-row"><span class="price-now" id="prod-price-${pid}">${fmtStorePrice(defaultPrice)}</span><span class="price-was" id="prod-old-${pid}"${discountPct > 0 ? '' : ' style="display:none;"'}>${discountPct > 0 ? fmtStorePrice(defaultOld) : ''}</span></div>
                     </div>
                 </div>`;
 			}).join('');

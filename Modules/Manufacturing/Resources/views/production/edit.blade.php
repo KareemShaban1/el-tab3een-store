@@ -103,10 +103,6 @@
 		</div>
 	@endcomponent
 
-	@if(!empty($show_packaging_materials))
-		@include('manufacturing::production.partials.packaging_materials', ['packaging_materials' => $packaging_materials ?? []])
-	@endif
-
 	@component('components.widget', ['class' => 'box-solid'])
 		<div class="row">
 			@if(request()->session()->get('business.enable_lot_number') == 1)

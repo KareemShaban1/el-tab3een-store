@@ -31,12 +31,46 @@
                     </thead>
                     <tbody>
                         @foreach($production_sell->sell_lines as $line)
+                            @continue(($line->sell_line_note ?? '') === 'mfg_packaging_material')
                             <tr>
                                 <td>{{ $line->variations->full_name ?? '' }}</td>
                                 <td>{{ $line->quantity }}</td>
                             </tr>
                         @endforeach
                     </tbody>
+                </table>
+            @endif
+
+            @if(!empty($extra_packaging_materials))
+                <h4>@lang('manufacturing::lang.used_packaging_materials')</h4>
+                <table class="table table-bordered">
+                    <thead>
+                        <tr>
+                            <th>@lang('manufacturing::lang.packaging_material')</th>
+                            <th>@lang('lang_v1.quantity')</th>
+                            <th>@lang('manufacturing::lang.total_price')</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @php $extra_packaging_total = 0; @endphp
+                        @foreach($extra_packaging_materials as $line)
+                            @php
+                                $line_total = (float) $line->quantity * (float) $line->unit_price_inc_tax;
+                                $extra_packaging_total += $line_total;
+                            @endphp
+                            <tr>
+                                <td>{{ $line->variations->full_name ?? '' }}</td>
+                                <td>{{ $line->quantity }}</td>
+                                <td><span class="display_currency" data-currency_symbol="true">{{ $line_total }}</span></td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <td colspan="2" class="text-right"><strong>@lang('manufacturing::lang.packaging_materials_cost')</strong></td>
+                            <td><strong><span class="display_currency" data-currency_symbol="true">{{ $extra_packaging_total }}</span></strong></td>
+                        </tr>
+                    </tfoot>
                 </table>
             @endif
         </div>

@@ -61,6 +61,8 @@
 
     <div id="profile_details_container"></div>
 
+    @include('manufacturing::production.partials.packaging_materials')
+
     @component('components.widget', ['class' => 'box-solid'])
         <div class="row">
             <div class="col-md-12">
@@ -164,4 +166,5 @@
         loadProfileDetails();
     });
 </script>
+@include('manufacturing::packaging_production.partials.packaging_materials_script')
 @endsection

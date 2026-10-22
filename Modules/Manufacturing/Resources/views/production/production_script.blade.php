@@ -295,111 +295,11 @@
             production_cost = production_cost * __read_number($('#recipe_quantity'));
         }
         $('span#total_production_cost').text(__currency_trans_from_en(production_cost, true));
-
-        var packaging_cost = __mfg_packaging_materials_cost();
-        var final_price = total_ingredients_cost + production_cost + packaging_cost;
+        var final_price = total_ingredients_cost + production_cost;
         __write_number($('#final_total'), final_price);
         $('span#final_total_text').text(__currency_trans_from_en(final_price, true));
-        __write_number($('#total'), total_ingredients_cost + packaging_cost);
+        __write_number($('#total'), total_ingredients_cost);
     }
-
-    function __mfg_packaging_materials_cost() {
-        var total = 0;
-        $('#production_packaging_materials_table tbody tr.production-packaging-row').each(function() {
-            var qty = __read_number($(this).find('.packaging_material_qty'));
-            var price = parseFloat($(this).find('.packaging_material_price').val()) || 0;
-            if (isNaN(qty) || qty < 0) {
-                qty = 0;
-            }
-            var line_total = qty * price;
-            $(this).find('.packaging_material_line_total').text(__currency_trans_from_en(line_total, true));
-            total += line_total;
-        });
-        return total;
-    }
-
-    function __mfg_init_packaging_material_select($el) {
-        $el.select2({
-            ajax: {
-                url: '/products/list',
-                dataType: 'json',
-                delay: 250,
-                data: function(params) {
-                    return {
-                        term: params.term,
-                        only_packaging_materials: 1
-                    };
-                },
-                processResults: function(data) {
-                    return {
-                        results: $.map(data, function(item) {
-                            var text = item.name;
-                            if (item.type == 'variable' && item.variation) {
-                                text += ' - ' + item.variation;
-                            }
-                            text += ' (' + item.sub_sku + ')';
-                            return { id: item.variation_id, text: text };
-                        })
-                    };
-                },
-            },
-            minimumInputLength: 1,
-            escapeMarkup: function(m) { return m; },
-            templateResult: function(data) {
-                return data.text;
-            },
-            templateSelection: function(data) {
-                return data.text || data.name;
-            }
-        });
-    }
-
-    var packaging_material_row_index = $('#production_packaging_materials_table tbody tr.production-packaging-row').length;
-
-    $('#add_production_packaging_material').on('click', function() {
-        $.ajax({
-            url: '{{ action([\Modules\Manufacturing\Http\Controllers\ProductionController::class, "getPackagingMaterialRow"]) }}',
-            data: { row_index: packaging_material_row_index },
-            success: function(result) {
-                $('#production_packaging_materials_table tbody').append(result);
-                var $row = $('#production_packaging_materials_table tbody tr.production-packaging-row:last');
-                __mfg_init_packaging_material_select($row.find('.packaging_material_variation'));
-                packaging_material_row_index++;
-            }
-        });
-    });
-
-    $(document).on('click', '.remove-packaging-material-row', function() {
-        $(this).closest('tr').remove();
-        calculateRecipeTotal();
-    });
-
-    $(document).on('change', '.packaging_material_variation', function() {
-        var $row = $(this).closest('tr');
-        var variation_id = $(this).val();
-        if (!variation_id) {
-            $row.find('.packaging_material_price').val(0);
-            calculateRecipeTotal();
-            return;
-        }
-
-        $.ajax({
-            url: '{{ action([\Modules\Manufacturing\Http\Controllers\ProductionController::class, "getPackagingMaterialRow"]) }}',
-            data: { variation_id: variation_id, json: 1 },
-            success: function(result) {
-                $row.find('.packaging_material_price').val(result.unit_price || 0);
-                calculateRecipeTotal();
-            }
-        });
-    });
-
-    $(document).on('change keyup', '.packaging_material_qty', function() {
-        calculateRecipeTotal();
-    });
-
-    $('#production_packaging_materials_table .packaging_material_variation').each(function() {
-        __mfg_init_packaging_material_select($(this));
-    });
 
     $(document).on('focus', 'select.sub_unit', function() {
         $(this).data('prev-multiplier', __mfg_getLineMultiplier($(this).closest('tr')));

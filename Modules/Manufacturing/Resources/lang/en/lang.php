@@ -174,7 +174,7 @@ return [
 
     // Packaging materials used during cooking production
     'used_packaging_materials' => 'Used / Wasted Packaging Materials',
-    'used_packaging_materials_help' => 'Select packaging material products used or wasted in this production. On finalize, their stock will be reduced and quantities will be saved with the production.',
+    'used_packaging_materials_help' => 'Select extra packaging material products used or wasted in this packaging production. On finalize, their stock will be reduced and quantities will be saved with the packaging production.',
     'packaging_material' => 'Packaging Material',
     'packaging_materials_cost' => 'Packaging Materials Cost',
     'add_packaging_material' => 'Add Packaging Material',

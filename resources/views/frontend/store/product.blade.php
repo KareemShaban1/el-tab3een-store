@@ -109,6 +109,13 @@ window.__SSR_STORE_PRODUCTS__[{
 	top: 12px;
 }
 
+.product-offer-badge {
+	position: absolute;
+	top: 18px;
+	inset-inline-end: 18px;
+	z-index: 2;
+}
+
 .product-image {
 	width: 100%;
 	max-height: 480px;
@@ -622,6 +629,20 @@ window.__SSR_STORE_PRODUCTS__[{
 <div class="container product-page">
 	<div class="product-hero">
 		<div class="product-media">
+			@php
+			$detailFirst = $variations[0] ?? [];
+			$detailPrice = isset($detailFirst['price_inc_tax']) && $detailFirst['price_inc_tax'] !== null
+			? (float) $detailFirst['price_inc_tax']
+			: null;
+			$detailOld = isset($detailFirst['old_price']) && $detailFirst['old_price'] !== null
+			? (float) $detailFirst['old_price']
+			: null;
+			$detailDisc = ($detailOld && $detailPrice !== null && $detailOld > $detailPrice && $detailOld > 0)
+			? max(1, (int) round((($detailOld - $detailPrice) / $detailOld) * 100))
+			: 0;
+			@endphp
+			<span id="variant-discount-badge" class="badge-disc product-offer-badge"
+				@if($detailDisc < 1) style="display:none" @endif>@if($detailDisc > 0)-{{ $detailDisc }}%@endif</span>
 			<img src="{{ $sfStr($product['image_url'] ?? '') }}"
 				alt="{{ $sfStr($product['name'] ?? '') }}" class="product-image">
 		</div>
@@ -992,6 +1013,17 @@ window.__SSR_STORE_PRODUCTS__[{
 			} else {
 				oldPriceEl.style.display = 'none';
 				oldPriceEl.textContent = '';
+			}
+		}
+		var discEl = document.getElementById('variant-discount-badge');
+		if (discEl) {
+			if (hasPrice && oldPrice > price && oldPrice > 0) {
+				var pct = Math.max(1, Math.round(((oldPrice - price) / oldPrice) * 100));
+				discEl.style.display = '';
+				discEl.textContent = '-' + pct + '%';
+			} else {
+				discEl.style.display = 'none';
+				discEl.textContent = '';
 			}
 		}
 

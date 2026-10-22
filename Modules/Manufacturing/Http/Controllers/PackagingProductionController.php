@@ -17,6 +17,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Routing\Controller;
 use Modules\Manufacturing\Entities\MfgPackagingProfile;
+use Modules\Manufacturing\Entities\MfgProductionPackagingUsage;
 use Modules\Manufacturing\Support\PackagingFeature;
 use Modules\Manufacturing\Utils\ManufacturingUtil;
 use Modules\Manufacturing\Utils\PackagingUtil;
@@ -305,6 +306,9 @@ class PackagingProductionController extends Controller
                 ];
             }
 
+            $extra_packaging_lines = $this->buildExtraPackagingMaterialSellLines($request->input('packaging_materials', []));
+            $sell_lines = array_merge($sell_lines, $extra_packaging_lines);
+
             $transaction_sell_data = [
                 'business_id' => $business_id,
                 'location_id' => $transaction->location_id,
@@ -319,6 +323,8 @@ class PackagingProductionController extends Controller
 
             $production_sell = Transaction::create($transaction_sell_data);
             $this->transactionUtil->createOrUpdateSellLines($production_sell, $sell_lines, $transaction_sell_data['location_id']);
+            $production_sell->load('sell_lines');
+            $this->syncPackagingMaterialUsages($transaction->id, $production_sell->id);
 
             if ($production_sell->status == 'final') {
                 foreach ($sell_lines as $sell_line) {
@@ -376,9 +382,18 @@ class PackagingProductionController extends Controller
             ->first();
 
         $profile = MfgPackagingProfile::with(['bulkVariation', 'outputVariation'])->find($production->mfg_packaging_profile_id);
+        $extra_packaging_materials = [];
+        if (! empty($production_sell)) {
+            foreach ($production_sell->sell_lines as $line) {
+                if (($line->sell_line_note ?? '') !== 'mfg_packaging_material') {
+                    continue;
+                }
+                $extra_packaging_materials[] = $line;
+            }
+        }
 
         return view('manufacturing::packaging_production.show')
-            ->with(compact('production', 'production_sell', 'profile'));
+            ->with(compact('production', 'production_sell', 'profile', 'extra_packaging_materials'));
     }
 
     public function edit($id)
@@ -400,9 +415,10 @@ class PackagingProductionController extends Controller
 
         $business_locations = BusinessLocation::forDropdown($business_id);
         $profile_dropdown = MfgPackagingProfile::forDropdown($business_id);
+        $packaging_materials = $this->extraPackagingMaterialsForForm($production->id);
 
         return view('manufacturing::packaging_production.edit')
-            ->with(compact('production', 'business_locations', 'profile_dropdown'));
+            ->with(compact('production', 'business_locations', 'profile_dropdown', 'packaging_materials'));
     }
 
     public function update(Request $request, $id)
@@ -548,6 +564,9 @@ class PackagingProductionController extends Controller
                 ];
             }
 
+            $extra_packaging_lines = $this->buildExtraPackagingMaterialSellLines($request->input('packaging_materials', []));
+            $sell_lines = array_merge($sell_lines, $extra_packaging_lines);
+
             $production_sell = Transaction::where('business_id', $business_id)
                 ->where('type', 'production_sell')
                 ->where('mfg_parent_production_purchase_id', $transaction->id)
@@ -576,6 +595,8 @@ class PackagingProductionController extends Controller
             }
 
             $this->transactionUtil->createOrUpdateSellLines($production_sell, $sell_lines, $transaction->location_id);
+            $production_sell->load('sell_lines');
+            $this->syncPackagingMaterialUsages($transaction->id, $production_sell->id);
 
             if ($production_sell->status == 'final') {
                 foreach ($sell_lines as $sell_line) {
@@ -712,6 +733,7 @@ class PackagingProductionController extends Controller
                 $production_sell->delete();
             }
 
+            MfgProductionPackagingUsage::where('production_purchase_id', $transaction->id)->delete();
             PurchaseLine::where('transaction_id', $transaction->id)->delete();
             $transaction->delete();
 
@@ -730,5 +752,113 @@ class PackagingProductionController extends Controller
         }
 
         return $output;
+    }
+
+    public function getPackagingMaterialRow(Request $request)
+    {
+        $business_id = $request->session()->get('user.business_id');
+        $this->authorizePackaging($business_id);
+
+        $row_index = (int) $request->input('row_index', 0);
+        $material = null;
+        $variation_id = $request->input('variation_id');
+
+        if (! empty($variation_id)) {
+            $variation = Variation::with('product')->find($variation_id);
+            if (! empty($variation)) {
+                if ($request->boolean('json')) {
+                    return response()->json([
+                        'variation_id' => $variation->id,
+                        'unit_price' => (float) $variation->dpp_inc_tax,
+                        'full_name' => $variation->full_name,
+                    ]);
+                }
+
+                $material = (object) [
+                    'variation_id' => $variation->id,
+                    'full_name' => $variation->full_name,
+                    'quantity' => 1,
+                    'unit_price' => $variation->dpp_inc_tax,
+                ];
+            }
+        }
+
+        return view('manufacturing::production.partials.packaging_material_row')
+            ->with(compact('row_index', 'material'))
+            ->render();
+    }
+
+    protected function buildExtraPackagingMaterialSellLines(array $materials): array
+    {
+        $sell_lines = [];
+
+        foreach ($materials as $material) {
+            if (empty($material['variation_id'])) {
+                continue;
+            }
+
+            $qty = $this->productUtil->num_uf($material['quantity'] ?? 0);
+            if ($qty <= 0) {
+                continue;
+            }
+
+            $variation = Variation::with('product')->find($material['variation_id']);
+            if (empty($variation) || empty($variation->product)) {
+                continue;
+            }
+
+            $unit_price = (float) $variation->dpp_inc_tax;
+
+            $sell_lines[] = [
+                'product_id' => $variation->product_id,
+                'variation_id' => $variation->id,
+                'quantity' => $this->productUtil->num_f($qty),
+                'item_tax' => 0,
+                'tax_id' => null,
+                'unit_price' => $unit_price,
+                'unit_price_inc_tax' => $unit_price,
+                'enable_stock' => $variation->product->enable_stock,
+                'product_unit_id' => $variation->product->unit_id,
+                'sell_line_note' => 'mfg_packaging_material',
+            ];
+        }
+
+        return $sell_lines;
+    }
+
+    protected function syncPackagingMaterialUsages($production_purchase_id, $production_sell_id)
+    {
+        MfgProductionPackagingUsage::where('production_purchase_id', $production_purchase_id)->delete();
+
+        $sell_lines = Transaction::find($production_sell_id)
+            ->sell_lines()
+            ->where('sell_line_note', 'mfg_packaging_material')
+            ->get();
+
+        foreach ($sell_lines as $sell_line) {
+            MfgProductionPackagingUsage::create([
+                'production_purchase_id' => $production_purchase_id,
+                'variation_id' => $sell_line->variation_id,
+                'quantity' => $sell_line->quantity,
+                'unit_price' => $sell_line->unit_price_inc_tax,
+                'sell_line_id' => $sell_line->id,
+            ]);
+        }
+    }
+
+    protected function extraPackagingMaterialsForForm($production_purchase_id): array
+    {
+        return MfgProductionPackagingUsage::where('production_purchase_id', $production_purchase_id)
+            ->with(['variation.product', 'variation.product_variation'])
+            ->get()
+            ->map(function ($usage) {
+                return [
+                    'variation_id' => $usage->variation_id,
+                    'full_name' => \Modules\Manufacturing\Entities\MfgPackagingProfile::variationLabel($usage->variation),
+                    'quantity' => $usage->quantity,
+                    'unit_price' => $usage->unit_price,
+                ];
+            })
+            ->all();
     }
 }

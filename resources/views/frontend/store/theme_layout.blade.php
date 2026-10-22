@@ -698,6 +698,13 @@
 
 	/* ── Helpers ── */
 	const fmt = n => n.toLocaleString('ar-EG') + ' ج.م';
+
+	function offerDiscountPercent(oldPrice, price) {
+		const oldN = Number(oldPrice);
+		const priceN = Number(price);
+		if (!oldN || priceN === null || Number.isNaN(priceN) || oldN <= priceN) return 0;
+		return Math.max(1, Math.round(((oldN - priceN) / oldN) * 100));
+	}
 	const $ = id => document.getElementById(id);
 	const $$ = sel => document.querySelectorAll(sel);
 
@@ -883,9 +890,10 @@
 			const defaultOld = defaultVariant && defaultVariant.old_price ?
 				Number(defaultVariant.old_price) :
 				(p.old_price ? Number(p.old_price) : null);
-			const saleBadge = (defaultOld && defaultOld > defaultPrice) || p.is_flash ?
-				'<span class="badge-sale" style="background:var(--accent);color:#fff;padding:2px 8px;border-radius:6px;font-size:.7rem;font-weight:800;">عرض</span>' :
-				'';
+			const discountPct = offerDiscountPercent(defaultOld, defaultPrice);
+			const saleBadge = discountPct > 0 ?
+				`<span class="badge-disc" id="prod-disc-${p.id}">-${discountPct}%</span>` :
+				`<span class="badge-disc" id="prod-disc-${p.id}" style="display:none;"></span>`;
 			PRODUCTS[p.id] = {
 				name: p.name,
 				brand: p.brand || '',
@@ -903,14 +911,14 @@
 			const variantsOptions = variations.map(v =>
 				`<option value="${Number(v.variation_id)}" data-price="${Number(v.price_inc_tax)}" data-old-price="${v.old_price ? Number(v.old_price) : ''}">${(v.name || 'Default')} - ${fmt(Number(v.price_inc_tax))}</option>`
 			).join('');
-			const oldHtml = defaultOld && defaultOld > defaultPrice ?
-				`<span class="price-was" id="prod-old-${p.id}" style="color:var(--light);text-decoration:line-through;font-size:.85rem;margin-inline-start:6px;">${fmt(defaultOld)}</span>` :
-				`<span class="price-was" id="prod-old-${p.id}" style="display:none;color:var(--light);text-decoration:line-through;font-size:.85rem;margin-inline-start:6px;"></span>`;
+			const oldHtml = discountPct > 0 ?
+				`<span class="price-was" id="prod-old-${p.id}">${fmt(defaultOld)}</span>` :
+				`<span class="price-was" id="prod-old-${p.id}" style="display:none;"></span>`;
 			return `
 			<div class="prod-card">
 				<div class="prod-img-wrap">
 					<img class="prod-img" src="${p.image_url}" alt="${p.name}">
-					<div class="prod-badges">${saleBadge}${idx < 2 && !saleBadge ? '<span class="badge-new">جديد</span>' : ''}</div>
+					<div class="prod-badges">${saleBadge}${idx < 2 && discountPct < 1 ? '<span class="badge-new">جديد</span>' : ''}</div>
 					<div class="prod-actions">
 						<button class="pa-cart" data-id="${p.id}" data-name="${p.name}" data-price="${defaultPrice}" data-variation-id="${defaultVariant ? Number(defaultVariant.variation_id) : (p.variation_id || p.id)}">
 							<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
@@ -1002,9 +1010,19 @@
 				const selectedOld = selectedOption?.dataset.oldPrice ?
 					Number(selectedOption.dataset.oldPrice) :
 					null;
+				const discountPct = offerDiscountPercent(selectedOld, selectedPrice);
+				const discEl = $(`prod-disc-${productId}`);
+				if (discEl) {
+					if (discountPct > 0) {
+						discEl.style.display = '';
+						discEl.textContent = `-${discountPct}%`;
+					} else {
+						discEl.style.display = 'none';
+						discEl.textContent = '';
+					}
+				}
 				if (oldEl) {
-					if (selectedOld && selectedPrice !== null &&
-						selectedOld > selectedPrice) {
+					if (discountPct > 0) {
 						oldEl.style.display = '';
 						oldEl.textContent = fmt(selectedOld);
 					} else {
@@ -1931,8 +1949,10 @@
 		grid.innerHTML = items.map((d, idx) => {
 			const timerId = `flash-card-timer-${d.discount_id || 'x'}-${d.variation_id || d.id}-${idx}`;
 			const endsAt = d.ends_at || '';
+			const discountPct = offerDiscountPercent(d.old_price, d.price);
 			return `
 			<div class="flash-card" data-product-href="${storeProductShowUrl(d.id)}" role="link" tabindex="0">
+				${discountPct > 0 ? `<span class="badge-disc" style="position:absolute;top:12px;inset-inline-end:12px;">-${discountPct}%</span>` : ''}
 				<img class="flash-img" src="${d.image_url}" alt="${d.name}">
 				<div class="flash-name">${d.name}</div>
 				${d.entity_name && d.entity_name !== d.name ? `<div class="flash-entity-chip">${d.entity_name}</div>` : ''}
