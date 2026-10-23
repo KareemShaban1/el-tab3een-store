@@ -1,0 +1,25 @@
+<?php
+
+return [
+    'product_reviews' => 'Product reviews',
+    'help' => 'Customers who are signed in can rate a product and leave a comment. Hide a review to take it off the product page, or delete it permanently.',
+    'total' => 'All reviews',
+    'visible_count' => 'Visible',
+    'hidden_count' => 'Hidden',
+    'product' => 'Product',
+    'customer' => 'Customer',
+    'rating' => 'Rating',
+    'comment' => 'Comment',
+    'status' => 'Status',
+    'visible' => 'Visible',
+    'hidden' => 'Hidden',
+    'hide' => 'Hide',
+    'show' => 'Show',
+    'all' => 'All',
+    'search' => 'Search',
+    'search_placeholder' => 'Product, customer, or comment',
+    'date' => 'Date',
+    'hidden_success' => 'Review hidden. It no longer appears on the product page.',
+    'shown_success' => 'Review is visible on the product page again.',
+    'deleted_success' => 'Review deleted.',
+];

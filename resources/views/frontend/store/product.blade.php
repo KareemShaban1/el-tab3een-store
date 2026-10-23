@@ -72,7 +72,8 @@ window.__SSR_STORE_PRODUCTS__[{
 		}
 	},
 	has_price: @json($initialHasPrice),
-	old: @json(($initialOldPrice && $initialPriceForCart && $initialOldPrice > $initialPriceForCart) ? $initialOldPrice : null),
+	old: @json(($initialOldPrice && $initialPriceForCart && $initialOldPrice > $initialPriceForCart) ?
+		$initialOldPrice : null),
 	img: @json($sfStr($product['image_url'] ?? '')),
 	reviews: 'متوفر',
 	variation_id: {
@@ -608,7 +609,7 @@ window.__SSR_STORE_PRODUCTS__[{
 	color: #374151;
 	font-size: 14px;
 	line-height: 1.7;
-	white-space: pre-wrap;
+	/* white-space: pre-wrap; */
 }
 
 @media (max-width: 900px) {
@@ -631,18 +632,21 @@ window.__SSR_STORE_PRODUCTS__[{
 		<div class="product-media">
 			@php
 			$detailFirst = $variations[0] ?? [];
-			$detailPrice = isset($detailFirst['price_inc_tax']) && $detailFirst['price_inc_tax'] !== null
+			$detailPrice = isset($detailFirst['price_inc_tax']) && $detailFirst['price_inc_tax'] !==
+			null
 			? (float) $detailFirst['price_inc_tax']
 			: null;
 			$detailOld = isset($detailFirst['old_price']) && $detailFirst['old_price'] !== null
 			? (float) $detailFirst['old_price']
 			: null;
-			$detailDisc = ($detailOld && $detailPrice !== null && $detailOld > $detailPrice && $detailOld > 0)
+			$detailDisc = ($detailOld && $detailPrice !== null && $detailOld > $detailPrice &&
+			$detailOld > 0)
 			? max(1, (int) round((($detailOld - $detailPrice) / $detailOld) * 100))
 			: 0;
 			@endphp
-			<span id="variant-discount-badge" class="badge-disc product-offer-badge"
-				@if($detailDisc < 1) style="display:none" @endif>@if($detailDisc > 0)-{{ $detailDisc }}%@endif</span>
+			<span id="variant-discount-badge" class="badge-disc product-offer-badge" @if($detailDisc <
+				1) style="display:none" @endif>@if($detailDisc >
+				0)-{{ $detailDisc }}%@endif</span>
 			<img src="{{ $sfStr($product['image_url'] ?? '') }}"
 				alt="{{ $sfStr($product['name'] ?? '') }}" class="product-image">
 		</div>
@@ -657,6 +661,9 @@ window.__SSR_STORE_PRODUCTS__[{
 				@endif
 			</div>
 			<h2 class="product-name">{{ $sfStr($product['name'] ?? '') }}</h2>
+			@if(empty($isServoProduct))
+			@include('frontend.store.partials.product_reviews', ['placement' => 'summary'])
+			@endif
 			<!-- product description -->
 			@php
 			$productDescription = $sfStr($product['description'] ?? '');
@@ -770,21 +777,35 @@ window.__SSR_STORE_PRODUCTS__[{
 						style="border-top: 1px solid #e5e7eb; padding-top: 10px; margin-top: 4px;">
 						<span class="detail-key">{{ __('lang_v1.price') }}</span>
 						<span>
-							<span id="variant-price" class="detail-price">—</span>
-							<span id="variant-old-price" class="detail-old-price" style="display:none;margin-inline-start:8px;color:#9ca3af;text-decoration:line-through;font-size:.9rem;"></span>
+							<span id="variant-price"
+								class="detail-price">—</span>
+							<span id="variant-old-price"
+								class="detail-old-price"
+								style="display:none;margin-inline-start:8px;color:#9ca3af;text-decoration:line-through;font-size:.9rem;"></span>
 						</span>
 					</div>
-					<div id="product-flash-timer" class="product-flash-timer" style="display:none;" aria-live="polite">
+					<div id="product-flash-timer" class="product-flash-timer"
+						style="display:none;" aria-live="polite">
 						<div class="product-flash-timer__label">
 							<span class="product-flash-timer__icon">⚡</span>
 							<span>ينتهي العرض خلال</span>
 						</div>
-						<div class="timer product-flash-timer__clock" data-ends-at="">
-							<div class="t-block"><span class="t-num" id="pd-t-h">00</span><span class="t-lbl">ساعة</span></div>
+						<div class="timer product-flash-timer__clock"
+							data-ends-at="">
+							<div class="t-block"><span class="t-num"
+									id="pd-t-h">00</span><span
+									class="t-lbl">ساعة</span>
+							</div>
 							<span class="t-sep">:</span>
-							<div class="t-block"><span class="t-num" id="pd-t-m">00</span><span class="t-lbl">دقيقة</span></div>
+							<div class="t-block"><span class="t-num"
+									id="pd-t-m">00</span><span
+									class="t-lbl">دقيقة</span>
+							</div>
 							<span class="t-sep">:</span>
-							<div class="t-block"><span class="t-num" id="pd-t-s">00</span><span class="t-lbl">ثانية</span></div>
+							<div class="t-block"><span class="t-num"
+									id="pd-t-s">00</span><span
+									class="t-lbl">ثانية</span>
+							</div>
 						</div>
 					</div>
 					<!-- <div class="detail-row loc-block" style="border-top: 1px solid #e5e7eb; padding-top: 10px; margin-top: 4px;">
@@ -885,6 +906,10 @@ window.__SSR_STORE_PRODUCTS__[{
 		});
 	})();
 	</script>
+	@endif
+
+	@if(empty($isServoProduct))
+	@include('frontend.store.partials.product_reviews', ['placement' => 'section'])
 	@endif
 </div>
 
@@ -1018,7 +1043,8 @@ window.__SSR_STORE_PRODUCTS__[{
 		var discEl = document.getElementById('variant-discount-badge');
 		if (discEl) {
 			if (hasPrice && oldPrice > price && oldPrice > 0) {
-				var pct = Math.max(1, Math.round(((oldPrice - price) / oldPrice) * 100));
+				var pct = Math.max(1, Math.round(((oldPrice - price) / oldPrice) *
+					100));
 				discEl.style.display = '';
 				discEl.textContent = '-' + pct + '%';
 			} else {

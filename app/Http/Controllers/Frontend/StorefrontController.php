@@ -8,6 +8,7 @@ use App\Category;
 use App\BusinessLocation;
 use App\Contact;
 use App\Product;
+use App\ProductReview;
 use App\StoreHeroBanner;
 use App\StorePage;
 use App\Services\Tab3eenCatalogService;
@@ -525,6 +526,13 @@ class StorefrontController extends Controller
             ],
         ];
 
+        $customerId = auth('customer')->id();
+        $reviewData = ProductReview::storefrontPayload(
+            (int) $business_id,
+            (int) $product->id,
+            $customerId ? (int) $customerId : null
+        );
+
         if (! $request->expectsJson()) {
             $seo = app(StorefrontSeoUtil::class)->forProduct($product, $request->url());
 
@@ -535,6 +543,9 @@ class StorefrontController extends Controller
                 'metaKeywords' => $seo['meta_keywords'],
                 'seoOgImage' => $seo['og_image'],
                 'seoCanonical' => $seo['canonical'],
+                'reviewSummary' => $reviewData['summary'],
+                'productReviews' => $reviewData['items'],
+                'customerReview' => $reviewData['mine'],
             ]);
         }
 

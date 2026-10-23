@@ -37,6 +37,7 @@ use App\Http\Controllers\NotificationTemplateController;
 use App\Http\Controllers\OpeningStockController;
 use App\Http\Controllers\PrinterController;
 use App\Http\Controllers\ProductController;
+use App\Http\Controllers\ProductReviewController;
 use App\Http\Controllers\PurchaseController;
 use App\Http\Controllers\PurchaseOrderController;
 use App\Http\Controllers\PurchaseRequisitionController;
@@ -57,6 +58,7 @@ use App\Http\Controllers\Frontend\StoreCheckoutController;
 use App\Http\Controllers\Frontend\StorefrontLocationController;
 use App\Http\Controllers\Frontend\StoreCustomerAuthController;
 use App\Http\Controllers\Frontend\StorefrontController;
+use App\Http\Controllers\Frontend\StoreProductReviewController;
 use App\Http\Controllers\Frontend\WebsiteVisitTrackingController;
 use App\Http\Controllers\WebsiteVisitLogController;
 use App\Http\Controllers\TaxonomyController;
@@ -169,6 +171,10 @@ Route::middleware(['setData'])->group(function () {
             Route::post('/logout', [StoreCustomerAuthController::class, 'logout'])->name('auth.logout');
             Route::put('/account/profile', [StoreAccountController::class, 'updateProfile'])->name('account.profile.update');
             Route::post('/checkout', [StoreCheckoutController::class, 'checkout'])->name('checkout');
+            Route::post('/products/{id}/reviews', [StoreProductReviewController::class, 'store'])
+                ->whereNumber('id')
+                ->middleware('throttle:10,1')
+                ->name('products.reviews.store');
 
             Route::get('/locations/governorates', [StorefrontLocationController::class, 'governorates'])->name('locations.governorates');
             Route::get('/locations/cities', [StorefrontLocationController::class, 'cities'])->name('locations.cities');
@@ -323,6 +329,13 @@ Route::middleware(['setData', 'auth', 'SetSessionData', 'language', 'timezone', 
     Route::put('/storefront-seo', [StorefrontSeoController::class, 'update'])->name('storefront-seo.update');
     Route::get('/storefront-whatsapp', [StorefrontWhatsAppController::class, 'edit'])->name('storefront-whatsapp.edit');
     Route::put('/storefront-whatsapp', [StorefrontWhatsAppController::class, 'update'])->name('storefront-whatsapp.update');
+    Route::get('/product-reviews', [ProductReviewController::class, 'index'])->name('product-reviews.index');
+    Route::post('/product-reviews/{id}/visibility', [ProductReviewController::class, 'toggleVisibility'])
+        ->whereNumber('id')
+        ->name('product-reviews.visibility');
+    Route::delete('/product-reviews/{id}', [ProductReviewController::class, 'destroy'])
+        ->whereNumber('id')
+        ->name('product-reviews.destroy');
     Route::get('/website-logs', [WebsiteVisitLogController::class, 'index'])->name('website-logs.index');
     Route::get('/website-logs/stats', [WebsiteVisitLogController::class, 'stats'])->name('website-logs.stats');
     Route::post('/website-logs/settings', [WebsiteVisitLogController::class, 'updateSettings'])->name('website-logs.settings');

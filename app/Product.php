@@ -277,6 +277,11 @@ class Product extends Model
         return $this->belongsTo(\App\Warranty::class);
     }
 
+    public function reviews()
+    {
+        return $this->hasMany(\App\ProductReview::class);
+    }
+
     public function media()
     {
         return $this->morphMany(\App\Media::class, 'model');
