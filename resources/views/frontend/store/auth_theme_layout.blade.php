@@ -5,7 +5,7 @@
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<title>{{ $title ?? 'El Tab3een Store' }}</title>
-	<link rel="icon" href="{{ asset('img/favicon.ico') }}" sizes="any">
+	<link rel="icon" href="{{ asset('favicon.ico') }}" sizes="any">
 	<link rel="icon" type="image/png" sizes="16x16" href="{{ asset('img/favicon-16.png') }}">
 	<link rel="icon" type="image/png" sizes="32x32" href="{{ asset('img/favicon-32.png') }}">
 	<link rel="icon" type="image/png" sizes="48x48" href="{{ asset('img/favicon-48.png') }}">
