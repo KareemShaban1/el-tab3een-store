@@ -117,12 +117,93 @@ window.__SSR_STORE_PRODUCTS__[{
 	z-index: 2;
 }
 
+.product-image-zoom {
+	display: block;
+	width: 100%;
+	padding: 0;
+	border: 0;
+	background: transparent;
+	cursor: zoom-in;
+}
+
 .product-image {
 	width: 100%;
 	max-height: 480px;
 	object-fit: cover;
 	border-radius: 12px;
 	background: #f8fafc;
+}
+
+.product-thumbs {
+	display: flex;
+	gap: 8px;
+	margin-top: 10px;
+	overflow-x: auto;
+	padding-bottom: 2px;
+}
+
+.product-thumb {
+	flex: 0 0 72px;
+	width: 72px;
+	height: 72px;
+	padding: 0;
+	border: 2px solid #e5e7eb;
+	border-radius: 10px;
+	overflow: hidden;
+	background: #f8fafc;
+	cursor: pointer;
+}
+
+.product-thumb.is-active {
+	border-color: var(--accent, #ea541a);
+}
+
+.product-thumb img {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+	display: block;
+}
+
+.product-lightbox {
+	position: fixed;
+	inset: 0;
+	z-index: 10050;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 24px;
+	background: rgba(15, 23, 42, 0.88);
+}
+
+.product-lightbox[hidden] {
+	display: none !important;
+}
+
+.product-lightbox img {
+	max-width: min(960px, 100%);
+	max-height: calc(100vh - 48px);
+	object-fit: contain;
+	border-radius: 12px;
+	background: #fff;
+}
+
+.product-lightbox__close {
+	position: absolute;
+	top: 16px;
+	inset-inline-end: 16px;
+	width: 44px;
+	height: 44px;
+	border: 0;
+	border-radius: 50%;
+	background: #fff;
+	color: #111;
+	font-size: 1.6rem;
+	line-height: 1;
+}
+
+body.product-lightbox-open {
+	overflow: hidden;
 }
 
 .product-summary {
@@ -647,8 +728,38 @@ window.__SSR_STORE_PRODUCTS__[{
 			<span id="variant-discount-badge" class="badge-disc product-offer-badge" @if($detailDisc <
 				1) style="display:none" @endif>@if($detailDisc >
 				0)-{{ $detailDisc }}%@endif</span>
-			<img src="{{ $sfStr($product['image_url'] ?? '') }}"
-				alt="{{ $sfStr($product['name'] ?? '') }}" class="product-image">
+			@php
+			$galleryImages = collect($product['images'] ?? [])
+				->map(fn ($url) => $sfStr($url))
+				->filter(fn ($url) => $url !== '')
+				->unique()
+				->values();
+			if ($galleryImages->isEmpty()) {
+				$fallbackImage = $sfStr($product['image_url'] ?? '');
+				if ($fallbackImage !== '') {
+					$galleryImages = collect([$fallbackImage]);
+				}
+			}
+			$mainImage = $galleryImages->first() ?? '';
+			$productName = $sfStr($product['name'] ?? '');
+			@endphp
+			<button type="button" class="product-image-zoom" id="product-image-open"
+				aria-label="تكبير الصورة" @if($mainImage === '') disabled @endif>
+				<img src="{{ $mainImage }}" alt="{{ $productName }}" class="product-image"
+					id="product-main-image">
+			</button>
+			@if($galleryImages->count() > 1)
+			<div class="product-thumbs" id="product-thumbs">
+				@foreach($galleryImages as $index => $imageUrl)
+				<button type="button"
+					class="product-thumb {{ $index === 0 ? 'is-active' : '' }}"
+					data-src="{{ $imageUrl }}"
+					aria-label="عرض الصورة {{ $index + 1 }}">
+					<img src="{{ $imageUrl }}" alt="">
+				</button>
+				@endforeach
+			</div>
+			@endif
 		</div>
 		<div class="product-summary">
 			<div>
@@ -1450,4 +1561,54 @@ window.__SSR_STORE_PRODUCTS__[{
 })();
 </script>
 @endif
+
+<div class="product-lightbox" id="product-lightbox" hidden>
+	<button type="button" class="product-lightbox__close" id="product-lightbox-close" aria-label="إغلاق">×</button>
+	<img src="" alt="" id="product-lightbox-image">
+</div>
+<script>
+(function() {
+	var main = document.getElementById('product-main-image');
+	var openBtn = document.getElementById('product-image-open');
+	var lightbox = document.getElementById('product-lightbox');
+	var lightboxImg = document.getElementById('product-lightbox-image');
+	var closeBtn = document.getElementById('product-lightbox-close');
+	var thumbs = document.getElementById('product-thumbs');
+	if (!main || !openBtn || !lightbox || !lightboxImg) return;
+
+	if (thumbs) {
+		thumbs.addEventListener('click', function(event) {
+			var btn = event.target.closest('.product-thumb');
+			if (!btn || !btn.getAttribute('data-src')) return;
+			main.src = btn.getAttribute('data-src');
+			thumbs.querySelectorAll('.product-thumb').forEach(function(el) {
+				el.classList.toggle('is-active', el === btn);
+			});
+		});
+	}
+
+	function openZoom() {
+		if (!main.getAttribute('src')) return;
+		lightboxImg.src = main.src;
+		lightboxImg.alt = main.alt || '';
+		lightbox.hidden = false;
+		document.body.classList.add('product-lightbox-open');
+	}
+
+	function closeZoom() {
+		lightbox.hidden = true;
+		lightboxImg.removeAttribute('src');
+		document.body.classList.remove('product-lightbox-open');
+	}
+
+	openBtn.addEventListener('click', openZoom);
+	closeBtn?.addEventListener('click', closeZoom);
+	lightbox.addEventListener('click', function(event) {
+		if (event.target === lightbox) closeZoom();
+	});
+	document.addEventListener('keydown', function(event) {
+		if (event.key === 'Escape' && !lightbox.hidden) closeZoom();
+	});
+})();
+</script>
 @endsection

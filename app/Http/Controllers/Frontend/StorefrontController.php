@@ -420,6 +420,7 @@ class StorefrontController extends Controller
 
         $variations = Variation::where('product_id', $product->id)
             ->with([
+                'media',
                 'variation_location_details' => function ($q) use ($business_location_ids) {
                     $q->whereIn('location_id', $business_location_ids)
                         ->where('qty_available', '>', 0)
@@ -480,11 +481,22 @@ class StorefrontController extends Controller
                     ->all();
 
                 $priced = $this->priceVariationForStorefront($product, $variation, $business_id, $location_id);
+                $image_urls = $variation->media
+                    ->filter(function ($media) {
+                        return $this->isStorefrontImageFile((string) ($media->file_name ?? ''));
+                    })
+                    ->map(function ($media) {
+                        return (string) $media->display_url;
+                    })
+                    ->filter()
+                    ->values()
+                    ->all();
 
                 return [
                     'variation_id' => $variation->id,
                     'sku' => $sku,
                     'name' => $name,
+                    'image_urls' => $image_urls,
                     'price_inc_tax' => $priced['price'],
                     'old_price' => $priced['old_price'],
                     'discount_id' => $priced['discount_id'],
@@ -518,6 +530,7 @@ class StorefrontController extends Controller
                     'display_name' => $warranty->display_name,
                 ] : null,
                 'image_url' => $product->image_url,
+                'images' => $this->storefrontProductImages((string) $product->image_url, $variations),
                 'brand' => is_scalar($brandName) ? (string) $brandName : null,
                 'category' => is_scalar($categoryName) ? (string) $categoryName : null,
                 'sub_category' => is_scalar($subCategoryName) ? (string) $subCategoryName : null,
@@ -1300,6 +1313,46 @@ class StorefrontController extends Controller
             'success' => true,
             'results' => $results,
         ]);
+    }
+
+    /**
+     * @param  \Illuminate\Support\Collection<int, array<string, mixed>>  $variations
+     * @return array<int, string>
+     */
+    private function storefrontProductImages(string $mainImage, $variations): array
+    {
+        $images = collect();
+        $mainImage = trim($mainImage);
+        if ($mainImage !== '' && ! $this->isDefaultProductImage($mainImage)) {
+            $images->push($mainImage);
+        }
+
+        foreach ($variations as $variation) {
+            foreach ((array) ($variation['image_urls'] ?? []) as $url) {
+                $url = trim((string) $url);
+                if ($url !== '') {
+                    $images->push($url);
+                }
+            }
+        }
+
+        if ($images->isEmpty() && $mainImage !== '') {
+            $images->push($mainImage);
+        }
+
+        return $images->unique()->values()->all();
+    }
+
+    private function isStorefrontImageFile(string $fileName): bool
+    {
+        return (bool) preg_match('/\.(jpe?g|png|gif|webp|avif|bmp)$/i', $fileName);
+    }
+
+    private function isDefaultProductImage(string $url): bool
+    {
+        $path = (string) (parse_url($url, PHP_URL_PATH) ?: $url);
+
+        return str_ends_with(strtolower($path), 'default.png');
     }
 
     private function resolveLocationId(int $business_id, Request $request): int

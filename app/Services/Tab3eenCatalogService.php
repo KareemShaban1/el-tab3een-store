@@ -591,6 +591,7 @@ class Tab3eenCatalogService
             'warranties' => trim((string) ($product['warranties'] ?? '')),
             'warranty' => null,
             'image_url' => (string) ($product['image_url'] ?? ''),
+            'images' => $this->productImageList($product),
             'brand' => is_array($brand) ? (string) ($brand['name'] ?? '') : (string) ($brand ?? ''),
             'category' => $categoryName,
             'sub_category' => $subCategoryName,
@@ -599,6 +600,36 @@ class Tab3eenCatalogService
             'has_price' => collect($variations)->contains(fn ($variation) => $variation['price_inc_tax'] !== null),
             'variations' => $variations,
         ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $product
+     * @return array<int, string>
+     */
+    private function productImageList(array $product): array
+    {
+        $images = collect();
+        $main = trim((string) ($product['image_url'] ?? ''));
+        if ($main !== '') {
+            $images->push($main);
+        }
+
+        foreach (['images', 'gallery', 'image_urls', 'photos'] as $key) {
+            foreach ((array) ($product[$key] ?? []) as $item) {
+                if (is_string($item)) {
+                    $url = trim($item);
+                } elseif (is_array($item)) {
+                    $url = trim((string) ($item['url'] ?? $item['image_url'] ?? $item['src'] ?? ''));
+                } else {
+                    $url = '';
+                }
+                if ($url !== '') {
+                    $images->push($url);
+                }
+            }
+        }
+
+        return $images->unique()->values()->all();
     }
 
     /**
