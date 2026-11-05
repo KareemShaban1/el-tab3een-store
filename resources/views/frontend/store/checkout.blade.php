@@ -220,13 +220,252 @@ textarea.checkout-input-error {
 	color: #999;
 	font-weight: 600;
 }
+
+.checkout-page {
+	max-width: 900px;
+}
+
+.checkout-intro {
+	margin-bottom: 4px;
+}
+
+.checkout-promo-row {
+	display: flex;
+	gap: 8px;
+	align-items: center;
+	flex-wrap: wrap;
+	margin: 12px 0;
+}
+
+.checkout-promo-row .checkout-location-select {
+	flex: 1;
+	min-width: 160px;
+	margin-bottom: 0;
+}
+
+.checkout-promo-row .btn {
+	width: auto;
+}
+
+.checkout-address-option {
+	display: flex;
+	gap: 10px;
+	align-items: flex-start;
+	margin-bottom: 12px;
+}
+
+.checkout-address-option input[type="radio"] {
+	width: 18px;
+	height: 18px;
+	margin: 3px 0 0;
+	padding: 0;
+	flex-shrink: 0;
+}
+
+.checkout-address-option span {
+	min-width: 0;
+	overflow-wrap: anywhere;
+}
+
+.checkout-submit {
+	min-height: 48px;
+}
+
+.checkout-mobile-bar {
+	display: none;
+}
+
+.checkout-item-name {
+	overflow-wrap: anywhere;
+}
+
+@media (max-width: 768px) {
+	.checkout-page.card {
+		margin: 0;
+		padding: 12px 12px 108px;
+		max-width: none;
+		background: transparent;
+		box-shadow: none;
+	}
+
+	.checkout-page h2 {
+		font-size: 1.35rem;
+		line-height: 1.3;
+		margin-bottom: 4px;
+	}
+
+	.checkout-page form > .card {
+		margin: 0 0 12px;
+		padding: 14px;
+		background: #fff;
+		border: 1px solid #eee;
+		border-radius: 16px;
+		box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+	}
+
+	.checkout-page form > .card h3 {
+		font-size: 1.05rem;
+	}
+
+	.checkout-page .row,
+	#checkout-area-row {
+		grid-template-columns: 1fr;
+	}
+
+	.checkout-page input,
+	.checkout-page select,
+	.checkout-page textarea {
+		font-size: 16px;
+	}
+
+	.checkout-address-option {
+		padding: 12px;
+		border: 1px solid #eee;
+		border-radius: 12px;
+		background: #fafafa;
+	}
+
+	.checkout-address-option input[type="radio"] {
+		width: 22px;
+		height: 22px;
+	}
+
+	.checkout-promo-row {
+		flex-direction: column;
+		align-items: stretch;
+	}
+
+	.checkout-promo-row .checkout-location-select,
+	.checkout-promo-row .btn {
+		width: 100%;
+		min-width: 0;
+		min-height: 48px;
+	}
+
+	.checkout-items-wrap {
+		overflow: visible;
+	}
+
+	.checkout-items-table,
+	.checkout-items-table tbody {
+		display: block;
+		width: 100%;
+	}
+
+	.checkout-items-table thead {
+		display: none;
+	}
+
+	.checkout-item-row {
+		display: grid;
+		grid-template-columns: 1fr auto;
+		gap: 8px 12px;
+		align-items: center;
+		padding: 12px;
+		margin-bottom: 10px;
+		border: 1px solid #eee;
+		border-radius: 14px;
+		background: #fafafa;
+	}
+
+	.checkout-items-table td {
+		display: block;
+		width: auto;
+		padding: 0;
+		border: 0;
+		text-align: right;
+	}
+
+	.checkout-item-main,
+	.checkout-item-qty {
+		grid-column: 1 / -1;
+	}
+
+	.checkout-item-price::before,
+	.checkout-item-line::before {
+		content: attr(data-label);
+		display: block;
+		margin-bottom: 2px;
+		color: #888;
+		font-size: 0.75rem;
+		font-weight: 700;
+	}
+
+	.checkout-item-line {
+		text-align: left;
+	}
+
+	.checkout-qty .qty-btn,
+	.checkout-qty-input {
+		width: 44px;
+		height: 44px;
+	}
+
+	.checkout-qty-input {
+		width: 72px;
+		font-size: 16px;
+	}
+
+	.checkout-submit {
+		display: none;
+	}
+
+	.checkout-mobile-bar {
+		display: flex;
+		position: fixed;
+		z-index: 190;
+		left: 0;
+		right: 0;
+		bottom: 62px;
+		gap: 12px;
+		align-items: center;
+		padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
+		background: #fff;
+		border-top: 1px solid #eee;
+		box-shadow: 0 -8px 24px rgba(15, 23, 42, 0.08);
+	}
+
+	.checkout-mobile-bar__total {
+		min-width: 96px;
+	}
+
+	.checkout-mobile-bar__total span {
+		display: block;
+		color: #666;
+		font-size: 0.75rem;
+		font-weight: 700;
+	}
+
+	.checkout-mobile-bar__amount {
+		display: block;
+		font-size: 1rem;
+		line-height: 1.2;
+		white-space: nowrap;
+	}
+
+	.checkout-mobile-bar__btn {
+		flex: 1;
+		min-height: 48px;
+		background: var(--accent, #ea541a);
+		color: #fff;
+		border-color: var(--accent, #ea541a);
+	}
+
+	.checkout-mobile-bar__btn:disabled {
+		opacity: 0.65;
+	}
+
+	body:has(.checkout-page) .store-whatsapp-fab {
+		bottom: 148px !important;
+	}
+}
 </style>
 @endpush
 
 @section('content')
-<div class="card" style="max-width:900px;">
+<div class="card checkout-page">
 	<h2>إتمام الطلب</h2>
-	<p class="muted">راجع المنتجات وحدد عنوان الشحن قبل تأكيد الطلب.</p>
+	<p class="muted checkout-intro">راجع المنتجات وحدد عنوان الشحن قبل تأكيد الطلب.</p>
 
 	@include('frontend.store.partials.flash_status')
 
@@ -271,7 +510,7 @@ textarea.checkout-input-error {
 
 		<div class="card">
 			<h3 style="margin-bottom:10px;">المنتجات</h3>
-			<div id="checkout-items-wrap" class="muted">جاري تحميل عناصر السلة...</div>
+			<div id="checkout-items-wrap" class="checkout-items-wrap muted">جاري تحميل عناصر السلة...</div>
 
 			<div class="checkout-order-summary" id="checkout-order-summary">
 				<div class="checkout-summary-row">
@@ -279,10 +518,10 @@ textarea.checkout-input-error {
 					<span class="checkout-summary-value" id="checkout-subtotal-value">0
 						ج.م</span>
 				</div>
-				<div style="margin:12px 0;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+				<div class="checkout-promo-row">
 					<input type="text" name="promo_code" id="checkout-promo-code" class="checkout-location-select"
-						placeholder="{{ __('lang_v1.enter_promo_code') }}" style="flex:1;min-width:160px;text-transform:uppercase;">
-					<button type="button" class="btn" id="checkout-apply-promo" style="width:auto;">{{ __('lang_v1.apply_promo_code') }}</button>
+						placeholder="{{ __('lang_v1.enter_promo_code') }}" style="text-transform:uppercase;">
+					<button type="button" class="btn" id="checkout-apply-promo">{{ __('lang_v1.apply_promo_code') }}</button>
 				</div>
 				<p class="muted" id="checkout-promo-msg" style="margin:0 0 8px;"></p>
 				<div class="checkout-summary-row" id="checkout-promo-savings-row" style="display:none;">
@@ -317,11 +556,9 @@ textarea.checkout-input-error {
 			@enderror
 
 			@if($has_saved_address)
-			<label class="{{ $errors->has('shipping_address_option') ? 'checkout-radio-row--error' : '' }}"
-				style="display:flex;gap:8px;align-items:flex-start;margin-bottom:10px;">
+			<label class="checkout-address-option {{ $errors->has('shipping_address_option') ? 'checkout-radio-row--error' : '' }}">
 				<input type="radio" name="shipping_address_option" value="existing"
-					{{ $default_option === 'existing' ? 'checked' : '' }}
-					style="width:auto;margin-top:4px;">
+					{{ $default_option === 'existing' ? 'checked' : '' }}>
 				<span>
 					<strong>استخدام العنوان المحفوظ</strong><br>
 					<span class="muted">{{ $customer->name }} -
@@ -332,10 +569,9 @@ textarea.checkout-input-error {
 			</label>
 			@endif
 
-			<label class="{{ $errors->has('shipping_address_option') ? 'checkout-radio-row--error' : '' }}"
-				style="display:flex;gap:8px;align-items:center;margin-bottom:12px;">
+			<label class="checkout-address-option {{ $errors->has('shipping_address_option') ? 'checkout-radio-row--error' : '' }}">
 				<input type="radio" name="shipping_address_option" value="new"
-					{{ $default_option === 'new' ? 'checked' : '' }} style="width:auto;">
+					{{ $default_option === 'new' ? 'checked' : '' }}>
 				<span><strong>إدخال عنوان جديد</strong></span>
 			</label>
 
@@ -524,7 +760,14 @@ textarea.checkout-input-error {
 			@enderror
 		</div>
 
-		<button class="btn" type="submit">تأكيد الطلب</button>
+		<button class="btn checkout-submit" type="submit">تأكيد الطلب</button>
+		<div class="checkout-mobile-bar">
+			<div class="checkout-mobile-bar__total">
+				<span>الإجمالي</span>
+				<strong class="checkout-mobile-bar__amount" id="checkout-mobile-total">0 ج.م</strong>
+			</div>
+			<button class="btn checkout-mobile-bar__btn" type="submit">تأكيد الطلب</button>
+		</div>
 	</form>
 </div>
 
@@ -535,6 +778,7 @@ function showClientError(msg) {
 	if (!wrap || !text) return;
 	text.textContent = msg || '';
 	wrap.classList.add('is-visible');
+	wrap.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 
 function hideClientError() {
@@ -602,6 +846,11 @@ window.updateCheckoutOrderSummary = function(deliveryFee) {
 		promoRow.style.display = '';
 		promoVal.textContent = '-' + checkoutFormatMoney(promoSavings);
 		grandEl.textContent = checkoutFormatMoney(Math.max(0, grandTotal - promoSavings));
+	}
+
+	const mobileTotal = document.getElementById('checkout-mobile-total');
+	if (mobileTotal && grandEl) {
+		mobileTotal.textContent = grandEl.textContent;
 	}
 };
 
@@ -763,20 +1012,20 @@ document.getElementById('checkout-apply-promo')?.addEventListener('click', async
 			const name = escapeCheckoutText(item.name || 'منتج');
 
 			return `
-                    <tr>
-                        <td>
+                    <tr class="checkout-item-row">
+                        <td class="checkout-item-main">
                             <div class="checkout-item-name">${name}</div>
                             <div class="checkout-item-meta">${sourceLabel}</div>
                         </td>
-                        <td>
+                        <td class="checkout-item-qty">
                             <div class="checkout-qty">
                                 <button type="button" class="qty-btn checkout-qty-step" data-step="-1" aria-label="تقليل الكمية">−</button>
                                 <input type="number" class="checkout-qty-input" data-index="${idx}" min="1" step="1" inputmode="numeric" value="${qty}" aria-label="كمية ${name}">
                                 <button type="button" class="qty-btn checkout-qty-step" data-step="1" aria-label="زيادة الكمية">+</button>
                             </div>
                         </td>
-                        <td>${checkoutFormatMoney(unitPrice)}</td>
-                        <td class="checkout-line-total" data-index="${idx}"><strong>${checkoutFormatMoney(lineTotal)}</strong></td>
+                        <td class="checkout-item-price" data-label="السعر">${checkoutFormatMoney(unitPrice)}</td>
+                        <td class="checkout-item-line checkout-line-total" data-index="${idx}" data-label="الإجمالي"><strong>${checkoutFormatMoney(lineTotal)}</strong></td>
                     </tr>
                 `;
 		}).join('');
@@ -896,10 +1145,10 @@ document.getElementById('checkout-apply-promo')?.addEventListener('click', async
 			}
 		});
 		renderProductInputs(latestCart);
-		const submitBtn = form.querySelector('[type="submit"]');
-		if (submitBtn) {
-			submitBtn.disabled = true;
-		}
+		const submitButtons = form.querySelectorAll('[type="submit"]');
+		submitButtons.forEach((button) => {
+			button.disabled = true;
+		});
 
 		try {
 			const response = await fetch(form.action, {
@@ -946,9 +1195,9 @@ document.getElementById('checkout-apply-promo')?.addEventListener('click', async
 		} catch (error) {
 			showClientError('تعذر إتمام الطلب. حاول مرة أخرى.');
 		} finally {
-			if (submitBtn) {
-				submitBtn.disabled = false;
-			}
+			submitButtons.forEach((button) => {
+				button.disabled = false;
+			});
 		}
 	});
 
