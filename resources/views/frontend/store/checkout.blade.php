@@ -64,6 +64,35 @@
 	display: flex;
 }
 
+#checkout-client-error-text {
+	white-space: pre-line;
+	margin-bottom: 0;
+}
+
+.checkout-qty {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+}
+
+.checkout-qty-input {
+	width: 64px;
+	height: 34px;
+	padding: 0 6px;
+	text-align: center;
+	border: 1px solid #ddd;
+	border-radius: 8px;
+	background: #fff;
+	font-weight: 700;
+	font-size: 0.95rem;
+}
+
+.checkout-qty .qty-btn {
+	width: 32px;
+	height: 32px;
+	flex-shrink: 0;
+}
+
 .checkout-field-error {
 	margin: 6px 0 0;
 	font-size: 0.8125rem;
@@ -524,9 +553,18 @@ function checkoutFormatMoney(amount) {
 	return value.toLocaleString('ar-EG') + ' ج.م';
 }
 
+function checkoutQuantityValue(qty) {
+	const raw = String(qty ?? '').trim();
+	if (!/^\d+$/.test(raw)) {
+		return 0;
+	}
+	const n = Number(raw);
+	return n >= 1 ? n : 0;
+}
+
 function calcCheckoutSubtotal(cart) {
 	return (cart || []).reduce((sum, item) => {
-		return sum + (Number(item.price || 0) * Math.max(1, Number(item.qty || 1)));
+		return sum + (Number(item.price || 0) * checkoutQuantityValue(item.qty));
 	}, 0);
 }
 
@@ -576,9 +614,13 @@ document.getElementById('checkout-apply-promo')?.addEventListener('click', async
 		return;
 	}
 	const cart = (typeof window.__checkoutReadCart === 'function') ? window.__checkoutReadCart() : [];
+	if (cart.some((item) => checkoutQuantityValue(item.qty) < 1)) {
+		if (msg) msg.textContent = @json(__('storefront.checkout.fix_quantities_first'));
+		return;
+	}
 	const cart_lines = cart.map(item => ({
 		variation_id: item.variation_id || item.id,
-		quantity: item.qty || 1,
+		quantity: checkoutQuantityValue(item.qty),
 		unit_price_inc_tax: item.price || 0,
 	}));
 	const cart_subtotal = cart_lines.reduce((s, l) => s + (Number(l.quantity) * Number(l.unit_price_inc_tax)), 0);
@@ -670,7 +712,40 @@ document.getElementById('checkout-apply-promo')?.addEventListener('click', async
 		}
 	}
 
-	window.__checkoutReadCart = readCart;
+	let checkoutCart = [];
+	const qtyInvalidTemplate = @json(__('storefront.checkout.qty_invalid'));
+
+	function escapeCheckoutText(value) {
+		return String(value ?? '')
+			.replace(/&/g, '&amp;')
+			.replace(/</g, '&lt;')
+			.replace(/>/g, '&gt;')
+			.replace(/"/g, '&quot;');
+	}
+
+	function currentCheckoutCart() {
+		return checkoutCart.map((item, idx) => {
+			const input = itemsWrap?.querySelector(`.checkout-qty-input[data-index="${idx}"]`);
+			const qty = input ? String(input.value).trim() : String(item.qty ?? '');
+			return {
+				...item,
+				qty
+			};
+		});
+	}
+
+	window.__checkoutReadCart = function() {
+		const live = currentCheckoutCart();
+		if (live.length) {
+			return live;
+		}
+		return readCart();
+	};
+
+	function invalidQuantityMessages(cart) {
+		return cart.filter((item) => checkoutQuantityValue(item.qty) < 1)
+			.map((item) => qtyInvalidTemplate.replace(':name', item.name || 'منتج'));
+	}
 
 	function renderItems(cart) {
 		if (!itemsWrap) return;
@@ -680,22 +755,28 @@ document.getElementById('checkout-apply-promo')?.addEventListener('click', async
 			return;
 		}
 
-		const rows = cart.map((item) => {
-			const qty = Math.max(1, Number(item.qty || 1));
+		const rows = cart.map((item, idx) => {
+			const qty = checkoutQuantityValue(item.qty) || Math.max(1, Number(item.qty || 1));
 			const unitPrice = Number(item.price || 0);
 			const lineTotal = unitPrice * qty;
-			const sourceLabel = item.source === 'servo' ? 'منتج شريك' :
-				'منتج المتجر';
+			const sourceLabel = item.source === 'servo' ? 'منتج شريك' : 'منتج المتجر';
+			const name = escapeCheckoutText(item.name || 'منتج');
 
 			return `
                     <tr>
                         <td>
-                            <div class="checkout-item-name">${item.name || 'منتج'}</div>
+                            <div class="checkout-item-name">${name}</div>
                             <div class="checkout-item-meta">${sourceLabel}</div>
                         </td>
-                        <td>${qty}</td>
+                        <td>
+                            <div class="checkout-qty">
+                                <button type="button" class="qty-btn checkout-qty-step" data-step="-1" aria-label="تقليل الكمية">−</button>
+                                <input type="number" class="checkout-qty-input" data-index="${idx}" min="1" step="1" inputmode="numeric" value="${qty}" aria-label="كمية ${name}">
+                                <button type="button" class="qty-btn checkout-qty-step" data-step="1" aria-label="زيادة الكمية">+</button>
+                            </div>
+                        </td>
                         <td>${checkoutFormatMoney(unitPrice)}</td>
-                        <td><strong>${checkoutFormatMoney(lineTotal)}</strong></td>
+                        <td class="checkout-line-total" data-index="${idx}"><strong>${checkoutFormatMoney(lineTotal)}</strong></td>
                     </tr>
                 `;
 		}).join('');
@@ -719,20 +800,68 @@ document.getElementById('checkout-apply-promo')?.addEventListener('click', async
 
 	function renderProductInputs(cart) {
 		if (!inputsWrap) return;
-		if (!cart.length) return;
-		inputsWrap.innerHTML = cart.map((item, idx) => `
+		if (!cart.length) {
+			inputsWrap.innerHTML = '';
+			return;
+		}
+		inputsWrap.innerHTML = cart.map((item, idx) => {
+			const qty = checkoutQuantityValue(item.qty);
+			const submittedQty = qty >= 1 ? qty : escapeCheckoutText(item.qty);
+			return `
                 <input type="hidden" name="products[${idx}][variation_id]" value="${Number(item.variation_id || 0)}">
-                <input type="hidden" name="products[${idx}][quantity]" value="${Math.max(1, Number(item.qty || 1))}">
+                <input type="hidden" name="products[${idx}][quantity]" value="${submittedQty}">
                 <input type="hidden" name="products[${idx}][product_id]" value="${Number(item.id || 0)}">
-                <input type="hidden" name="products[${idx}][name]" value="${String(item.name || '').replace(/"/g, '&quot;')}">
+                <input type="hidden" name="products[${idx}][name]" value="${escapeCheckoutText(item.name || '')}">
                 <input type="hidden" name="products[${idx}][price]" value="${Number(item.price || 0)}">
                 ${item.source === 'servo' ? `<input type="hidden" name="products[${idx}][source]" value="servo">` : ''}
-            `).join('');
+            `;
+		}).join('');
 	}
 
-	const cart = readCart().filter((item) => Number(item.variation_id) > 0 && Number(item.qty) > 0);
-	renderItems(cart);
-	renderProductInputs(cart);
+	function commitCheckoutQty(input) {
+		const idx = Number(input.dataset.index);
+		const item = checkoutCart[idx];
+		if (!item) return;
+		const raw = String(input.value).trim();
+		item.qty = raw;
+		const qty = checkoutQuantityValue(raw);
+		const lineTotalEl = itemsWrap?.querySelector(`.checkout-line-total[data-index="${idx}"] strong`);
+		if (lineTotalEl) {
+			lineTotalEl.textContent = checkoutFormatMoney(Number(item.price || 0) * qty);
+		}
+		if (qty >= 1 && typeof window.setCartItemQty === 'function') {
+			window.setCartItemQty(item.id, item.variation_id, qty);
+		}
+		if (Number(window.__checkoutPromoSavings || 0) > 0) {
+			window.__checkoutPromoSavings = 0;
+			const promoRow = document.getElementById('checkout-promo-savings-row');
+			if (promoRow) promoRow.style.display = 'none';
+			const promoMsg = document.getElementById('checkout-promo-msg');
+			if (promoMsg) promoMsg.textContent = @json(__('storefront.checkout.reapply_promo'));
+		}
+		renderProductInputs(currentCheckoutCart());
+		updateCheckoutOrderSummary(window.__checkoutDeliveryFee ?? null);
+	}
+
+	itemsWrap?.addEventListener('click', function(event) {
+		const btn = event.target.closest('.checkout-qty-step');
+		if (!btn) return;
+		const input = btn.closest('.checkout-qty')?.querySelector('.checkout-qty-input');
+		if (!input) return;
+		const current = checkoutQuantityValue(input.value);
+		const next = Math.max(1, (current >= 1 ? current : 1) + Number(btn.dataset.step || 0));
+		input.value = String(next);
+		commitCheckoutQty(input);
+	});
+
+	itemsWrap?.addEventListener('input', function(event) {
+		if (!event.target.classList?.contains('checkout-qty-input')) return;
+		commitCheckoutQty(event.target);
+	});
+
+	checkoutCart = readCart().filter((item) => Number(item.variation_id) > 0 && Number(item.qty) > 0);
+	renderItems(checkoutCart);
+	renderProductInputs(checkoutCart);
 	toggleAddressForm();
 	optionInputs.forEach((el) => el.addEventListener('change', toggleAddressForm));
 
@@ -740,11 +869,12 @@ document.getElementById('checkout-apply-promo')?.addEventListener('click', async
 	form?.addEventListener('change', hideClientError, true);
 
 	form?.addEventListener('submit', async function(e) {
+		e.preventDefault();
 		hideClientError();
-		const latestCart = readCart();
+		const latestCart = currentCheckoutCart();
+		checkoutCart = latestCart;
 		renderProductInputs(latestCart);
 		if (!latestCart.length) {
-			e.preventDefault();
 			const msg = (form && form.dataset && form.dataset
 					.emptyCartMsg) ? form.dataset
 				.emptyCartMsg : '';
@@ -752,7 +882,20 @@ document.getElementById('checkout-apply-promo')?.addEventListener('click', async
 			return;
 		}
 
-		e.preventDefault();
+		const qtyErrors = invalidQuantityMessages(latestCart);
+		if (qtyErrors.length) {
+			showClientError(qtyErrors.join('\n'));
+			return;
+		}
+
+		latestCart.forEach((item) => {
+			const qty = checkoutQuantityValue(item.qty);
+			item.qty = qty;
+			if (typeof window.setCartItemQty === 'function') {
+				window.setCartItemQty(item.id, item.variation_id, qty);
+			}
+		});
+		renderProductInputs(latestCart);
 		const submitBtn = form.querySelector('[type="submit"]');
 		if (submitBtn) {
 			submitBtn.disabled = true;
@@ -778,7 +921,8 @@ document.getElementById('checkout-apply-promo')?.addEventListener('click', async
 			if (response.status === 422) {
 				const errors = data.errors || {};
 				const messages = Object.values(errors).flat().filter(Boolean);
-				showClientError(messages.join(' ') || data.message || 'تعذر إتمام الطلب.');
+				const extra = Array.isArray(data.error_messages) ? data.error_messages : [];
+				showClientError(messages.concat(extra).join('\n') || data.msg || data.message || 'تعذر إتمام الطلب.');
 				return;
 			}
 
@@ -798,7 +942,7 @@ document.getElementById('checkout-apply-promo')?.addEventListener('click', async
 			}
 
 			const errorMessages = Array.isArray(data.error_messages) ? data.error_messages : [];
-			showClientError(data.msg || errorMessages.join(' ') || 'تعذر إتمام الطلب.');
+			showClientError(data.msg || errorMessages.join('\n') || 'تعذر إتمام الطلب.');
 		} catch (error) {
 			showClientError('تعذر إتمام الطلب. حاول مرة أخرى.');
 		} finally {

@@ -13,6 +13,7 @@ use App\Utils\TransactionUtil;
 use App\Utils\ModuleUtil;
 use App\Utils\StoreOrderNotificationUtil;
 use App\Variation;
+use App\Services\Tab3eenCatalogService;
 use App\Services\Tab3eenOrderService;
 use App\Utils\ServoOrderUtil;
 use App\LocationsFees\Governorate;
@@ -86,7 +87,7 @@ class StoreCheckoutController extends Controller
         $validated = $request->validate([
             'products' => 'required|array|min:1',
             'products.*.variation_id' => 'required|integer',
-            'products.*.quantity' => 'required|numeric|min:0.0001',
+            'products.*.quantity' => 'required',
             'products.*.product_id' => 'nullable|integer',
             'products.*.source' => 'nullable|in:servo',
             'promo_code' => 'nullable|string|max:50',
@@ -106,7 +107,25 @@ class StoreCheckoutController extends Controller
             'addresses.shipping_address.lf_custom_area' => 'nullable|string|max:191',
             'idempotency_key' => 'nullable|string|max:191',
             'payment_method' => 'nullable|string|max:50',
+        ], [
+            'products.required' => __('storefront.checkout.empty_cart'),
+            'products.min' => __('storefront.checkout.empty_cart'),
+            'products.*.quantity.required' => __('storefront.checkout.fix_quantities_first'),
         ]);
+
+        $quantity_errors = $this->validateRequestedQuantities($validated['products'], $business_id);
+        if (! empty($quantity_errors)) {
+            $summary = implode("\n", $quantity_errors);
+            if (! $request->expectsJson()) {
+                return back()->withErrors(['checkout' => $summary])->withInput();
+            }
+
+            return $this->respond([
+                'success' => false,
+                'msg' => $summary,
+                'error_messages' => $quantity_errors,
+            ]);
+        }
 
         $customer_contact = Contact::findOrFail($customer->id);
         $delivery_fee = 0.0;
@@ -290,7 +309,7 @@ class StoreCheckoutController extends Controller
 
                 if ((int) $product->enable_stock === 1 && $available + 0.0001 < $requested_qty) {
                     $is_valid = false;
-                    $error_messages[] = 'Only '.$available.' of '.$product->name.' is available at the fulfillment location after stock moves.';
+                    $error_messages[] = $this->quantityStockMessage($product->name, $requested_qty, $available);
                 }
 
                 $unit_price = (float) $variation->sell_price_inc_tax;
@@ -1180,6 +1199,150 @@ class StoreCheckoutController extends Controller
     }
 
     /**
+     * @param  array<int, array<string, mixed>>  $products
+     * @return array<int, string>
+     */
+    private function validateRequestedQuantities(array $products, int $business_id): array
+    {
+        $errors = [];
+
+        foreach ($products as $index => $product) {
+            $name = trim((string) ($product['name'] ?? ''));
+            if ($name === '') {
+                $name = __('storefront.orders.product_number', ['id' => $index + 1]);
+            }
+            if (! $this->isWholeCheckoutQuantity($product['quantity'] ?? null)) {
+                $errors[] = __('storefront.checkout.qty_invalid', ['name' => $name]);
+            }
+        }
+
+        if (! empty($errors)) {
+            return array_values(array_unique($errors));
+        }
+
+        [$servo_products, $local_products] = $this->splitCheckoutProducts($products, $business_id);
+
+        if (! empty($local_products)) {
+            $variation_map = collect();
+            foreach ($local_products as $product) {
+                $variation_id = (int) ($product['variation_id'] ?? 0);
+                $existing = $variation_map->get($variation_id);
+                if ($existing) {
+                    $existing['quantity'] = (float) $existing['quantity'] + (float) $product['quantity'];
+                    $variation_map->put($variation_id, $existing);
+
+                    continue;
+                }
+                $product['quantity'] = (float) $product['quantity'];
+                $variation_map->put($variation_id, $product);
+            }
+
+            $variation_ids = $variation_map->keys()->map(fn ($id) => (int) $id)->all();
+            $variations_by_id = $this->loadStorefrontVariationsById($business_id, $variation_ids);
+            $stock_matrix = $this->buildVariationLocationStockMatrix($business_id, $variation_ids);
+            $errors = array_merge(
+                $errors,
+                $this->validateNetworkStockForCart($variation_map, $stock_matrix, $variations_by_id)
+            );
+        }
+
+        if (! empty($servo_products)) {
+            $errors = array_merge($errors, $this->validateServoQuantities($servo_products));
+        }
+
+        return array_values(array_unique($errors));
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $servo_products
+     * @return array<int, string>
+     */
+    private function validateServoQuantities(array $servo_products): array
+    {
+        $catalog = app(Tab3eenCatalogService::class)->getCatalog(null);
+        if ($catalog === []) {
+            return [__('storefront.catalog.stock_check_failed')];
+        }
+
+        $errors = [];
+        foreach ($servo_products as $index => $product) {
+            $name = trim((string) ($product['name'] ?? ''));
+            if ($name === '') {
+                $name = __('storefront.orders.product_number', ['id' => $index + 1]);
+            }
+            $available = $this->catalogAvailableQty(
+                $catalog,
+                (int) ($product['product_id'] ?? 0),
+                (int) ($product['variation_id'] ?? 0)
+            );
+            $requested = (float) ($product['quantity'] ?? 0);
+            if ($available === null || $available + 0.0001 < 1) {
+                $errors[] = __('storefront.catalog.out_of_stock').' ('.$name.')';
+
+                continue;
+            }
+            if ($available + 0.0001 < $requested) {
+                $errors[] = $this->quantityStockMessage($name, $requested, $available);
+            }
+        }
+
+        return $errors;
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $catalog
+     */
+    private function catalogAvailableQty(array $catalog, int $productId, int $variationId): ?float
+    {
+        $foundProduct = false;
+        foreach ($catalog as $category) {
+            foreach ($category['products'] ?? [] as $product) {
+                if ((int) ($product['id'] ?? 0) !== $productId) {
+                    continue;
+                }
+                $foundProduct = true;
+                foreach ($product['variations'] ?? [] as $variation) {
+                    if ((int) ($variation['variation_id'] ?? 0) === $variationId) {
+                        return (float) ($variation['qty_available'] ?? 0);
+                    }
+                }
+            }
+        }
+
+        return $foundProduct ? 0.0 : null;
+    }
+
+    private function isWholeCheckoutQuantity($quantity): bool
+    {
+        if (is_string($quantity)) {
+            $quantity = trim($quantity);
+        }
+        if ($quantity === '' || $quantity === null || ! is_numeric($quantity)) {
+            return false;
+        }
+
+        $number = (float) $quantity;
+
+        return $number >= 1 && abs($number - round($number)) < 0.00001;
+    }
+
+    private function quantityStockMessage(string $name, float $requested, float $available): string
+    {
+        return __('storefront.checkout.qty_stock', [
+            'name' => $name,
+            'requested' => $this->formatCheckoutQty($requested),
+            'available' => $this->formatCheckoutQty($available),
+        ]);
+    }
+
+    private function formatCheckoutQty(float $qty): string
+    {
+        $formatted = rtrim(rtrim(number_format($qty, 4, '.', ''), '0'), '.');
+
+        return $formatted === '' ? '0' : $formatted;
+    }
+
+    /**
      * @param  array<int, array<int, float>>  $stock_matrix
      * @return array<int, string>
      */
@@ -1200,12 +1363,11 @@ class StoreCheckoutController extends Controller
             }
             $sum = array_sum($stock_matrix[$vid] ?? []);
             if ($sum + 0.0001 < $requested_qty) {
-                $qty_label = rtrim(rtrim(number_format($sum, 4, '.', ''), '0'), '.') ?: '0';
-                $errors[] = sprintf(
-                    'Only %s total units of %s are available across all locations.',
-                    $qty_label,
-                    $variation->product->name
-                );
+                $name = trim((string) ($row['name'] ?? ''));
+                if ($name === '') {
+                    $name = $variation->product->name;
+                }
+                $errors[] = $this->quantityStockMessage($name, $requested_qty, $sum);
             }
         }
 

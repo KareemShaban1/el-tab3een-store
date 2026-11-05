@@ -2071,6 +2071,25 @@
 		toast('تم حذف المنتج من السلة', 'warn');
 	}
 
+	function setCartItemQty(productId, variationId, qty) {
+		const nextQty = Math.max(1, parseInt(qty, 10) || 1);
+		const item = cart.find((row) => {
+			if (variationId && Number(row.variation_id) === Number(variationId)) {
+				return true;
+			}
+
+			return Number(row.id) === Number(productId);
+		});
+		if (!item) {
+			return false;
+		}
+		item.qty = nextQty;
+		saveCartToStorage();
+		updateBadges();
+		renderCart();
+		return true;
+	}
+
 	function updateQty(id, d) {
 		const i = cart.find(i => i.id === id);
 		if (!i) {
@@ -2872,6 +2891,7 @@
 	/* Expose for inline usage */
 	window.startCountdown = startCountdown;
 	window.updateQty = updateQty;
+	window.setCartItemQty = setCartItemQty;
 	window.removeFromCart = removeFromCart;
 	window.addToCart = addToCart;
 	window.validateServoStock = validateServoStock;
