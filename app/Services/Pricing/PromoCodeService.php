@@ -2,6 +2,7 @@
 
 namespace App\Services\Pricing;
 
+use App\BusinessLocation;
 use App\Discount;
 use App\DiscountRedemption;
 use App\Product;
@@ -59,7 +60,7 @@ class PromoCodeService
         }
 
         $location_id = $context['location_id'] ?? null;
-        if (! empty($discount->location_id) && ! empty($location_id) && (int) $discount->location_id !== (int) $location_id) {
+        if (! $this->locationMatches($discount, $location_id, $channel, $business_id)) {
             return ['success' => false, 'msg' => __('lang_v1.promo_code_wrong_location')];
         }
 
@@ -289,6 +290,30 @@ class PromoCodeService
                 'business_id' => $originalSell->business_id,
             ]);
         });
+    }
+
+    /**
+     * POS must match the cashier branch. The online store picks a fulfillment
+     * location that can differ from the branch chosen on the discount.
+     */
+    protected function locationMatches(Discount $discount, $location_id, string $channel, $business_id): bool
+    {
+        if (empty($discount->location_id) || empty($location_id)) {
+            return true;
+        }
+
+        if ((int) $discount->location_id === (int) $location_id) {
+            return true;
+        }
+
+        if ($channel !== 'ecommerce') {
+            return false;
+        }
+
+        return BusinessLocation::where('business_id', $business_id)
+            ->where('is_active', 1)
+            ->where('id', $discount->location_id)
+            ->exists();
     }
 
     protected function isWithinWindow(PromoCode $promo, Discount $discount, Carbon $now): bool
