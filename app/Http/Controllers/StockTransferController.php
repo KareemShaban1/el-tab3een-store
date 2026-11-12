@@ -427,13 +427,21 @@ class StockTransferController extends Controller
 
         $statuses['final'] = __('restaurant.completed');
 
+        $status_color_in_activity = [];
+        foreach ($this->stockTransferStatuses() as $key => $label) {
+            $status_color_in_activity[$key] = [
+                'label' => $label,
+                'class' => $this->status_colors[$key] ?? 'bg-gray',
+            ];
+        }
+
         $activities = Activity::forSubject($sell_transfer)
            ->with(['causer', 'subject'])
            ->latest()
            ->get();
 
         return view('stock_transfer.show')
-                ->with(compact('sell_transfer', 'location_details', 'lot_n_exp_enabled', 'statuses', 'activities'));
+                ->with(compact('sell_transfer', 'location_details', 'lot_n_exp_enabled', 'statuses', 'activities', 'status_color_in_activity'));
     }
 
     /**
@@ -904,6 +912,7 @@ class StockTransferController extends Controller
                     ->first();
 
             $status = $request->input('status');
+            $sell_transfer_before = $sell_transfer->replicate();
 
             DB::beginTransaction();
             if ($status == 'completed' && $sell_transfer->status != 'completed') {
@@ -942,6 +951,10 @@ class StockTransferController extends Controller
             $purchase_transfer->save();
             $sell_transfer->status = $status == 'completed' ? 'final' : $status;
             $sell_transfer->save();
+
+            $from_status = $sell_transfer_before->status == 'final' ? 'completed' : $sell_transfer_before->status;
+            $activity_property = ['from' => $from_status, 'to' => $status];
+            $this->transactionUtil->activityLog($sell_transfer, 'status_updated', $sell_transfer_before, $activity_property);
 
             DB::commit();
 

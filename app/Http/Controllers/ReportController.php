@@ -3923,8 +3923,20 @@ class ReportController extends Controller
             $sales_order_statuses = Transaction::sales_order_statuses(true);
             $purchase_statuses = $this->transactionUtil->orderStatuses();
             $shipping_statuses = $this->transactionUtil->shipping_statuses();
+            $stock_transfer_statuses = [
+                'pending' => __('lang_v1.pending'),
+                'in_transit' => __('lang_v1.in_transit'),
+                'completed' => __('restaurant.completed'),
+                'final' => __('restaurant.completed'),
+            ];
+            $status_color_in_activity = [
+                'pending' => ['label' => __('lang_v1.pending'), 'class' => 'bg-red'],
+                'in_transit' => ['label' => __('lang_v1.in_transit'), 'class' => 'bg-yellow'],
+                'completed' => ['label' => __('restaurant.completed'), 'class' => 'bg-green'],
+                'final' => ['label' => __('restaurant.completed'), 'class' => 'bg-green'],
+            ];
 
-            $statuses = array_merge($sell_statuses, $sales_order_statuses, $purchase_statuses);
+            $statuses = array_merge($sell_statuses, $sales_order_statuses, $purchase_statuses, $stock_transfer_statuses);
 
             return Datatables::of($activities)
                             ->editColumn('created_at', '{{@format_datetime($created_at)}}')
@@ -3970,12 +3982,25 @@ class ReportController extends Controller
                                 if (! empty($row->subject->invoice_no)) {
                                     $html .= __('sale.invoice_no').': '.$row->subject->invoice_no.'<br>';
                                 }
-                                if ($row->subject_type == \App\Transaction::class && ! empty($row->subject) && in_array($row->subject->type, ['sell', 'purchase'])) {
-                                    $html .= view('sale_pos.partials.activity_row', ['activity' => $row, 'statuses' => $statuses, 'shipping_statuses' => $shipping_statuses])->render();
+                                if ($row->subject_type == \App\Transaction::class && ! empty($row->subject) && in_array($row->subject->type, ['sell', 'purchase', 'sell_transfer'])) {
+                                    $html .= view('sale_pos.partials.activity_row', [
+                                        'activity' => $row,
+                                        'statuses' => $statuses,
+                                        'shipping_statuses' => $shipping_statuses,
+                                        'status_color_in_activity' => $status_color_in_activity,
+                                    ])->render();
                                 } else {
                                     $update_note = $row->getExtraProperty('update_note');
                                     if (! empty($update_note) && ! is_array($update_note)) {
                                         $html .= $update_note;
+                                    }
+
+                                    if ($row->description == 'status_updated'
+                                        && ! empty($row->getExtraProperty('from'))
+                                        && ! empty($row->getExtraProperty('to'))) {
+                                        $from = $row->getExtraProperty('from');
+                                        $to = $row->getExtraProperty('to');
+                                        $html .= ($statuses[$from] ?? $from).' --> '.($statuses[$to] ?? $to);
                                     }
                                 }
 
